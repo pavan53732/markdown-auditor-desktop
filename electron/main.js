@@ -76,11 +76,13 @@ ipcMain.handle('api:validate', async (event, { baseURL, apiKey, model }) => {
 });
 
 // AI ANALYSIS CALL (full audit)
-ipcMain.handle('api:call', async (event, { baseURL, apiKey, model, systemPrompt, userMessage }) => {
+ipcMain.handle('api:call', async (event, { baseURL, apiKey, model, systemPrompt, userMessage, timeout, retries }) => {
   try {
     const client = new OpenAI({
       apiKey: apiKey || 'no-key-needed',
-      baseURL: baseURL
+      baseURL: baseURL,
+      timeout: (timeout || 60) * 1000,
+      maxRetries: retries || 2
     });
 
     const response = await client.chat.completions.create({

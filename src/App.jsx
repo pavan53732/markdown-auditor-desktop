@@ -7,10 +7,14 @@ import ProgressPanel from './components/ProgressPanel';
 import SummaryDashboard from './components/SummaryDashboard';
 import LayerFilterBar from './components/LayerFilterBar';
 import IssueList from './components/IssueList';
+import DiffSummaryPanel from './components/DiffSummaryPanel';
 import { SYSTEM_PROMPT } from './lib/systemPrompt';
+import { repairJSON, validateResults } from './lib/jsonRepair';
 
 const MAX_SAFE_TOKENS = 6000;
 const CHARS_PER_TOKEN = 4;
+const BATCH_TOKEN_BUFFER = 1000;
+const MIN_CHUNK_CHARS = 1200;
 
 export default function App() {
   const [config, setConfig] = useState({ baseURL: '', apiKey: '', model: '' });
@@ -22,15 +26,44 @@ export default function App() {
   const [error, setError] = useState(null);
   const [activeLayer, setActiveLayer] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [groupingMode, setGroupingMode] = useState('flat'); // flat, file, severity, layer, root_cause
+  const [diffMode, setDiffMode] = useState(false);
+  const [previousResults, setPreviousResults] = useState(null);
+  const [diffSummary, setDiffSummary] = useState(null);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [contextWarning, setContextWarning] = useState(null);
+  const [fileHashes, setFileHashes] = useState({});
+  const [cachedResults, setCachedResults] = useState({}); // { hash: { issues, summary } }
+  const [analysisStats, setAnalysisStats] = useState({ reused: 0, reanalyzed: 0 });
 
   useEffect(() => {
     window.electronAPI.readConfig().then((cfg) => {
       setConfig(cfg);
       setConfigLoaded(true);
     });
+    
+    // Load cached results from localStorage for persistence
+    const savedCache = localStorage.getItem('audit_cache');
+    if (savedCache) {
+      try {
+        setCachedResults(JSON.parse(savedCache));
+      } catch (e) {
+        console.error('Failed to load audit cache', e);
+      }
+    }
   }, []);
+
+  const saveCache = useCallback((newCache) => {
+    setCachedResults(newCache);
+    localStorage.setItem('audit_cache', JSON.stringify(newCache));
+  }, []);
+
+  const calculateHash = async (text) => {
+    const msgUint8 = new TextEncoder().encode(text);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  };
 
   const providerConfigured = !!(config.baseURL && config.apiKey && config.model);
   const canAnalyze = !!(config.baseURL && config.model);
@@ -62,15 +95,101 @@ export default function App() {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
-  const batchFiles = useCallback((fileList) => {
+  const getAvailableTokens = useCallback(() => {
     const systemTokens = Math.ceil(SYSTEM_PROMPT.length / CHARS_PER_TOKEN);
-    const availableTokens = MAX_SAFE_TOKENS - systemTokens - 1000;
+    return Math.max(1, MAX_SAFE_TOKENS - systemTokens - BATCH_TOKEN_BUFFER);
+  }, []);
+
+  const splitOversizedFile = useCallback((file, maxTokens) => {
+    const fileTokens = Math.ceil(file.content.length / CHARS_PER_TOKEN);
+    const baseFile = {
+      ...file,
+      sourceName: file.name
+    };
+
+    if (fileTokens <= maxTokens) {
+      return [{
+        ...baseFile,
+        chunkIndex: 1,
+        chunkCount: 1,
+        lineStart: 1,
+        lineEnd: Math.max(1, file.content.split('\n').length),
+        isChunked: false
+      }];
+    }
+
+    if (!file.content) {
+      return [{
+        ...baseFile,
+        chunkIndex: 1,
+        chunkCount: 1,
+        lineStart: 1,
+        lineEnd: 1,
+        isChunked: false
+      }];
+    }
+
+    const maxChars = Math.max(MIN_CHUNK_CHARS, maxTokens * CHARS_PER_TOKEN);
+    const overlapChars = Math.floor(maxChars * 0.1); // 10% overlap
+    const rawChunks = [];
+    let start = 0;
+    let lineStart = 1;
+
+    while (start < file.content.length) {
+      const maxEnd = Math.min(start + maxChars, file.content.length);
+      let end = maxEnd;
+
+      if (end < file.content.length) {
+        const newlineBoundary = file.content.lastIndexOf('\n', maxEnd - 1);
+        if (newlineBoundary >= start + Math.floor(maxChars * 0.5)) {
+          end = newlineBoundary + 1;
+        }
+      }
+
+      if (end <= start) {
+        end = maxEnd;
+      }
+
+      const content = file.content.slice(start, end);
+      const lineCount = Math.max(1, content.split('\n').length);
+      const lineEnd = lineStart + lineCount - 1;
+
+      rawChunks.push({
+        ...baseFile,
+        content,
+        lineStart,
+        lineEnd
+      });
+
+      // Move start back by overlap amount, but ensure progress
+      const nextStart = end - overlapChars;
+      if (nextStart <= start) {
+        start = end;
+      } else {
+        start = nextStart;
+      }
+      lineStart = lineEnd + 1; // This line is not entirely accurate with overlap, but it provides a rough estimate.
+    }
+
+    const chunkCount = rawChunks.length;
+    return rawChunks.map((chunk, index) => ({
+      ...chunk,
+      name: `${file.name} [chunk ${index + 1}/${chunkCount}, lines ${chunk.lineStart}-${chunk.lineEnd}]`,
+      chunkIndex: index + 1,
+      chunkCount,
+      isChunked: true
+    }));
+  }, []);
+
+  const batchFiles = useCallback((fileList) => {
+    const availableTokens = getAvailableTokens();
+    const preparedFiles = fileList.flatMap((file) => splitOversizedFile(file, availableTokens));
     
     const batches = [];
     let currentBatch = [];
     let currentTokens = 0;
     
-    for (const file of fileList) {
+    for (const file of preparedFiles) {
       const fileTokens = Math.ceil(file.content.length / CHARS_PER_TOKEN);
       
       if (currentTokens + fileTokens > availableTokens && currentBatch.length > 0) {
@@ -88,7 +207,7 @@ export default function App() {
     }
     
     return batches;
-  }, []);
+  }, [getAvailableTokens, splitOversizedFile]);
 
   const analyzeBatch = async (batch, batchIndex, totalBatches) => {
     const userMessage = batch
@@ -100,7 +219,9 @@ export default function App() {
       apiKey: config.apiKey,
       model: config.model,
       systemPrompt: SYSTEM_PROMPT,
-      userMessage
+      userMessage,
+      timeout: config.timeout,
+      retries: config.retries
     });
 
     if (!response.success) {
@@ -109,17 +230,20 @@ export default function App() {
 
     let parsed;
     try {
-      const raw = response.raw.replace(/```json|```/g, '').trim();
-      parsed = JSON.parse(raw);
-    } catch {
-      throw new Error(`Batch ${batchIndex + 1}/${totalBatches}: Could not parse response`);
+      parsed = repairJSON(response.raw);
+      validateResults(parsed);
+    } catch (e) {
+      throw new Error(`Batch ${batchIndex + 1}/${totalBatches}: ${e.message}`);
     }
 
     if (parsed.summary) {
       console.log(`[Batch ${batchIndex + 1}/${totalBatches}] Detectors evaluated: ${parsed.summary.detectors_evaluated || 'N/A'}, Skipped: ${parsed.summary.detectors_skipped || 'N/A'}`);
     }
 
-    return parsed;
+    return {
+      ...parsed,
+      _sourceFiles: Array.from(new Set(batch.map((file) => file.sourceName || file.name)))
+    };
   };
 
   // Post-merge severity escalation rules (applied across all batches)
@@ -139,7 +263,7 @@ export default function App() {
       if (group.length >= 3) {
         group.forEach(issue => {
           issue.severity = 'high';
-          issue.description = `[ESCALATED: ${group.length} medium issues in section] ${issue.description}`;
+          issue.escalation_reason = `Escalated to high because ≥3 medium issues (${group.length}) were found in the same section: ${issue.section}`;
         });
       }
     });
@@ -159,7 +283,7 @@ export default function App() {
           if (issue.category === 'security' || issue.category === 'performance') {
             if (severityOrder[issue.severity] < severityOrder['critical']) {
               issue.severity = 'critical';
-              issue.description = `[ESCALATED: Security + Performance interaction] ${issue.description}`;
+              issue.escalation_reason = `Escalated to critical due to high-risk interaction between security and performance detectors in ${issue.files?.[0]}`;
             }
           }
         });
@@ -183,7 +307,7 @@ export default function App() {
           if ((issue.category === 'completeness' || issue.category === 'functional') &&
               severityOrder[issue.severity] < severityOrder['high']) {
             issue.severity = 'high';
-            issue.description = `[ESCALATED: Completeness + Functional missing steps] ${issue.description}`;
+            issue.escalation_reason = `Escalated to high because completeness and functional issues both flag missing steps in section: ${issue.section}`;
           }
         });
       }
@@ -198,7 +322,7 @@ export default function App() {
           if ((issue.category === 'contradiction' || issue.category === 'intent') &&
               severityOrder[issue.severity] < severityOrder['high']) {
             issue.severity = 'high';
-            issue.description = `[ESCALATED: Contradiction + Intent conflict] ${issue.description}`;
+            issue.escalation_reason = `Escalated to high due to conflict between documented content (L1) and stated intent (L10) in section: ${issue.section}`;
           }
         });
       }
@@ -219,20 +343,35 @@ export default function App() {
     return Math.abs(hash).toString(36);
   };
 
-  // Deduplication based on detector ID + file + section + line_number (or description hash)
+  const getIssueIdentity = (issue) => {
+    // Create unique key from detector ID, primary file, section, and line number
+    // If line_number is missing, use a stable description+evidence fingerprint as fallback
+    const detectorMatch = issue.description?.match(/\[L(\d+)-(\d+)\]/);
+    const detectorId = issue.detector_id || (detectorMatch ? `L${detectorMatch[1]}-${detectorMatch[2]}` : 'unknown');
+    const primaryFile = issue.files?.[0] || 'unknown';
+    const section = issue.section || 'no-section';
+    
+    if (issue.line_number) {
+      return `${detectorId}::${primaryFile}::${section}::${issue.line_number}`;
+    }
+    
+    // Stable fingerprint fallback
+    const description = normalizeIdentityText(issue.description);
+    const evidenceSnippet = normalizeIdentityText(issue.evidence).slice(0, 240);
+    const fingerprintSource = evidenceSnippet
+      ? `${description}::${evidenceSnippet}`
+      : description;
+
+    return `${detectorId}::${primaryFile}::${section}::fp:${hashDescription(fingerprintSource)}`;
+  };
+
+  // Deduplication based on detector ID + file + section + line_number (or stable fallback fingerprint)
   const deduplicateIssues = (issues) => {
     const seen = new Map();
     const deduped = [];
 
     issues.forEach(issue => {
-      // Create unique key from detector ID, primary file, section, and line number
-      // If line_number is missing, use description hash as fallback
-      const detectorMatch = issue.description?.match(/\[L(\d+)-(\d+)\]/);
-      const detectorId = detectorMatch ? `L${detectorMatch[1]}-${detectorMatch[2]}` : 'unknown';
-      const primaryFile = issue.files?.[0] || 'unknown';
-      const section = issue.section || 'no-section';
-      const lineNumber = issue.line_number ? String(issue.line_number) : `hash:${hashDescription(issue.description)}`;
-      const key = `${detectorId}::${primaryFile}::${section}::${lineNumber}`;
+      const key = getIssueIdentity(issue);
 
       if (seen.has(key)) {
         // Merge related_issues from duplicate
@@ -315,8 +454,6 @@ export default function App() {
   };
 
   const mergeResults = (batchResults) => {
-    if (batchResults.length === 1) return batchResults[0];
-
     const merged = {
       summary: {
         total: 0,
@@ -337,6 +474,8 @@ export default function App() {
     let issueId = 1;
     const seenLayers = new Set();
     const seenDetectors = new Set(); // Track unique detectors across batches
+    const uniqueFiles = new Set();
+    let maxReportedDetectors = 0;
 
     for (const batch of batchResults) {
       if (batch.summary) {
@@ -345,8 +484,8 @@ export default function App() {
         merged.summary.high += batch.summary.high || 0;
         merged.summary.medium += batch.summary.medium || 0;
         merged.summary.low += batch.summary.low || 0;
-        merged.summary.files_analyzed += batch.summary.files_analyzed || 0;
         merged.summary.detectors_skipped += batch.summary.detectors_skipped || 0;
+        maxReportedDetectors = Math.max(maxReportedDetectors, batch.summary.detectors_evaluated || 0);
         
         // Track unique detectors from issues in this batch
         if (batch.issues) {
@@ -361,6 +500,8 @@ export default function App() {
         (batch.summary.layers_triggered || []).forEach(l => seenLayers.add(l));
       }
 
+      (batch._sourceFiles || []).forEach((fileName) => uniqueFiles.add(fileName));
+
       if (batch.issues) {
         for (const issue of batch.issues) {
           merged.issues.push({
@@ -372,9 +513,10 @@ export default function App() {
     }
 
     merged.summary.layers_triggered = Array.from(seenLayers);
+    merged.summary.files_analyzed = uniqueFiles.size;
 
     // Set unique detector count (capped at 256)
-    merged.summary.detectors_evaluated = Math.min(seenDetectors.size, 256);
+    merged.summary.detectors_evaluated = Math.min(Math.max(seenDetectors.size, maxReportedDetectors), 256);
 
     // Step 1: Deduplicate issues across batches
     console.log(`[Merge] Before deduplication: ${merged.issues.length} issues`);
@@ -401,24 +543,144 @@ export default function App() {
     return merged;
   };
 
+  const compareAudits = (current, previous) => {
+    if (!previous || !current) return null;
+    
+    const currIssuesMap = new Map();
+    current.issues.forEach(i => currIssuesMap.set(getIssueIdentity(i), i));
+    
+    const prevIssuesMap = new Map();
+    previous.issues.forEach(i => prevIssuesMap.set(getIssueIdentity(i), i));
+    
+    const newIssues = [];
+    const resolvedIssues = [];
+    const changedSeverity = [];
+    const unchanged = [];
+    
+    // New and changed
+    currIssuesMap.forEach((issue, id) => {
+      if (!prevIssuesMap.has(id)) {
+        newIssues.push({ ...issue, diffStatus: 'new' });
+      } else {
+        const prev = prevIssuesMap.get(id);
+        if (issue.severity !== prev.severity) {
+          changedSeverity.push({ ...issue, diffStatus: 'changed', prevSeverity: prev.severity });
+        } else {
+          unchanged.push({ ...issue, diffStatus: 'unchanged' });
+        }
+      }
+    });
+    
+    // Resolved
+    prevIssuesMap.forEach((issue, id) => {
+      if (!currIssuesMap.has(id)) {
+        resolvedIssues.push({ ...issue, diffStatus: 'resolved' });
+      }
+    });
+    
+    return {
+      new: newIssues,
+      resolved: resolvedIssues,
+      changed: changedSeverity,
+      unchanged,
+      totalNew: newIssues.length,
+      totalResolved: resolvedIssues.length,
+      totalChanged: changedSeverity.length
+    };
+  };
+
   const handleAnalyze = async () => {
     if (files.length === 0 || !canAnalyze) return;
+    
+    // Capture current results for comparison before we clear them
+    const capturedPrevious = results;
+    if (results) {
+      setPreviousResults(results);
+    }
+    
     setAnalyzing(true);
     setError(null);
     setResults(null);
     setActiveLayer('all');
     setSearchQuery('');
+    setAnalysisStats({ reused: 0, reanalyzed: 0 });
 
     try {
-      const batches = batchFiles(files);
-      const batchResults = [];
-      
-      for (let i = 0; i < batches.length; i++) {
-        const result = await analyzeBatch(batches[i], i, batches.length);
-        batchResults.push(result);
+      const filesToAnalyze = [];
+      const reusedBatchResults = [];
+      let reusedCount = 0;
+      let reanalyzedCount = 0;
+
+      const currentHashes = {};
+      for (const file of files) {
+        const hash = await calculateHash(file.content);
+        currentHashes[file.name] = hash;
+        
+        if (cachedResults[hash]) {
+          console.log(`[Cache] Reusing results for ${file.name}`);
+          reusedBatchResults.push(cachedResults[hash]);
+          reusedCount++;
+        } else {
+          console.log(`[Cache] Cache miss for ${file.name}, adding to analysis`);
+          filesToAnalyze.push(file);
+          reanalyzedCount++;
+        }
+      }
+      setFileHashes(currentHashes);
+      setAnalysisStats({ reused: reusedCount, reanalyzed: reanalyzedCount });
+
+      let finalBatchResults = [...reusedBatchResults];
+      let currentCache = { ...cachedResults };
+
+      if (filesToAnalyze.length > 0) {
+        const { total } = estimateTokens(filesToAnalyze);
+        if (config.tokenBudget && total > config.tokenBudget) {
+          throw new Error(`Estimated ${total.toLocaleString()} tokens for new files exceeds session budget of ${config.tokenBudget.toLocaleString()}.`);
+        }
+
+        const batches = batchFiles(filesToAnalyze);
+        
+        for (let i = 0; i < batches.length; i++) {
+          const result = await analyzeBatch(batches[i], i, batches.length);
+          
+          // Update cache for each file in this batch
+          const perFileResults = {};
+          batches[i].forEach(f => {
+            perFileResults[f.sourceName || f.name] = {
+              _sourceFiles: [f.sourceName || f.name],
+              summary: { ...result.summary, total: 0, critical: 0, high: 0, medium: 0, low: 0 },
+              issues: [],
+              root_causes: result.root_causes || []
+            };
+          });
+
+          if (result.issues) {
+            result.issues.forEach(issue => {
+              const primaryFile = issue.files?.[0];
+              if (primaryFile && perFileResults[primaryFile]) {
+                perFileResults[primaryFile].issues.push(issue);
+                if (perFileResults[primaryFile].summary[issue.severity] !== undefined) {
+                  perFileResults[primaryFile].summary[issue.severity]++;
+                }
+                perFileResults[primaryFile].summary.total++;
+              }
+            });
+          }
+
+          // Accumulate to current session cache
+          for (const fileName in perFileResults) {
+            const hash = currentHashes[fileName];
+            if (hash) {
+              currentCache[hash] = perFileResults[fileName];
+            }
+          }
+          saveCache(currentCache);
+
+          finalBatchResults.push(result);
+        }
       }
 
-      const merged = mergeResults(batchResults);
+      const merged = mergeResults(finalBatchResults);
 
       const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
       if (merged.issues) {
@@ -430,6 +692,12 @@ export default function App() {
       }
 
       setResults(merged);
+      
+      if (capturedPrevious) {
+        setDiffSummary(compareAudits(merged, capturedPrevious));
+      } else {
+        setDiffSummary(null);
+      }
     } catch (err) {
       setError(`Analysis error: ${err.message}`);
     }
@@ -506,13 +774,55 @@ export default function App() {
     md += `## Issues\n\n`;
     (results.issues || []).forEach((issue, i) => {
       md += `### ${i + 1}. [${issue.severity?.toUpperCase()}] ${issue.description}\n\n`;
+      md += `**Detector ID:** ${issue.detector_id || 'N/A'}\n`;
       md += `**Category:** ${issue.category}\n`;
       if (issue.section) md += `**Section:** ${issue.section}\n`;
       if (issue.line_number) md += `**Line:** ${issue.line_number}\n`;
+      if (issue.root_cause_id) md += `**Root Cause ID:** ${issue.root_cause_id}\n`;
       md += `**Files:** ${(issue.files || []).join(', ')}\n\n`;
+      
+      if (issue.why_triggered) {
+        md += `**Why Triggered:** ${issue.why_triggered}\n\n`;
+      }
+
+      if (issue.escalation_reason) {
+        md += `**Escalation Reason:** ${issue.escalation_reason}\n\n`;
+      }
+      
+      if (issue.recommended_fix) {
+        md += `**Recommended Fix:** ${issue.recommended_fix}\n\n`;
+      }
+      
+      if (issue.fix_steps && issue.fix_steps.length > 0) {
+        md += `**Fix Steps:**\n`;
+        issue.fix_steps.forEach((step, idx) => {
+          md += `${idx + 1}. ${step}\n`;
+        });
+        md += `\n`;
+      }
+
+      if (issue.verification_steps && issue.verification_steps.length > 0) {
+        md += `**Verification Steps:**\n`;
+        issue.verification_steps.forEach((step, idx) => {
+          md += `- ${step}\n`;
+        });
+        md += `\n`;
+      }
+      
       if (issue.evidence) md += `**Evidence:**\n\`\`\`\n${issue.evidence}\n\`\`\`\n\n`;
       md += `---\n\n`;
     });
+
+    if (results.root_causes && results.root_causes.length > 0) {
+      md += `## Root Cause Summary\n\n`;
+      results.root_causes.forEach((rc) => {
+        md += `### ${rc.title} [ID: ${rc.id}]\n\n`;
+        md += `**Impact:** ${rc.impact}\n\n`;
+        md += `${rc.description}\n\n`;
+        md += `**Child Issues:** ${(rc.child_issues || []).join(', ')}\n\n`;
+        md += `---\n\n`;
+      });
+    }
     
     const blob = new Blob([md], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
@@ -526,14 +836,22 @@ export default function App() {
 
   const exportCSV = () => {
     if (!results) return;
-    const headers = ['ID', 'Severity', 'Category', 'Section', 'Line', 'Description', 'Evidence', 'Confidence', 'Impact', 'Difficulty', 'Files', 'Tags'];
+    const headers = ['ID', 'DetectorID', 'Severity', 'Category', 'Section', 'Line', 'RootCauseID', 'Description', 'Why Triggered', 'Escalation Reason', 'Recommended Fix', 'Fix Steps', 'Verification Steps', 'Effort', 'Evidence', 'Confidence', 'Impact', 'Difficulty', 'Files', 'Tags'];
     const rows = (results.issues || []).map((issue) => [
       issue.id || '',
+      issue.detector_id || '',
       issue.severity || '',
       issue.category || '',
       issue.section || '',
       issue.line_number || '',
+      issue.root_cause_id || '',
       `"${(issue.description || '').replace(/"/g, '""')}"`,
+      `"${(issue.why_triggered || '').replace(/"/g, '""')}"`,
+      `"${(issue.escalation_reason || '').replace(/"/g, '""')}"`,
+      `"${(issue.recommended_fix || '').replace(/"/g, '""')}"`,
+      `"${(issue.fix_steps || []).join(' | ').replace(/"/g, '""')}"`,
+      `"${(issue.verification_steps || []).join(' | ').replace(/"/g, '""')}"`,
+      issue.estimated_effort || '',
       `"${(issue.evidence || '').replace(/"/g, '""')}"`,
       issue.confidence || '',
       issue.impact_score || '',
@@ -558,7 +876,7 @@ export default function App() {
     const session = {
       timestamp: new Date().toISOString(),
       config: { baseURL: config.baseURL, model: config.model },
-      files: files.map(f => f.name),
+      files,
       results
     };
     const blob = new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' });
@@ -568,6 +886,33 @@ export default function App() {
     a.download = `audit-session-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const loadSession = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const session = JSON.parse(event.target.result);
+          if (session.results) {
+            setFiles(session.files || []);
+            setResults(session.results);
+            setError(null);
+            setDiffSummary(null);
+            setDiffMode(false);
+          }
+        } catch (e) {
+          setError('Failed to load session: Invalid JSON');
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
   };
 
   return (
@@ -602,13 +947,20 @@ export default function App() {
               </div>
             )}
             
-            <div className="mt-6 flex justify-center">
+            <div className="mt-6 flex justify-center gap-3">
               <AnalyzeButton
                 fileCount={files.length}
                 providerConfigured={canAnalyze}
                 analyzing={analyzing}
                 onClick={handleAnalyze}
               />
+              <button
+                onClick={loadSession}
+                className="px-6 py-2.5 bg-[#1F2937] hover:bg-[#283548] border border-[#374151] rounded-xl text-sm font-medium transition-all"
+                title="Load past session"
+              >
+                📂 Load Session
+              </button>
             </div>
             {error && (
               <div className="mt-6 p-4 bg-[#3B1111] border border-[#A32D2D] rounded-lg">
@@ -678,8 +1030,14 @@ export default function App() {
             </div>
 
             <SummaryDashboard summary={results.summary} />
+            
+            <DiffSummaryPanel 
+              diff={diffSummary} 
+              active={diffMode} 
+              onToggle={setDiffMode} 
+            />
 
-            <div className="mb-4">
+            <div className="mb-4 flex flex-col gap-3">
               <div className="relative">
                 <input
                   type="text"
@@ -701,8 +1059,32 @@ export default function App() {
                   </button>
                 )}
               </div>
+              
+              <div className="flex items-center gap-3 overflow-x-auto pb-1 no-scrollbar">
+                <span className="text-xs font-semibold text-[#6B7280] whitespace-nowrap">GROUP BY:</span>
+                {[
+                  { id: 'flat', label: 'Flat List' },
+                  { id: 'file', label: 'File' },
+                  { id: 'severity', label: 'Severity' },
+                  { id: 'layer', label: 'Layer' },
+                  { id: 'root_cause', label: 'Root Cause' },
+                ].map((mode) => (
+                  <button
+                    key={mode.id}
+                    onClick={() => setGroupingMode(mode.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all whitespace-nowrap ${
+                      groupingMode === mode.id
+                        ? 'bg-[#3B82F6] border-[#3B82F6] text-white shadow-lg shadow-[#3B82F6]/20'
+                        : 'bg-[#1F2937] border-[#374151] text-[#9CA3AF] hover:border-[#4B5563]'
+                    }`}
+                  >
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+
               {searchQuery && (
-                <p className="mt-1 text-xs text-[#6B7280]">
+                <p className="text-xs text-[#6B7280]">
                   Showing {filteredIssues.length} of {results.issues?.length || 0} issues
                 </p>
               )}
@@ -714,7 +1096,14 @@ export default function App() {
               onLayerChange={setActiveLayer}
             />
 
-            <IssueList issues={filteredIssues} activeLayer={activeLayer} />
+            <IssueList 
+              issues={diffMode && diffSummary 
+                ? [...diffSummary.new, ...diffSummary.changed, ...diffSummary.resolved] 
+                : filteredIssues} 
+              activeLayer={activeLayer} 
+              groupingMode={groupingMode}
+              rootCauses={results.root_causes || []}
+            />
 
             {error && (
               <div className="mt-6 p-4 bg-[#3B1111] border border-[#A32D2D] rounded-lg">

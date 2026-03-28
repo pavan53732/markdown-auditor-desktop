@@ -4,210 +4,260 @@
 
 ### Prerequisites
 
-- Node.js v20+
-- npm v10+
-- Windows 10/11 x64
+- Node.js 20+
+- npm 10+
+- Windows 10/11 x64 recommended for packaging verification
 
 ### Installation
 
 ```bash
 git clone <repository-url>
-cd markdown-auditor
+cd markdown-intelligence-auditor
 npm install
 ```
 
-### Development Commands
+## Common Commands
 
 ```bash
-# Start Vite dev server (browser preview)
+# Start Vite dev server
 npm run dev
 
-# Build Vite output
+# Build renderer output
 npm run build
 
-# Run Electron with built files
+# Run Electron against built files
 npm run electron:dev
 
-# Build portable .exe
+# Create portable Windows package
 npm run dist
 ```
 
-## Project Structure
+Portable output:
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed structure documentation.
+- `dist-electron-v4\MarkdownAuditor-portable.exe`
 
-## Current Feature Set
+## Project Docs
 
-### Analysis Capabilities
-- 32 analysis layers with 256 micro-detectors (L1-01 through L32-08)
-- Multi-phase reasoning flow (scan → cross-layer correlation → severity escalation → final output)
-- Deterministic escalation rules (5 rules defined)
-- Enhanced issue fields: line_number, confidence, impact_score, fix_difficulty, tags, references
-- AI-powered analysis using OpenAI-compatible SDK
+- [README.md](./README.md)
+- [ARCHITECTURE.md](./ARCHITECTURE.md)
+- [ENHANCEMENTS.md](./ENHANCEMENTS.md)
+- [CHANGELOG.md](./CHANGELOG.md)
+- [RELEASE_NOTES.md](./RELEASE_NOTES.md)
+- [GEMINI.md](./GEMINI.md)
 
-### UI Features
-- Drag-and-drop file upload for .md files
-- Text search across issue descriptions, evidence, tags, and files
-- Layer filtering with 32 filter pills
-- Export to JSON, Markdown, and CSV formats
-- Session save functionality
-- Dark theme UI
+## Current Feature Surface
 
-### Intentionally Excluded Features
-- **Suggested Fixes:** The app focuses on identifying issues, not providing automated remediation
-- **Offline/Local AI:** Cloud-only AI provider design (Ollama, LM Studio excluded)
+### Analysis
 
-## Adding New Features
+- 32 layers / 256 detectors
+- chunk-aware batching
+- deterministic normalization
+- four escalation rules
+- cross-layer validation
+- incremental cached reuse
+- session diffing
+- root-cause grouping
 
-### Adding a New Component
+### UI
 
-1. Create file in `src/components/YourComponent.jsx`
-2. Import in `App.jsx`
-3. Add to component tree
-4. Follow existing component patterns
+- drag-and-drop file upload
+- search
+- layer filtering
+- grouping modes
+- diff summary panel
+- expanded issue cards with traceability and remediation guidance
+- save/load sessions
+- JSON / Markdown / CSV export
+
+### Provider Controls
+
+- provider presets
+- timeout
+- retries
+- token budget
+
+## Rules for Contributors
+
+### Keep Docs in Sync
+
+If you change product behavior, update the relevant docs in the same change:
+
+- `README.md` for user-facing behavior
+- `ARCHITECTURE.md` for system/runtime flow
+- `ENHANCEMENTS.md` for status / roadmap changes
+- `GEMINI.md` if repository working rules change
+
+### When Changing Result Schema
+
+If you add or change any AI-returned field, update all affected layers:
+
+1. `src/lib/systemPrompt.js`
+2. `src/lib/jsonRepair.js`
+3. `src/App.jsx`
+4. `src/components/IssueCard.jsx`
+5. export logic in `src/App.jsx`
+6. docs that describe the schema
+
+### When Changing Identity, Diffing, or Normalization
+
+Be especially careful with:
+
+- single-batch vs multi-batch behavior
+- cached vs uncached behavior
+- issue identity reuse across deduplication and diffing
+- chunked vs non-chunked files
+
+## Adding or Modifying Features
+
+### New UI Component
+
+1. Add the component under `src/components/`
+2. Wire it through `src/App.jsx` or the appropriate parent
+3. Verify it is backed by real runtime behavior
+4. Update docs if user-visible
+
+### Analysis Prompt or Schema Work
+
+Edit `src/lib/systemPrompt.js`.
+
+The prompt should stay aligned with runtime behavior:
+
+- do not promise rules that runtime logic does not implement
+- keep field names consistent with the UI and exports
+- update sample schema when fields change
+
+### Provider Settings Work
+
+If you add settings:
+
+- persist them through config read/write
+- pass them through preload and IPC if needed
+- ensure they affect runtime behavior, not just UI state
 
 ### Adding a New Analysis Layer
 
-1. Add layer definition to `src/lib/layers.js`:
-```javascript
-{ 
-  id: 'your_layer', 
-  label: 'Your Layer Name', 
-  icon: '🔍', 
-  color: '#HEXCODE', 
-  bg: '#HEXCODE', 
-  border: '#HEXCODE' 
-}
-```
+1. Add the layer definition to `src/lib/layers.js`
+2. Add detector definitions and schema guidance to `src/lib/systemPrompt.js`
+3. Make sure any new category is rendered correctly by:
+   - `src/components/LayerFilterBar.jsx`
+   - `src/components/IssueCard.jsx`
+   - `src/components/IssueList.jsx`
+4. Update docs that describe the layer inventory
+5. Verify exports and filtering still work
 
-2. Add layer description and detectors to `src/lib/systemPrompt.js`:
-```
-LAYER XX [your_layer] — Your Layer Name
-[LXX-01] detector 1
-[LXX-02] detector 2
-...
-[LXX-08] detector 8
-```
+### Adding or Changing Export Formats
 
-3. Update the layer count in README.md and ProgressPanel.jsx
+1. Update export logic in `src/App.jsx`
+2. Ensure any new issue fields are serialized safely
+3. Verify saved output opens cleanly
+4. Update `README.md` if user-visible export behavior changed
 
-### Modifying the AI System Prompt
+## Manual Verification Checklist
 
-Edit `src/lib/systemPrompt.js`. The prompt must:
-- Instruct AI to return ONLY raw JSON
-- Define the exact JSON structure with [Lx-yy] detector format
-- Include all 32 layers with 256 detectors
-- Define severity rules
-- Include multi-phase reasoning flow
-- Include deterministic escalation rules
-- Include confidence, impact_score, fix_difficulty scoring guidelines
-- Include detectors_evaluated and detectors_skipped in schema
+Run through the relevant subset before closing a change:
 
-### Adding Export Formats
+1. App launches
+2. Settings modal opens and saves config
+3. Provider presets populate fields correctly
+4. Connection validation still works
+5. Markdown drag-and-drop works
+6. Invalid file types are ignored
+7. Analyze button enable/disable states are correct
+8. Build succeeds with `npm run build`
+9. Packaging succeeds with `npm run dist` when packaging-related changes are touched
+10. Results render correctly
+11. Layer filters work
+12. Grouping modes work
+13. Diff mode renders correctly when previous results exist
+14. Issue cards show new traceability/remediation fields when present
+15. JSON / Markdown / CSV exports still open and contain expected fields
+16. Session save/load still works
+17. Cached reuse does not break multi-file analysis
 
-1. Create export function in `src/App.jsx`
-2. Add button to export dropdown menu
-3. Format data according to target format
+## Build Notes
 
-## Code Style
+### If Build Fails Because Files Are In Use
 
-- JavaScript (ES6+)
-- React functional components with hooks
-- Tailwind CSS for styling
-- No TypeScript
+Close any running app instance and try again.
 
-## Testing
+On Windows:
 
-Manual testing checklist:
-
-1. App launches by double-clicking .exe
-2. Settings modal opens/closes
-3. API validation works
-4. Config saves/loads
-5. File drag-and-drop works
-6. File click-to-browse works
-7. .md files accepted, others rejected
-8. Analyze button disabled/enabled correctly
-9. Progress panel shows during analysis
-10. Results render with correct formatting
-11. Layer filters work (all 32 layers)
-12. Issue cards expand/collapse
-13. Text search filters issues
-14. Export downloads correct file format
-15. Session save generates correct JSON
-16. Reset button clears state
-
-## Build & Distribution
-
-```bash
-# Clean previous builds
-Remove-Item -Recurse -Force dist-electron-v2 -ErrorAction SilentlyContinue
-
-# Build fresh
-npm run build
-npx electron-builder --win portable
-
-# Output location
-dist-electron-v2\MarkdownAuditor-portable.exe
-```
-
-## Common Issues
-
-### Build fails with "file in use" error
-
-Kill Electron processes:
 ```powershell
 Stop-Process -Name "electron" -Force -ErrorAction SilentlyContinue
 ```
 
-### Module type warning
+### Packaging Notes
 
-Add `"type": "module"` to package.json (optional, warning is non-blocking).
+- current build target is Windows portable
+- current output directory is `dist-electron-v4`
+- executable is not code-signed
 
-### Icon not showing
+### Additional Troubleshooting
 
-Ensure `build/icon.png` exists and is referenced in package.json under `build.win.icon`.
+If packaging fails because assets or paths changed:
 
-### JSON parse error in build
+- confirm `build/icon.png` still exists
+- confirm `package.json` build output paths are current
+- confirm no running process is locking `dist/` or `dist-electron-v4/`
 
-Check for corrupted import statements in source files (common issue: extra characters at beginning of file).
+If a schema change appears in the UI but not in exports:
+
+- inspect Markdown export in `src/App.jsx`
+- inspect CSV export in `src/App.jsx`
+- inspect issue rendering in `src/components/IssueCard.jsx`
 
 ## Issue Field Reference
 
-When modifying issue fields, ensure consistency across:
-1. `src/lib/systemPrompt.js` — JSON schema definition
-2. `src/components/IssueCard.jsx` — Display logic
-3. `src/App.jsx` — Search and export logic
+Common issue fields currently used by the app:
 
-Current issue fields:
-- `id` — Unique identifier
-- `severity` — critical/high/medium/low
-- `category` — Layer ID (contradiction, logical, etc.)
-- `files` — Array of affected filenames
-- `section` — Section heading where issue occurs
-- `line_number` — Line number in file
-- `description` — Issue description with detector ID [Lx-yy]
-- `evidence` — Direct quote from documentation
-- `confidence` — AI confidence score (0.40-1.00)
-- `impact_score` — Impact severity (1-10)
-- `fix_difficulty` — easy/moderate/hard
-- `related_issues` — Array of related issue IDs
-- `tags` — Categorization tags
-- `references` — External reference URLs
+- `id`
+- `severity`
+- `category`
+- `detector_id`
+- `layer`
+- `files`
+- `section`
+- `line_number`
+- `description`
+- `evidence`
+- `why_triggered`
+- `escalation_reason`
+- `confidence`
+- `impact_score`
+- `fix_difficulty`
+- `estimated_effort`
+- `related_issues`
+- `root_cause_id`
+- `recommended_fix`
+- `fix_steps`
+- `verification_steps`
+- `tags`
+- `references`
 
-## Multi-Phase Reasoning Flow
+## Architecture Reminder
 
-The AI system prompt enforces a deterministic 4-phase execution:
+The renderer currently owns:
 
-1. **SCAN** — Evaluate all 256 detectors, document skipped detectors
-2. **CROSS-LAYER CORRELATION** — Verify consistency, group related findings
-3. **SEVERITY ESCALATION** — Apply 5 deterministic escalation rules
-4. **FINAL OUTPUT** — Compile JSON with detector counts
+- hashing
+- cache lookup
+- batching
+- JSON repair / validation
+- merge / dedupe / escalation
+- diffing
+- export logic
 
-## Deterministic Escalation Rules
+The Electron main process currently owns:
 
-- Rule 1: ≥3 medium issues in same section/component → escalate all to high
-- Rule 2: Critical issue found → check if invalidates other findings
-- Rule 3: Security (L23) + Performance (L24) same component → escalate to critical
-- Rule 4: Completeness (L9) + Functional (L6) missing steps → escalate to high
-- Rule 5: Contradiction (L1) + Intent (L10) same content → escalate to high
+- config persistence
+- provider validation
+- AI API execution
+
+Keep that split in mind when making changes.
+
+## Prompt / Rule Alignment Reminder
+
+If runtime logic changes:
+
+- keep `src/lib/systemPrompt.js` aligned with implemented rules
+- do not leave stale escalation-rule counts in docs
+- do not leave stale build paths such as older `dist-electron-*` directories in markdown files

@@ -4,20 +4,39 @@ export default function SettingsModal({ open, config, onSave, onCancel }) {
   const [baseURL, setBaseURL] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState('');
+  const [timeout, setTimeoutVal] = useState(60);
+  const [retries, setRetries] = useState(2);
+  const [tokenBudget, setTokenBudget] = useState(100000);
   const [showKey, setShowKey] = useState(false);
   const [validating, setValidating] = useState(false);
   const [validationResult, setValidationResult] = useState(null);
+
+  const presets = [
+    { name: 'OpenAI', url: 'https://api.openai.com/v1', model: 'gpt-4o' },
+    { name: 'Groq', url: 'https://api.groq.com/openai/v1', model: 'llama3-70b-8192' },
+    { name: 'OpenRouter', url: 'https://openrouter.ai/api/v1', model: 'anthropic/claude-3.5-sonnet' },
+    { name: 'Ollama', url: 'http://localhost:11434/v1', model: 'llama3' },
+    { name: 'Mistral', url: 'https://api.mistral.ai/v1', model: 'mistral-large-latest' },
+  ];
 
   useEffect(() => {
     if (open) {
       setBaseURL(config.baseURL || '');
       setApiKey(config.apiKey || '');
       setModel(config.model || '');
+      setTimeoutVal(config.timeout || 60);
+      setRetries(config.retries || 2);
+      setTokenBudget(config.tokenBudget || 100000);
       setShowKey(false);
       setValidating(false);
       setValidationResult(null);
     }
   }, [open, config]);
+
+  const applyPreset = (preset) => {
+    setBaseURL(preset.url);
+    setModel(preset.model);
+  };
 
   const handleValidate = async () => {
     setValidating(true);
@@ -34,7 +53,7 @@ export default function SettingsModal({ open, config, onSave, onCancel }) {
   };
 
   const handleSave = () => {
-    onSave({ baseURL, apiKey, model });
+    onSave({ baseURL, apiKey, model, timeout, retries, tokenBudget });
   };
 
   if (!open) return null;
@@ -50,7 +69,25 @@ export default function SettingsModal({ open, config, onSave, onCancel }) {
           <h2 className="text-lg font-semibold text-[#F9FAFB]">AI Provider Settings</h2>
         </div>
 
-        <div className="px-6 py-5 space-y-5">
+        <div className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
+          {/* Presets */}
+          <div>
+            <label className="block text-sm font-medium text-[#9CA3AF] mb-2">
+              Provider Presets
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {presets.map((preset) => (
+                <button
+                  key={preset.name}
+                  onClick={() => applyPreset(preset)}
+                  className="px-3 py-1.5 bg-[#111827] border border-[#374151] hover:border-[#60A5FA] rounded-md text-xs text-[#9CA3AF] hover:text-[#60A5FA] transition-all"
+                >
+                  {preset.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Base URL */}
           <div>
             <label className="block text-sm font-medium text-[#9CA3AF] mb-1.5">
@@ -63,15 +100,6 @@ export default function SettingsModal({ open, config, onSave, onCancel }) {
               placeholder="https://api.openai.com/v1"
               className="w-full px-3 py-2 bg-[#111827] border border-[#374151] rounded-lg text-[#F9FAFB] placeholder-[#6B7280] focus:outline-none focus:border-[#60A5FA] transition-colors"
             />
-            <p className="mt-1.5 text-xs text-[#6B7280]">
-              Any OpenAI-compatible endpoint
-            </p>
-            <div className="mt-1.5 space-y-0.5 text-xs text-[#4B5563]">
-              <p>OpenAI: https://api.openai.com/v1</p>
-              <p>OpenRouter: https://openrouter.ai/api/v1</p>
-              <p>Ollama: http://localhost:11434/v1</p>
-              <p>Groq: https://api.groq.com/openai/v1</p>
-            </div>
           </div>
 
           {/* API Key */}
@@ -99,9 +127,6 @@ export default function SettingsModal({ open, config, onSave, onCancel }) {
                 )}
               </button>
             </div>
-            <p className="mt-1.5 text-xs text-[#6B7280]">
-              Leave blank for local providers like Ollama
-            </p>
           </div>
 
           {/* Model Name */}
@@ -116,14 +141,49 @@ export default function SettingsModal({ open, config, onSave, onCancel }) {
               placeholder="gpt-4o"
               className="w-full px-3 py-2 bg-[#111827] border border-[#374151] rounded-lg text-[#F9FAFB] placeholder-[#6B7280] focus:outline-none focus:border-[#60A5FA] transition-colors"
             />
-            <p className="mt-1.5 text-xs text-[#6B7280]">
-              Exact model name your provider accepts
-            </p>
-            <div className="mt-1.5 space-y-0.5 text-xs text-[#4B5563]">
-              <p>OpenAI: gpt-4o, gpt-4-turbo</p>
-              <p>Anthropic: claude-sonnet-4-5</p>
-              <p>Groq: llama3-70b-8192</p>
-              <p>Ollama: llama3, mistral</p>
+          </div>
+
+          {/* Advanced Controls */}
+          <div className="pt-2 border-t border-[#374151] space-y-4">
+            <h3 className="text-xs font-bold text-[#6B7280] uppercase tracking-widest">Advanced Controls</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold text-[#9CA3AF] uppercase mb-1">
+                  Timeout (seconds)
+                </label>
+                <input
+                  type="number"
+                  value={timeout}
+                  onChange={(e) => setTimeoutVal(parseInt(e.target.value))}
+                  className="w-full px-3 py-1.5 bg-[#111827] border border-[#374151] rounded text-[#F9FAFB] text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-[#9CA3AF] uppercase mb-1">
+                  Max Retries
+                </label>
+                <input
+                  type="number"
+                  value={retries}
+                  onChange={(e) => setRetries(parseInt(e.target.value))}
+                  className="w-full px-3 py-1.5 bg-[#111827] border border-[#374151] rounded text-[#F9FAFB] text-sm"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-[#9CA3AF] uppercase mb-1">
+                Session Token Budget
+              </label>
+              <input
+                type="number"
+                value={tokenBudget}
+                onChange={(e) => setTokenBudget(parseInt(e.target.value))}
+                step="5000"
+                className="w-full px-3 py-1.5 bg-[#111827] border border-[#374151] rounded text-[#F9FAFB] text-sm"
+              />
+              <p className="mt-1 text-[10px] text-[#6B7280]">
+                Stop analysis if estimated tokens exceed this value
+              </p>
             </div>
           </div>
 

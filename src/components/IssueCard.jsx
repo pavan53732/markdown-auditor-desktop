@@ -75,6 +75,17 @@ export default function IssueCard({ issue }) {
                 {Math.round(issue.confidence * 100)}% confidence
               </span>
             )}
+            {issue.diffStatus && (
+              <span
+                className={`px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-widest ${
+                  issue.diffStatus === 'new' ? 'bg-[#064E3B] text-[#34D399]' :
+                  issue.diffStatus === 'resolved' ? 'bg-[#450A0A] text-[#F87171]' :
+                  'bg-[#1E1B4B] text-[#818CF8]'
+                }`}
+              >
+                {issue.diffStatus}
+              </span>
+            )}
           </div>
 
           {/* Title */}
@@ -109,7 +120,7 @@ export default function IssueCard({ issue }) {
           )}
 
           {/* Metrics Row */}
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 py-1">
             {issue.impact_score !== undefined && (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-[#9CA3AF]">Impact:</span>
@@ -131,15 +142,74 @@ export default function IssueCard({ issue }) {
                 </span>
               </div>
             )}
-            {issue.auto_fixable !== undefined && (
+            {issue.estimated_effort && (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-[#9CA3AF]">Auto-fixable:</span>
-                <span className={`text-xs font-medium ${issue.auto_fixable ? 'text-[#4ade80]' : 'text-[#9CA3AF]'}`}>
-                  {issue.auto_fixable ? 'Yes' : 'No'}
-                </span>
+                <span className="text-xs text-[#9CA3AF]">Effort:</span>
+                <span className="text-xs font-medium text-[#F9FAFB]">{issue.estimated_effort}</span>
               </div>
             )}
           </div>
+
+          {/* Detector Traceability */}
+          <div className="bg-[#111827] border border-[#374151] rounded-lg p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-[#6B7280] uppercase tracking-widest">Detector Traceability</span>
+              {issue.detector_id && (
+                <span className="text-[10px] font-mono bg-[#374151] text-[#9CA3AF] px-1.5 py-0.5 rounded">{issue.detector_id}</span>
+              )}
+            </div>
+            {issue.why_triggered && (
+              <div>
+                <p className="text-xs font-semibold text-[#9CA3AF] mb-0.5">Why triggered:</p>
+                <p className="text-xs text-[#D1D5DB] leading-relaxed">{issue.why_triggered}</p>
+              </div>
+            )}
+            {issue.escalation_reason && (
+              <div className="border-t border-[#374151] pt-2">
+                <p className="text-xs font-semibold text-[#9CA3AF] mb-0.5">Escalation reason:</p>
+                <p className="text-xs text-[#FCA5A5] leading-relaxed">{issue.escalation_reason}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Remediation Guidance */}
+          {(issue.recommended_fix || issue.fix_steps) && (
+            <div className="bg-[#064E3B] bg-opacity-20 border border-[#059669] border-opacity-30 rounded-lg p-3 space-y-3">
+              <span className="text-[10px] font-bold text-[#10B981] uppercase tracking-widest">Remediation Guidance</span>
+              {issue.recommended_fix && (
+                <div>
+                  <p className="text-xs font-semibold text-[#D1D5DB] mb-1">Recommended Fix:</p>
+                  <p className="text-sm text-[#F9FAFB] leading-relaxed font-medium">{issue.recommended_fix}</p>
+                </div>
+              )}
+              {issue.fix_steps && issue.fix_steps.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-[#D1D5DB] mb-1.5">Action Steps:</p>
+                  <ul className="space-y-1.5">
+                    {issue.fix_steps.map((step, i) => (
+                      <li key={i} className="flex gap-2 text-xs text-[#D1D5DB]">
+                        <span className="text-[#10B981] font-bold">{i + 1}.</span>
+                        <span>{step}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {issue.verification_steps && issue.verification_steps.length > 0 && (
+                <div className="pt-1">
+                  <p className="text-xs font-semibold text-[#D1D5DB] mb-1.5">Verification:</p>
+                  <ul className="space-y-1">
+                    {issue.verification_steps.map((step, i) => (
+                      <li key={i} className="flex items-center gap-2 text-xs text-[#9CA3AF]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] bg-opacity-50"></span>
+                        {step}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
 
           {issue.tags && issue.tags.length > 0 && (
             <div>

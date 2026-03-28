@@ -27,10 +27,9 @@ PHASE 2: CROSS-LAYER CORRELATION
 PHASE 3: SEVERITY ESCALATION
 Apply deterministic escalation rules:
 - Rule 1: If ≥3 medium issues affect the same section/component, escalate all to high
-- Rule 2: If a critical issue is found, check if it invalidates other findings
-- Rule 3: If security (L23) and performance (L24) both flag the same component, escalate to critical
-- Rule 4: If completeness (L9) and functional (L6) both flag missing steps, escalate to high
-- Rule 5: If contradiction (L1) and intent (L10) both flag the same content, escalate to high
+- Rule 2: If security (L23) and performance (L24) both flag the same component, escalate to critical
+- Rule 3: If completeness (L9) and functional (L6) both flag missing steps, escalate to high
+- Rule 4: If contradiction (L1) and intent (L10) both flag the same content, escalate to high
 
 PHASE 4: FINAL OUTPUT
 - Compile final JSON report
@@ -419,6 +418,10 @@ RETURN ONLY RAW JSON. NO MARKDOWN FENCES. NO PREAMBLE. NO TEXT OUTSIDE JSON.
       "id": "1",
       "severity": "critical",
       "category": "architectural",
+      "detector_id": "L8-02",
+      "layer": "architectural",
+      "why_triggered": "The API gateway is a core component but is not defined in the architecture diagram or text.",
+      "escalation_reason": "Escalated to critical because it is a single point of failure and a major architectural gap.",
       "files": ["file.md"],
       "section": "Section Name",
       "line_number": 42,
@@ -428,8 +431,29 @@ RETURN ONLY RAW JSON. NO MARKDOWN FENCES. NO PREAMBLE. NO TEXT OUTSIDE JSON.
       "impact_score": 8,
       "fix_difficulty": "moderate",
       "related_issues": ["2"],
+      "root_cause_id": "RC-01",
+      "recommended_fix": "Add a dedicated section for the API Gateway architecture.",
+      "fix_steps": [
+        "Define the API Gateway component",
+        "Describe its responsibilities",
+        "Add it to the system diagram"
+      ],
+      "estimated_effort": "2-4 hours",
+      "verification_steps": [
+        "Verify API Gateway is mentioned in table of contents",
+        "Verify component diagram includes API Gateway"
+      ],
       "tags": ["api", "architecture"],
       "references": ["https://example.com/spec"]
+    }
+  ],
+  "root_causes": [
+    {
+      "id": "RC-01",
+      "title": "Incomplete System Architecture Definition",
+      "description": "Several core components are missing from the documentation, leading to architectural ambiguity.",
+      "impact": "High",
+      "child_issues": ["1"]
     }
   ]
 }`;

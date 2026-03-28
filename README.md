@@ -1,162 +1,291 @@
 # Markdown Document Intelligence Auditor
 
-A Windows desktop application that analyzes markdown documentation files across 32 analytical layers with 256 micro-detectors using AI, detecting contradictions, logical errors, structural issues, and more.
+Windows desktop application for auditing Markdown documentation with AI across 32 analytical layers and 256 micro-detectors.
 
 ## Overview
 
-This is a portable Windows desktop application built with Electron, React, and Tailwind CSS. It uses any OpenAI-compatible AI provider to analyze markdown documentation files and generate detailed audit reports with severity badges.
+Markdown Intelligence Auditor is an Electron + React desktop app that accepts one or more `.md` / `.markdown` files, sends them to an OpenAI-compatible provider, and returns a structured report of documentation issues with severity, traceability, remediation guidance, and export support.
 
-## Features
+The current build includes chunk-aware batching, deterministic post-processing, incremental result reuse, session diffing, root-cause grouping, and portable Windows packaging.
 
-- **Drag-and-drop file upload** for `.md` and `.markdown` files
-- **32-layer analysis with 256 micro-detectors** covering contradictions, logic, structure, semantics, facts, requirements, state machines, API contracts, dependencies, data flow, execution paths, configuration, error handling, security, performance, testability, maintainability, usability, interoperability, governance, resilience, observability, and evolution
-- **Multi-phase reasoning flow** — scan → cross-layer correlation → severity escalation → final output
-- **Deterministic escalation rules** — automatic severity escalation based on pattern detection
-- **Severity-based reporting** (Critical, High, Medium, Low)
-- **Custom AI provider support** (OpenAI, Anthropic, OpenRouter, Groq, Together AI, Mistral, etc.)
-- **Enhanced issue fields** — confidence scores, impact ratings, fix difficulty, tags, references
-- **Text search** — filter issues by description, evidence, tags, and files
-- **Export** — JSON, Markdown, and CSV formats
-- **Session save** — save and reload audit sessions
-- **Dark theme UI** with modern design
-- **Portable .exe** — zero install required
+## Current Capabilities
 
-> **Intentionally Excluded:**
-> - **Suggested Fixes** — The app focuses on identifying and reporting issues, not providing automated remediation suggestions. Users are expected to review findings and apply fixes based on their specific context and requirements.
-> - **Offline/Local AI** — Cloud-only AI provider design (Ollama, LM Studio excluded). Requires internet connection.
+- Drag-and-drop upload for `.md` and `.markdown` files
+- 32 analytical layers with 256 micro-detectors
+- Four-phase analysis flow: scan -> cross-layer correlation -> severity escalation -> final output
+- Four deterministic escalation rules applied during runtime normalization
+- Severity reporting: `critical`, `high`, `medium`, `low`
+- Incremental analysis using SHA-256 file hashing and local cached results
+- Session diffing with `new`, `resolved`, and `changed` issue states
+- Root-cause grouping in addition to the flat issue list
+- Detector traceability fields such as `detector_id`, `why_triggered`, and `escalation_reason`
+- Remediation guidance including `recommended_fix`, `fix_steps`, `estimated_effort`, and `verification_steps`
+- Search, layer filtering, and grouping by file, severity, layer, or root cause
+- Export to JSON, Markdown, and CSV
+- Session save/load support
+- Provider presets and advanced controls for timeout, retries, and token budget
+- Portable Windows `.exe` packaging
 
 ## Quick Start
 
-1. Double-click `dist-electron-v2\MarkdownAuditor-portable.exe`
-2. Click the gear icon (⚙) to open Settings
-3. Enter your AI provider details:
-   - Base URL (e.g., `https://api.openai.com/v1`)
-   - API Key (required for most cloud providers)
-   - Model Name (e.g., `gpt-4o`)
-4. Click "Validate Connection" to test
-5. Drop `.md` files onto the upload zone
-6. Click "Run Full Audit"
+1. Double-click `dist-electron-v4\MarkdownAuditor-portable.exe`
+2. Open Settings from the gear icon
+3. Configure a provider:
+   - `baseURL`
+   - `apiKey` if required
+   - `model`
+   - optional `timeout`, `retries`, and `tokenBudget`
+4. Validate the connection
+5. Drop one or more Markdown files into the upload area
+6. Run the audit
+7. Review results, diff against previous sessions if needed, and export the report
 
 ## Configuration
 
-Settings are saved to `%APPDATA%\MarkdownAuditor\config.json`:
+Provider settings are stored at `%APPDATA%\MarkdownAuditor\config.json`.
+
+Example:
 
 ```json
 {
   "baseURL": "https://api.openai.com/v1",
   "apiKey": "sk-...",
-  "model": "gpt-4o"
+  "model": "gpt-4o",
+  "timeout": 60,
+  "retries": 2,
+  "tokenBudget": 100000
 }
 ```
 
-## Supported AI Providers
+Incremental analysis cache is stored in browser `localStorage` inside the packaged app.
 
-> **Note:** This app is designed exclusively for cloud-based AI providers. Offline/local AI solutions (such as Ollama, LM Studio, or any locally hosted models) are intentionally excluded. The app requires an internet connection to communicate with the configured AI provider.
+## Provider Support
+
+The app works with OpenAI-compatible endpoints. Current presets in the UI:
 
 | Provider | Base URL | Example Model |
 |----------|----------|---------------|
 | OpenAI | `https://api.openai.com/v1` | `gpt-4o` |
-| Anthropic (via proxy) | `https://api.anthropic.com/v1` | `claude-sonnet-4-5` |
-| OpenRouter | `https://openrouter.ai/api/v1` | `mistralai/mixtral-8x7b` |
 | Groq | `https://api.groq.com/openai/v1` | `llama3-70b-8192` |
-| Together AI | `https://api.together.xyz/v1` | `mistralai/Mixtral-8x7B-Instruct-v0.1` |
+| OpenRouter | `https://openrouter.ai/api/v1` | `anthropic/claude-3.5-sonnet` |
+| Ollama | `http://localhost:11434/v1` | `llama3` |
 | Mistral | `https://api.mistral.ai/v1` | `mistral-large-latest` |
-| Any custom OpenAI-compatible endpoint | (user-provided) | (user-provided) |
+| Custom | user-provided | user-provided |
+
+Any additional OpenAI-compatible provider, including services such as Together AI or proxy/routing layers, can be configured through the Custom option if they expose a compatible chat-completions interface.
+
+## Analysis Pipeline
+
+### Analysis Stages
+
+1. `SCAN`
+   - read input files
+   - evaluate 256 detectors
+   - record detector coverage
+2. `CROSS-LAYER CORRELATION`
+   - relate findings across layers
+   - preserve linked issues
+   - support root-cause grouping
+3. `SEVERITY ESCALATION`
+   - apply deterministic escalation rules
+4. `FINAL OUTPUT`
+   - validate JSON structure
+   - normalize and render/export results
+
+### Runtime Processing
+
+- Chunk-aware batching for large files
+- Issue deduplication with stable identity keys
+- Post-merge escalation across the combined result set
+- Cross-layer validation after escalation
+- Cached result reuse for unchanged files
+- Session diffing against the previous in-memory audit
+
+### Deterministic Escalation Rules
+
+- Rule 1: 3 or more medium issues in the same section -> escalate to high
+- Rule 2: security + performance issues on the same component -> escalate to critical
+- Rule 3: completeness + functional issues on missing steps -> escalate to high
+- Rule 4: contradiction + intent issues on the same content -> escalate to high
 
 ## Analysis Layers (32 Total)
 
-### Foundation Layers (1–14)
-1. **Contradiction & Consistency** — Direct/indirect contradictions, terminology inconsistency
-2. **Logical Integrity** — Logical fallacies, invalid assumptions, circular reasoning
-3. **Structural & Organizational** — Broken hierarchy, missing sections, poor flow
-4. **Semantic & Clarity** — Ambiguous statements, undefined terms, vague language
-5. **Factual & Evidence** — Unsupported claims, missing citations, outdated info
-6. **Functional & Practical** — Functional impossibilities, broken workflows
-7. **Temporal & State** — Timeline contradictions, sequence errors
-8. **Architectural & System Design** — Architecture conflicts, component misalignment
-9. **Completeness & Coverage** — Missing edge cases, incomplete workflows
-10. **Intent, Goal & Alignment** — Goal misalignment, scope creep
-11. **Meta-Cognition** — Overconfident claims, shallow reasoning
-12. **Adversarial Analysis** — Claims easily disproved, unaddressed failure modes
-13. **Knowledge Graph** — Entity relationship conflicts, orphaned concepts
-14. **Quantitative Reasoning** — Calculation errors, unit inconsistencies
+### Foundation Layers (1-14)
 
-### Advanced System Layers (15–24)
-15. **Requirement Integrity** — Requirement ambiguity, missing acceptance criteria
-16. **State Machine Consistency** — Undefined states, invalid transitions
-17. **API Contract** — Undefined parameters, missing return schema
-18. **Dependency Graph** — Circular dependency, missing dependency
-19. **Data Flow Integrity** — Missing data producer/consumer, transformation ambiguity
-20. **Execution Path** — Unreachable paths, dead-end workflows
-21. **Configuration Consistency** — Missing config keys, conflicting config
-22. **Error Handling** — Missing error paths, silent failure risks
-23. **Security & Isolation** — API key exposure, injection risks
-24. **Performance & Scalability** — O(N²) workflows, memory growth risks
+1. Contradiction & Consistency
+2. Logical Integrity
+3. Structural & Organizational
+4. Semantic & Clarity
+5. Factual & Evidence
+6. Functional & Practical
+7. Temporal & State
+8. Architectural & System Design
+9. Completeness & Coverage
+10. Intent, Goal & Alignment
+11. Meta-Cognition
+12. Adversarial Analysis
+13. Knowledge Graph
+14. Quantitative Reasoning
 
-### Extended Quality Layers (25–32)
-25. **Testability & Verification** — Untestable claims, missing test cases
-26. **Maintainability & Technical Debt** — Code duplication, tight coupling
-27. **Usability & User Experience** — Confusing workflows, accessibility gaps
-28. **Interoperability & Integration** — Protocol mismatches, format incompatibility
-29. **Governance & Compliance** — Policy violations, regulatory gaps
-30. **Resilience & Fault Tolerance** — Single points of failure, missing fallbacks
-31. **Observability & Monitoring** — Missing logging, metrics, tracing
-32. **Evolution & Future-Proofing** — Missing versioning, migration paths
+### Advanced System Layers (15-24)
 
-## Multi-Phase Reasoning Flow
+15. Requirement Integrity
+16. State Machine Consistency
+17. API Contract
+18. Dependency Graph
+19. Data Flow Integrity
+20. Execution Path
+21. Configuration Consistency
+22. Error Handling
+23. Security & Isolation
+24. Performance & Scalability
 
-The AI follows a deterministic 4-phase execution flow:
+### Extended Quality Layers (25-32)
 
-1. **SCAN** — Evaluate all 256 detectors, document skipped detectors
-2. **CROSS-LAYER CORRELATION** — Verify consistency across layers, group related findings
-3. **SEVERITY ESCALATION** — Apply deterministic escalation rules
-4. **FINAL OUTPUT** — Compile JSON with `detectors_evaluated` and `detectors_skipped` counts
+25. Testability & Verification
+26. Maintainability & Technical Debt
+27. Usability & User Experience
+28. Interoperability & Integration
+29. Governance & Compliance
+30. Resilience & Fault Tolerance
+31. Observability & Monitoring
+32. Evolution & Future-Proofing
 
-## Deterministic Escalation Rules
+## Issue Schema
 
-- **Rule 1:** ≥3 medium issues in same section/component → escalate all to high
-- **Rule 2:** Critical issue found → check if invalidates other findings
-- **Rule 3:** Security (L23) + Performance (L24) same component → escalate to critical
-- **Rule 4:** Completeness (L9) + Functional (L6) missing steps → escalate to high
-- **Rule 5:** Contradiction (L1) + Intent (L10) same content → escalate to high
+Typical issue fields include:
 
-## Issue Fields
+- `id`
+- `severity`
+- `category`
+- `detector_id`
+- `layer`
+- `files`
+- `section`
+- `line_number`
+- `description`
+- `evidence`
+- `why_triggered`
+- `escalation_reason`
+- `confidence`
+- `impact_score`
+- `fix_difficulty`
+- `estimated_effort`
+- `related_issues`
+- `root_cause_id`
+- `recommended_fix`
+- `fix_steps`
+- `verification_steps`
+- `tags`
+- `references`
 
-Each issue includes:
-- `id` — Unique identifier
-- `severity` — critical/high/medium/low
-- `category` — Layer ID (e.g., contradiction, logical)
-- `files` — Affected filenames
-- `section` — Section heading
-- `line_number` — Line number in file
-- `description` — Issue description with detector ID [Lx-yy]
-- `evidence` — Direct quote from documentation
-- `confidence` — AI confidence score (0.40-1.00)
-- `impact_score` — Impact severity (1-10)
-- `fix_difficulty` — easy/moderate/hard
-- `related_issues` — Correlated issue IDs
-- `tags` — Categorization tags
-- `references` — External reference URLs
+Top-level result output may also include:
 
-## Building from Source
+- `summary`
+- `issues`
+- `root_causes`
+
+## Exports
+
+- JSON: full structured result payload
+- Markdown: summary, detailed issues, and root cause summary
+- CSV: flattened issue data including traceability and remediation fields
+
+## Example Result Shape
+
+```json
+{
+  "summary": {
+    "total": 0,
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "files_analyzed": 0,
+    "layers_triggered": [],
+    "detectors_evaluated": 0,
+    "detectors_skipped": 0,
+    "overall_score": 0,
+    "improvement_priority": []
+  },
+  "issues": [
+    {
+      "id": "1",
+      "severity": "critical",
+      "category": "architectural",
+      "detector_id": "L8-02",
+      "layer": "architectural",
+      "files": ["file.md"],
+      "section": "Architecture",
+      "line_number": 42,
+      "description": "[L8-02] Missing component: API gateway not defined in architecture",
+      "evidence": "Direct quote from the documentation",
+      "why_triggered": "The document references traffic routing but does not define the gateway layer.",
+      "escalation_reason": "Escalated to critical because the missing component creates architectural ambiguity.",
+      "confidence": 0.95,
+      "impact_score": 8,
+      "fix_difficulty": "moderate",
+      "estimated_effort": "2-4 hours",
+      "root_cause_id": "RC-01",
+      "recommended_fix": "Add a dedicated API gateway section.",
+      "fix_steps": [
+        "Define the gateway component",
+        "Document responsibilities",
+        "Update the architecture diagram"
+      ],
+      "verification_steps": [
+        "Verify the gateway appears in diagrams",
+        "Verify responsibilities are documented"
+      ],
+      "tags": ["api", "architecture"],
+      "references": ["https://example.com/spec"]
+    }
+  ],
+  "root_causes": [
+    {
+      "id": "RC-01",
+      "title": "Incomplete Architecture Definition",
+      "description": "Core components are referenced but not fully documented.",
+      "impact": "High",
+      "child_issues": ["1"]
+    }
+  ]
+}
+```
+
+## Building From Source
 
 ```bash
 npm install
 npm run build
-npx electron-builder --win portable
+npm run dist
 ```
 
-Output: `dist-electron-v2\MarkdownAuditor-portable.exe`
+Portable output:
+
+- `dist-electron-v4\MarkdownAuditor-portable.exe`
 
 ## Technology Stack
 
-- **Desktop Shell:** Electron
-- **UI Framework:** React 18 + Vite
-- **Styling:** Tailwind CSS
-- **Language:** JavaScript (Node.js + Browser)
-- **AI SDK:** openai npm package (v4+)
-- **Packaging:** electron-builder (portable .exe)
+- Electron
+- React 18
+- Vite
+- Tailwind CSS
+- OpenAI Node SDK
+- electron-builder
 
-## License
+## Repository Docs
 
-MIT
+- [ARCHITECTURE.md](./ARCHITECTURE.md)
+- [ENHANCEMENTS.md](./ENHANCEMENTS.md)
+- [CONTRIBUTING.md](./CONTRIBUTING.md)
+- [CHANGELOG.md](./CHANGELOG.md)
+- [RELEASE_NOTES.md](./RELEASE_NOTES.md)
+- [GEMINI.md](./GEMINI.md)
+
+## Notes
+
+- The app provides AI-generated remediation guidance, but it does not apply fixes automatically.
+- Local OpenAI-compatible endpoints such as Ollama are supported.
+- The packaged executable is currently unsigned, so Windows may show trust warnings on some systems.
+- A dedicated license file is not currently present in the repo; add one before public distribution if needed.

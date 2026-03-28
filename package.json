@@ -1,0 +1,57 @@
+{
+  "name": "markdown-intelligence-auditor",
+  "version": "1.0.0",
+  "description": "Markdown Document Intelligence Auditor - Windows Desktop App",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "electron:dev": "vite build && electron .",
+    "electron:build": "vite build && electron-builder",
+    "dist": "vite build && electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.local.markdownauditor",
+    "productName": "Markdown Intelligence Auditor",
+    "directories": {
+      "output": "dist-electron-v4"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "signAndEditExecutable": false,
+      "icon": "build/icon.png"
+    },
+    "portable": {
+      "artifactName": "MarkdownAuditor-portable.exe"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "build/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ]
+  },
+  "dependencies": {
+    "openai": "^4.73.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "postcss": "^8.4.49",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^3.4.16",
+    "vite": "^6.0.3"
+  }
+}

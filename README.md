@@ -6,12 +6,23 @@ Windows desktop application for auditing Markdown documentation with AI across 3
 
 Markdown Intelligence Auditor is an Electron + React desktop app that accepts one or more `.md` / `.markdown` files, sends them to an OpenAI-compatible provider, and returns a structured report of documentation issues with severity, traceability, remediation guidance, and export support.
 
-The current build includes chunk-aware batching, deterministic post-processing, incremental result reuse, session diffing, root-cause grouping, and portable Windows packaging.
+The current build includes chunk-aware batching, deterministic post-processing, incremental result reuse, session diffing, root-cause grouping, a structured 256-detector catalog, and portable Windows packaging.
 
 ## Current Capabilities
 
 - Drag-and-drop upload for `.md` and `.markdown` files
-- 32 analytical layers with 256 micro-detectors
+- 32 analytical layers with explicit subcategories and 256 code-defined micro-detectors
+- Full structured detector metadata including trigger patterns, evidence requirements, and false-positive guards
+- Programmatic system prompt generation from structured taxonomy and metadata
+- Taxonomy-driven runtime normalization: backfilling metadata and enforcing severity bounds
+- Advanced semantic validation enforcing category -> subcategory -> detector consistency
+- Automated regression suite verifying taxonomy integrity and normalization logic
+- Runtime taxonomy diagnostics surfaced in UI, Markdown reports, and JSON exports for pipeline observability
+- Seven domain profiles (e.g., API Docs, Runbooks, PRDs) adjusting detector emphasis
+...
+- `total_issues_loaded`: specifically tracks issues processed during session load or import
+- Six cross-layer bundles connecting concepts like Security, Data Flow, and Governance
+- Enhanced UI filtering by subcategory and grouping by subcategory or root cause
 - Four-phase analysis flow: scan -> cross-layer correlation -> severity escalation -> final output
 - Four deterministic escalation rules applied during runtime normalization
 - Severity reporting: `critical`, `high`, `medium`, `low`
@@ -100,6 +111,8 @@ Any additional OpenAI-compatible provider, including services such as Together A
 - Cross-layer validation after escalation
 - Cached result reuse for unchanged files
 - Session diffing against the previous in-memory audit
+- Known detector IDs are validated against the structured taxonomy
+- Unknown but well-formed detector IDs currently generate runtime warnings instead of hard validation failures
 
 ### Deterministic Escalation Rules
 
@@ -158,7 +171,9 @@ Typical issue fields include:
 - `id`
 - `severity`
 - `category`
+- `subcategory`
 - `detector_id`
+- `detector_name`
 - `layer`
 - `files`
 - `section`
@@ -213,7 +228,9 @@ Top-level result output may also include:
       "id": "1",
       "severity": "critical",
       "category": "architectural",
+      "subcategory": "missing components",
       "detector_id": "L8-02",
+      "detector_name": "missing component",
       "layer": "architectural",
       "files": ["file.md"],
       "section": "Architecture",
@@ -258,12 +275,13 @@ Top-level result output may also include:
 ```bash
 npm install
 npm run build
+npm test
 npm run dist
 ```
 
 Portable output:
 
-- `dist-electron-v4\MarkdownAuditor-portable.exe`
+- `dist-electron-v4\MarkdownAuditor-portable.exe` (v1.5.0)
 
 ## Technology Stack
 
@@ -283,9 +301,19 @@ Portable output:
 - [RELEASE_NOTES.md](./RELEASE_NOTES.md)
 - [GEMINI.md](./GEMINI.md)
 
+## Release Readiness
+
+- **Current Version**: 1.5.0
+- **Build Verification**: `npm run build`
+- **Logic Verification**: `npm test`
+- **Security**: The portable Windows build is currently **unsigned**. Users may need to click "More Info" -> "Run anyway" on Windows SmartScreen to proceed.
+
+- [GEMINI.md](./GEMINI.md)
+
 ## Notes
 
 - The app provides AI-generated remediation guidance, but it does not apply fixes automatically.
 - Local OpenAI-compatible endpoints such as Ollama are supported.
+- Known detector IDs are checked for taxonomy consistency; unknown detector IDs currently log warnings rather than being rejected outright.
 - The packaged executable is currently unsigned, so Windows may show trust warnings on some systems.
 - A dedicated license file is not currently present in the repo; add one before public distribution if needed.

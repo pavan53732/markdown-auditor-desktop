@@ -8,8 +8,17 @@ import SummaryDashboard from './components/SummaryDashboard';
 import LayerFilterBar from './components/LayerFilterBar';
 import IssueList from './components/IssueList';
 import DiffSummaryPanel from './components/DiffSummaryPanel';
-import { SYSTEM_PROMPT } from './lib/systemPrompt';
+import { buildSystemPrompt } from './lib/systemPrompt';
 import { repairJSON, validateResults } from './lib/jsonRepair';
+import { DOMAIN_PROFILES } from './lib/domainProfiles';
+import { 
+  normalizeIssueFromDetector, 
+  getAvailableSubcategories,
+  createInitialDiagnostics,
+  buildExportData,
+  buildSessionData,
+  normalizeLoadedSession
+} from './lib/detectorMetadata';
 
 const MAX_SAFE_TOKENS = 6000;
 const CHARS_PER_TOKEN = 4;
@@ -25,11 +34,14 @@ export default function App() {
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
   const [activeLayer, setActiveLayer] = useState('all');
+  const [activeSubcategory, setActiveSubcategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [groupingMode, setGroupingMode] = useState('flat'); // flat, file, severity, layer, root_cause
   const [diffMode, setDiffMode] = useState(false);
+  const [domainProfile, setDomainProfile] = useState('auto');
   const [previousResults, setPreviousResults] = useState(null);
   const [diffSummary, setDiffSummary] = useState(null);
+  const [taxonomyDiagnostics, setTaxonomyDiagnostics] = useState(null);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [contextWarning, setContextWarning] = useState(null);
   const [fileHashes, setFileHashes] = useState({});
@@ -68,11 +80,12 @@ export default function App() {
   const providerConfigured = !!(config.baseURL && config.apiKey && config.model);
   const canAnalyze = !!(config.baseURL && config.model);
 
-  const estimateTokens = useCallback((fileList) => {
-    const systemTokens = Math.ceil(SYSTEM_PROMPT.length / CHARS_PER_TOKEN);
+  const estimateTokens = useCallback((fileList, profile = domainProfile) => {
+    const prompt = buildSystemPrompt(profile);
+    const systemTokens = Math.ceil(prompt.length / CHARS_PER_TOKEN);
     const userTokens = fileList.reduce((sum, f) => sum + Math.ceil(f.content.length / CHARS_PER_TOKEN), 0);
     return { systemTokens, userTokens, total: systemTokens + userTokens };
-  }, []);
+  }, [domainProfile]);
 
   useEffect(() => {
     if (files.length > 0) {
@@ -96,9 +109,10 @@ export default function App() {
   }, []);
 
   const getAvailableTokens = useCallback(() => {
-    const systemTokens = Math.ceil(SYSTEM_PROMPT.length / CHARS_PER_TOKEN);
+    const prompt = buildSystemPrompt(domainProfile);
+    const systemTokens = Math.ceil(prompt.length / CHARS_PER_TOKEN);
     return Math.max(1, MAX_SAFE_TOKENS - systemTokens - BATCH_TOKEN_BUFFER);
-  }, []);
+  }, [domainProfile]);
 
   const splitOversizedFile = useCallback((file, maxTokens) => {
     const fileTokens = Math.ceil(file.content.length / CHARS_PER_TOKEN);
@@ -218,7 +232,7 @@ export default function App() {
       baseURL: config.baseURL,
       apiKey: config.apiKey,
       model: config.model,
-      systemPrompt: SYSTEM_PROMPT,
+      systemPrompt: buildSystemPrompt(domainProfile),
       userMessage,
       timeout: config.timeout,
       retries: config.retries
@@ -238,6 +252,11 @@ export default function App() {
 
     if (parsed.summary) {
       console.log(`[Batch ${batchIndex + 1}/${totalBatches}] Detectors evaluated: ${parsed.summary.detectors_evaluated || 'N/A'}, Skipped: ${parsed.summary.detectors_skipped || 'N/A'}`);
+    }
+
+    // Taxonomy-aware normalization
+    if (parsed.issues) {
+      parsed.issues = parsed.issues.map(issue => normalizeIssueFromDetector(issue));
     }
 
     return {
@@ -601,6 +620,7 @@ export default function App() {
     setAnalyzing(true);
     setError(null);
     setResults(null);
+    setTaxonomyDiagnostics(null);
     setActiveLayer('all');
     setSearchQuery('');
     setAnalysisStats({ reused: 0, reanalyzed: 0 });
@@ -682,6 +702,13 @@ export default function App() {
 
       const merged = mergeResults(finalBatchResults);
 
+      // Perform final taxonomy enrichment and collect diagnostics
+      const diagnostics = createInitialDiagnostics();
+      if (merged.issues) {
+        merged.issues = merged.issues.map(issue => normalizeIssueFromDetector(issue, diagnostics));
+      }
+      setTaxonomyDiagnostics(diagnostics);
+
       const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
       if (merged.issues) {
         merged.issues.sort((a, b) => {
@@ -722,23 +749,47 @@ export default function App() {
 
   const filteredIssues = useMemo(() => {
     if (!results?.issues) return [];
-    if (!searchQuery.trim()) return results.issues;
-    
-    const query = searchQuery.toLowerCase();
-    return results.issues.filter((issue) => {
-      return (
-        (issue.description || '').toLowerCase().includes(query) ||
-        (issue.evidence || '').toLowerCase().includes(query) ||
-        (issue.section || '').toLowerCase().includes(query) ||
-        (issue.files || []).some(f => f.toLowerCase().includes(query)) ||
-        (issue.tags || []).some(t => t.toLowerCase().includes(query))
-      );
-    });
-  }, [results?.issues, searchQuery]);
 
+    let issuesToFilter = results.issues;
+    if (diffMode && diffSummary) {
+      issuesToFilter = [...diffSummary.new, ...diffSummary.changed, ...diffSummary.resolved];
+    }
+
+    let filtered = issuesToFilter;
+
+    // Layer Filter
+    if (activeLayer !== 'all') {
+      filtered = filtered.filter(i => i.category === activeLayer);
+    }
+
+    // Subcategory Filter
+    if (activeSubcategory !== 'all') {
+      filtered = filtered.filter(i => i.subcategory === activeSubcategory);
+    }
+
+    // Search Filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter((issue) => {
+        return (
+          (issue.description || '').toLowerCase().includes(query) ||
+          (issue.evidence || '').toLowerCase().includes(query) ||
+          (issue.section || '').toLowerCase().includes(query) ||
+          (issue.detector_id || '').toLowerCase().includes(query) ||
+          (issue.detector_name || '').toLowerCase().includes(query) ||
+          (issue.subcategory || '').toLowerCase().includes(query) ||
+          (issue.files || []).some(f => f.toLowerCase().includes(query)) ||
+          (issue.tags || []).some(t => t.toLowerCase().includes(query))
+        );
+      });
+    }
+
+    return filtered;
+  }, [results?.issues, diffMode, diffSummary, searchQuery, activeLayer, activeSubcategory]);
   const exportJSON = () => {
     if (!results) return;
-    const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+    const exportData = buildExportData(results, taxonomyDiagnostics);
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -775,7 +826,9 @@ export default function App() {
     (results.issues || []).forEach((issue, i) => {
       md += `### ${i + 1}. [${issue.severity?.toUpperCase()}] ${issue.description}\n\n`;
       md += `**Detector ID:** ${issue.detector_id || 'N/A'}\n`;
+      if (issue.detector_name) md += `**Detector Name:** ${issue.detector_name}\n`;
       md += `**Category:** ${issue.category}\n`;
+      if (issue.subcategory) md += `**Subcategory:** ${issue.subcategory}\n`;
       if (issue.section) md += `**Section:** ${issue.section}\n`;
       if (issue.line_number) md += `**Line:** ${issue.line_number}\n`;
       if (issue.root_cause_id) md += `**Root Cause ID:** ${issue.root_cause_id}\n`;
@@ -823,6 +876,18 @@ export default function App() {
         md += `---\n\n`;
       });
     }
+
+    if (taxonomyDiagnostics) {
+      md += `## Taxonomy Diagnostics\n\n`;
+      md += `- **Enriched Issues:** ${taxonomyDiagnostics.normalized_from_detector_count}\n`;
+      md += `- **Parsed Detector IDs:** ${taxonomyDiagnostics.detector_id_parsed_from_description_count}\n`;
+      md += `- **Unknown Detector IDs:** ${taxonomyDiagnostics.unknown_detector_id_count}\n`;
+      md += `- **Severity Clamped:** ${taxonomyDiagnostics.severity_clamped_count}\n`;
+      if (taxonomyDiagnostics.total_issues_loaded > 0) {
+        md += `- **Total Issues Loaded:** ${taxonomyDiagnostics.total_issues_loaded}\n`;
+      }
+      md += `\n`;
+    }
     
     const blob = new Blob([md], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
@@ -836,12 +901,14 @@ export default function App() {
 
   const exportCSV = () => {
     if (!results) return;
-    const headers = ['ID', 'DetectorID', 'Severity', 'Category', 'Section', 'Line', 'RootCauseID', 'Description', 'Why Triggered', 'Escalation Reason', 'Recommended Fix', 'Fix Steps', 'Verification Steps', 'Effort', 'Evidence', 'Confidence', 'Impact', 'Difficulty', 'Files', 'Tags'];
+    const headers = ['ID', 'DetectorID', 'DetectorName', 'Severity', 'Category', 'Subcategory', 'Section', 'Line', 'RootCauseID', 'Description', 'Why Triggered', 'Escalation Reason', 'Recommended Fix', 'Fix Steps', 'Verification Steps', 'Effort', 'Evidence', 'Confidence', 'Impact', 'Difficulty', 'Files', 'Tags'];
     const rows = (results.issues || []).map((issue) => [
       issue.id || '',
       issue.detector_id || '',
+      `"${(issue.detector_name || '').replace(/"/g, '""')}"`,
       issue.severity || '',
       issue.category || '',
+      `"${(issue.subcategory || '').replace(/"/g, '""')}"`,
       issue.section || '',
       issue.line_number || '',
       issue.root_cause_id || '',
@@ -873,12 +940,7 @@ export default function App() {
 
   const saveSession = () => {
     if (!results) return;
-    const session = {
-      timestamp: new Date().toISOString(),
-      config: { baseURL: config.baseURL, model: config.model },
-      files,
-      results
-    };
+    const session = buildSessionData({ results, taxonomyDiagnostics, files, config });
     const blob = new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -898,10 +960,12 @@ export default function App() {
       const reader = new FileReader();
       reader.onload = (event) => {
         try {
-          const session = JSON.parse(event.target.result);
+          const rawSession = JSON.parse(event.target.result);
+          const session = normalizeLoadedSession(rawSession);
           if (session.results) {
             setFiles(session.files || []);
             setResults(session.results);
+            setTaxonomyDiagnostics(session.taxonomyDiagnostics);
             setError(null);
             setDiffSummary(null);
             setDiffMode(false);
@@ -947,20 +1011,35 @@ export default function App() {
               </div>
             )}
             
-            <div className="mt-6 flex justify-center gap-3">
-              <AnalyzeButton
-                fileCount={files.length}
-                providerConfigured={canAnalyze}
-                analyzing={analyzing}
-                onClick={handleAnalyze}
-              />
-              <button
-                onClick={loadSession}
-                className="px-6 py-2.5 bg-[#1F2937] hover:bg-[#283548] border border-[#374151] rounded-xl text-sm font-medium transition-all"
-                title="Load past session"
-              >
-                📂 Load Session
-              </button>
+            <div className="mt-6 flex flex-col items-center gap-4">
+              <div className="flex items-center gap-3">
+                <label className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-widest">Profile:</label>
+                <select
+                  value={domainProfile}
+                  onChange={(e) => setDomainProfile(e.target.value)}
+                  className="bg-[#1F2937] border border-[#374151] rounded-lg text-sm text-[#F9FAFB] px-3 py-1.5 focus:outline-none focus:border-[#60A5FA] transition-colors"
+                >
+                  {Object.values(DOMAIN_PROFILES).map(p => (
+                    <option key={p.id} value={p.id} title={p.description}>{p.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex justify-center gap-3">
+                <AnalyzeButton
+                  fileCount={files.length}
+                  providerConfigured={canAnalyze}
+                  analyzing={analyzing}
+                  onClick={handleAnalyze}
+                />
+                <button
+                  onClick={loadSession}
+                  className="px-6 py-2.5 bg-[#1F2937] hover:bg-[#283548] border border-[#374151] rounded-xl text-sm font-medium transition-all"
+                  title="Load past session"
+                >
+                  📂 Load Session
+                </button>
+              </div>
             </div>
             {error && (
               <div className="mt-6 p-4 bg-[#3B1111] border border-[#A32D2D] rounded-lg">
@@ -1037,6 +1116,43 @@ export default function App() {
               onToggle={setDiffMode} 
             />
 
+            {taxonomyDiagnostics && (
+              <div className="mb-6 p-3 bg-[#111827] border border-[#374151] rounded-xl">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  <h3 className="text-[10px] font-bold text-[#6B7280] uppercase tracking-widest">Taxonomy Diagnostics</h3>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-[10px] text-[#6B7280] mb-0.5">Enriched</p>
+                    <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.normalized_from_detector_count}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#6B7280] mb-0.5">Parsed IDs</p>
+                    <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.detector_id_parsed_from_description_count}</p>
+                  </div>
+                  {taxonomyDiagnostics.unknown_detector_id_count > 0 && (
+                    <div>
+                      <p className="text-[10px] text-[#F87171] mb-0.5">Unknown IDs</p>
+                      <p className="text-sm font-semibold text-[#F87171]">{taxonomyDiagnostics.unknown_detector_id_count}</p>
+                    </div>
+                  )}
+                  {taxonomyDiagnostics.severity_clamped_count > 0 && (
+                    <div>
+                      <p className="text-[10px] text-[#60A5FA] mb-0.5">Clamped</p>
+                      <p className="text-sm font-semibold text-[#60A5FA]">{taxonomyDiagnostics.severity_clamped_count}</p>
+                    </div>
+                  )}
+                  {taxonomyDiagnostics.total_issues_loaded > 0 && (
+                    <div>
+                      <p className="text-[10px] text-[#9CA3AF] mb-0.5">Loaded</p>
+                      <p className="text-sm font-semibold text-[#9CA3AF]">{taxonomyDiagnostics.total_issues_loaded}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="mb-4 flex flex-col gap-3">
               <div className="relative">
                 <input
@@ -1067,6 +1183,7 @@ export default function App() {
                   { id: 'file', label: 'File' },
                   { id: 'severity', label: 'Severity' },
                   { id: 'layer', label: 'Layer' },
+                  { id: 'subcategory', label: 'Subcategory' },
                   { id: 'root_cause', label: 'Root Cause' },
                 ].map((mode) => (
                   <button
@@ -1091,15 +1208,45 @@ export default function App() {
             </div>
 
             <LayerFilterBar
-              issues={filteredIssues}
+              issues={results.issues}
               activeLayer={activeLayer}
-              onLayerChange={setActiveLayer}
+              onLayerChange={(layer) => {
+                setActiveLayer(layer);
+                setActiveSubcategory('all');
+              }}
             />
 
+            {activeLayer !== 'all' && (
+              <div className="mb-4 flex items-center gap-3 overflow-x-auto pb-1 no-scrollbar border-b border-[#1F2937]">
+                <span className="text-[10px] font-bold text-[#6B7280] uppercase tracking-widest whitespace-nowrap">Filter Subcategory:</span>
+                <button
+                  onClick={() => setActiveSubcategory('all')}
+                  className={`px-2 py-1 rounded text-[10px] font-medium border transition-all whitespace-nowrap ${
+                    activeSubcategory === 'all'
+                      ? 'bg-[#374151] border-[#4B5563] text-white'
+                      : 'bg-transparent border-transparent text-[#6B7280] hover:text-[#9CA3AF]'
+                  }`}
+                >
+                  ALL
+                </button>
+                {getAvailableSubcategories(activeLayer).map(sub => (
+                  <button
+                    key={sub}
+                    onClick={() => setActiveSubcategory(sub)}
+                    className={`px-2 py-1 rounded text-[10px] font-medium border transition-all whitespace-nowrap ${
+                      activeSubcategory === sub
+                        ? 'bg-[#374151] border-[#4B5563] text-white'
+                        : 'bg-transparent border-transparent text-[#6B7280] hover:text-[#9CA3AF]'
+                    }`}
+                  >
+                    {sub.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <IssueList 
-              issues={diffMode && diffSummary 
-                ? [...diffSummary.new, ...diffSummary.changed, ...diffSummary.resolved] 
-                : filteredIssues} 
+              issues={filteredIssues} 
               activeLayer={activeLayer} 
               groupingMode={groupingMode}
               rootCauses={results.root_causes || []}

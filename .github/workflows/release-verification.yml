@@ -1,0 +1,48 @@
+name: Release Verification
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  package-windows:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Run tests
+      run: npm test
+      
+    - name: Package Portable Windows Exe
+      run: npm run dist
+      
+    - name: Generate Checksum
+      shell: pwsh
+      run: |
+        $exePath = "dist-electron-v4/MarkdownAuditor-portable.exe"
+        if (Test-Path $exePath) {
+          $sha256 = (Get-FileHash -Path $exePath -Algorithm SHA256).Hash
+          $sha256 | Out-File -FilePath "dist-electron-v4/MarkdownAuditor-portable.exe.sha256"
+          Write-Host "SHA256: $sha256"
+        }
+        
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: MarkdownAuditor-Windows-Portable
+        path: |
+          dist-electron-v4/MarkdownAuditor-portable.exe
+          dist-electron-v4/MarkdownAuditor-portable.exe.sha256
+        retention-days: 7

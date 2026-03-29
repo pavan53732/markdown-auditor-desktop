@@ -6,7 +6,12 @@ Markdown Intelligence Auditor is a desktop application built with Electron, Reac
 
 The current architecture supports:
 
-- 32 analytical layers and 256 micro-detectors
+- 32 analytical layers with 256 code-defined micro-detectors
+- Full structured detector metadata (trigger patterns, evidence, FP guards)
+- Programmatic system prompt generation using a dynamic builder
+- Detector-aware validation for known detector/category/subcategory combinations
+- Domain-aware profiles (e.g. API Docs, Runbooks)
+- Cross-layer logical bundles
 - chunk-aware batching for large files
 - deterministic runtime normalization
 - incremental cache reuse for unchanged files
@@ -25,12 +30,15 @@ Electron Main Process
 Renderer Process (React)
 - file intake and local UI state
 - hashing, caching, batching, merging, diffing
-- result rendering, filtering, grouping, exporting
+- taxonomy orchestration (profiles, bundles, subcategories, detectors)
+- taxonomy-driven normalization: metadata backfilling and severity clamping
+- result rendering with advanced subcategory filtering and grouping
+- export generation (JSON, Markdown, CSV)
 
 Provider Layer
 - OpenAI-compatible endpoint
 - timeout / retry controls
-- JSON response consumed and normalized in renderer
+- JSON response consumed, validated (strict semantic consistency), and normalized in renderer
 ```
 
 ## Directory Structure
@@ -62,9 +70,21 @@ Provider Layer
 |   |   |-- SummaryDashboard.jsx
 |   |   `-- TopBar.jsx
 |   `-- lib/
-|       |-- jsonRepair.js
+|       |-- crossLayerBundles.js
+|       |-- detectorMetadata.js (Source of truth for 256 detectors)
+|       |-- domainProfiles.js
+|       |-- jsonRepair.js (Advanced semantic validation)
 |       |-- layers.js
-|       `-- systemPrompt.js
+|       `-- systemPrompt.js (Dynamic prompt generator)
+
+## Taxonomy Verification and Diagnostics
+
+The system implements a regression-safe taxonomy pipeline:
+
+1.  **Integrity Validation**: Automated tests verify the 256-detector catalog against the 32-layer schema.
+2.  **Semantic Enforcement**: Validation logic ensures that AI-reported detector IDs, layers, and subcategories are mutually consistent.
+3.  **Runtime Diagnostics**: The application tracks enrichment, parsing, and clamping metrics during analysis.
+4.  **Observability**: Diagnostics are surfaced in the UI results summary and Markdown exports to ensure pipeline transparency.
 |-- build/
 |   `-- icon.png
 |-- dist/
@@ -104,6 +124,14 @@ Provider Layer
 - merge, deduplication, escalation, and cross-layer validation
 - diffing and root-cause-aware grouping
 - export and session save/load
+
+`src/lib/detectorMetadata.js` is the taxonomy source of truth for:
+
+- layer subcategories
+- all 256 detector definitions
+- detector prompt generation helpers
+- known-detector validation helpers
+- pure helpers for export and session data shaping (`buildExportData`, `buildSessionData`, `normalizeLoadedSession`)
 
 ## Key UI Components
 
@@ -152,6 +180,7 @@ App
 | `analyzing` | analysis in progress flag |
 | `results` | current audit result payload |
 | `error` | user-visible error message |
+| `domainProfile` | currently selected evaluation domain profile |
 | `activeLayer` | current layer filter |
 | `searchQuery` | free-text issue search |
 | `groupingMode` | flat / file / severity / layer / root_cause |
@@ -206,6 +235,8 @@ App
 - Markdown fences are stripped if present
 - malformed JSON gets repaired when possible
 - top-level and per-issue fields are validated before use
+- known detector IDs are checked against the structured detector catalog
+- unknown detector IDs currently generate warnings instead of hard validation failures
 
 ### 5. Merge and Normalize
 
@@ -236,6 +267,22 @@ Identity is based on:
 
 This keeps dedupe and diffing aligned instead of using separate matching heuristics.
 
+## Detector Taxonomy Flow
+
+The structured detector system currently flows like this:
+
+1. `rawMetadata` in `src/lib/detectorMetadata.js` defines the 256 detector entries
+2. `DETECTOR_METADATA` normalizes those entries into the runtime catalog
+3. `buildDetectorPrompt()` renders the detector catalog for the model
+4. `buildSystemPrompt()` combines:
+   - domain profile guidance
+   - cross-layer bundles
+   - detector catalog
+   - output schema and reasoning instructions
+5. `validateResults()` enforces detector-aware consistency for known detector IDs
+
+This makes the taxonomy code-defined rather than primarily embedded as static prompt text.
+
 ## Escalation Rules
 
 Runtime escalation currently implements four deterministic rules:
@@ -265,7 +312,9 @@ Important issue fields include:
 
 - `severity`
 - `category`
+- `subcategory`
 - `detector_id`
+- `detector_name`
 - `layer`
 - `files`
 - `section`
@@ -301,7 +350,9 @@ Important issue fields include:
   "id": "1",
   "severity": "critical",
   "category": "architectural",
+  "subcategory": "missing components",
   "detector_id": "L8-02",
+  "detector_name": "missing component",
   "layer": "architectural",
   "files": ["file.md"],
   "section": "Architecture",
@@ -345,7 +396,8 @@ Important issue fields include:
 ### Saved Sessions
 
 - exported and reloaded as JSON files
-- include selected files and result payload
+- include selected files, result payload, and taxonomy diagnostics
+- re-enriched automatically on load to ensure taxonomy consistency and update diagnostics
 
 ## Build and Packaging
 
@@ -402,6 +454,8 @@ Packaging notes:
 
 ## Known Constraints
 
-- Incremental cache currently uses `localStorage`, which may not scale well for very large projects
+- incremental cache currently uses `localStorage`, which may not scale well for very large projects
 - chunk overlap improves context preservation, but chunk-derived line ranges should be treated as best effort when overlap is involved
 - full diff accuracy still depends on stable model output across repeated runs
+- unknown detector IDs currently warn instead of failing hard during validation
+- results and sessions include automated taxonomy diagnostics for pipeline observability

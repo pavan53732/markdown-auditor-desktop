@@ -6,12 +6,19 @@ This document tracks the major product-level enhancements currently implemented 
 
 ### Analysis Engine
 
-- 32 analytical layers and 256 micro-detectors
+- 32 analytical layers and 256 code-defined micro-detectors
+- structured detector metadata in `src/lib/detectorMetadata.js`
+- dynamic detector catalog generation for the system prompt
+- domain profiles and cross-layer bundles composed into prompt generation
 - chunk-aware batching for oversized files
 - deterministic post-merge normalization
 - four runtime escalation rules
 - cross-layer validation after escalation
 - JSON repair before validation
+- detector-aware validation for Lx-yy ID format, existence, and semantic consistency
+- taxonomy-driven normalization: automatic metadata backfilling and severity bound clamping
+- automated test suite for taxonomy integrity, prompt generation, normalization, and session persistence
+- runtime taxonomy diagnostics surfaced in UI, Markdown, and JSON/Session exports
 - basic response validation before rendering
 
 ### Incremental and Comparative Workflows
@@ -25,6 +32,7 @@ This document tracks the major product-level enhancements currently implemented 
 ### Result Quality and Explainability
 
 - detector traceability fields
+- detector subcategories and detector names
 - escalation reasons in normalized issues
 - remediation guidance:
   - `recommended_fix`
@@ -36,9 +44,10 @@ This document tracks the major product-level enhancements currently implemented 
 ### UI and UX
 
 - drag-and-drop Markdown intake
-- search across descriptions, evidence, tags, and files
-- layer filtering
-- grouping by file, severity, layer, and root cause
+- search across descriptions, evidence, tags, files, and detector metadata
+- domain profile selector in the pre-analysis UI
+- layer and subcategory filtering
+- grouping by file, severity, layer, subcategory, and root cause
 - session diff summary panel
 - save/load session workflow
 - JSON / Markdown / CSV export
@@ -60,6 +69,7 @@ This document tracks the major product-level enhancements currently implemented 
 - Incremental cache uses renderer `localStorage`, which may become a limitation for very large document sets.
 - Chunk overlap improves context retention, but line range reporting for overlapped chunks is still best-effort.
 - Validation is stronger than before, but it is still not a full strict schema validator for every optional field.
+- Unknown detector IDs currently produce warnings during validation instead of failing hard.
 - The packaged executable is unsigned.
 
 ## Recommended Next Enhancements

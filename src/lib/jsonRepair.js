@@ -1,3 +1,12 @@
+import { 
+  isValidSubcategory, 
+  getDetectorMetadata, 
+  isValidDetectorForLayer, 
+  isValidDetectorForSubcategory,
+  parseDetectorId,
+  isKnownDetectorId
+} from './detectorMetadata';
+
 /**
  * Attempts to repair common JSON malformations from LLM outputs
  */
@@ -58,16 +67,64 @@ export function validateResults(results) {
     if (typeof issue.severity !== 'string' || !['critical', 'high', 'medium', 'low'].includes(issue.severity)) {
       throw new Error(`Issue at index ${index} has invalid severity: ${issue.severity}`);
     }
-    if (typeof issue.category !== 'string') {
-      throw new Error(`Issue at index ${index} has invalid or missing category`);
+    
+    // 1. Detector ID Format & Existence
+    const detectorId = issue.detector_id || parseDetectorId(issue.description);
+    const isWellFormedDetector = detectorId && /L\d+-\d+/.test(detectorId);
+
+    // If no well-formed detector ID is present, category and description are strictly required
+    if (!isWellFormedDetector) {
+      if (typeof issue.category !== 'string') {
+        throw new Error(`Issue at index ${index} has invalid or missing category`);
+      }
     }
+
     if (typeof issue.description !== 'string') {
       throw new Error(`Issue at index ${index} has invalid or missing description`);
+    }
+
+    if (detectorId) {
+      // Validate format Lx-yy
+      if (!/L\d+-\d+/.test(detectorId)) {
+        throw new Error(`Issue at index ${index} has malformed detector_id: "${detectorId}" (expected Lx-yy)`);
+      }
+
+      if (isKnownDetectorId(detectorId)) {
+        const meta = getDetectorMetadata(detectorId);
+        
+        // 2. Layer/Category consistency (only if category is already present)
+        if (issue.category && !isValidDetectorForLayer(detectorId, issue.category)) {
+          throw new Error(`Issue at index ${index} detector "${detectorId}" does not belong to layer "${issue.category}" (expected "${meta.layer}")`);
+        }
+
+        // 3. Subcategory consistency (only if subcategory is already present)
+        if (issue.subcategory && !isValidDetectorForSubcategory(detectorId, issue.subcategory)) {
+          throw new Error(`Issue at index ${index} detector "${detectorId}" does not belong to subcategory "${issue.subcategory}" (expected "${meta.subcategory}")`);
+        }
+      } else {
+        // Unknown but well-formed detector ID
+        console.warn(`Issue at index ${index} has unknown detector_id: ${detectorId}`);
+        // If unknown, we still need category
+        if (typeof issue.category !== 'string') {
+          throw new Error(`Issue at index ${index} has unknown detector_id and is missing category`);
+        }
+      }
+    }
+
+    // 4. Standalone Subcategory validation (if detector_id was missing)
+    if (issue.category && issue.subcategory && !isValidSubcategory(issue.category, issue.subcategory)) {
+      throw new Error(`Issue at index ${index} has subcategory "${issue.subcategory}" which is invalid for layer "${issue.category}"`);
     }
 
     // Traceability & Remediation type checks
     if (issue.detector_id && typeof issue.detector_id !== 'string') {
       throw new Error(`Issue at index ${index} has invalid detector_id type`);
+    }
+    if (issue.detector_name && typeof issue.detector_name !== 'string') {
+      throw new Error(`Issue at index ${index} has invalid detector_name type`);
+    }
+    if (issue.subcategory && typeof issue.subcategory !== 'string') {
+      throw new Error(`Issue at index ${index} has invalid subcategory type`);
     }
     if (issue.why_triggered && typeof issue.why_triggered !== 'string') {
       throw new Error(`Issue at index ${index} has invalid why_triggered type`);

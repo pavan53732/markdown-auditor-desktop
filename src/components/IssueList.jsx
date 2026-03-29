@@ -23,6 +23,8 @@ export default function IssueList({ issues, activeLayer, groupingMode = 'flat', 
         key = issue.severity.toUpperCase();
       } else if (groupingMode === 'layer') {
         key = getLayerById(issue.category).label;
+      } else if (groupingMode === 'subcategory') {
+        key = issue.subcategory || 'Uncategorized';
       } else if (groupingMode === 'root_cause') {
         const rc = rootCauses.find(r => r.id === issue.root_cause_id);
         key = rc ? rc.title : 'Uncategorized';

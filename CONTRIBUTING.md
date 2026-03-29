@@ -50,6 +50,9 @@ Portable output:
 ### Analysis
 
 - 32 layers / 256 detectors
+- structured detector metadata catalog in `src/lib/detectorMetadata.js`
+- dynamic prompt generation from domain profiles, cross-layer bundles, and detector metadata
+- detector-aware validation for known detector IDs
 - chunk-aware batching
 - deterministic normalization
 - four escalation rules
@@ -116,34 +119,35 @@ Be especially careful with:
 3. Verify it is backed by real runtime behavior
 4. Update docs if user-visible
 
-### Analysis Prompt or Schema Work
+### Analysis Prompt or Taxonomy Work
 
-Edit `src/lib/systemPrompt.js`.
+The taxonomy is defined in `src/lib/detectorMetadata.js` (detectors and subcategories), `src/lib/domainProfiles.js` (domain-specific emphasis), and `src/lib/crossLayerBundles.js` (logical groupings).
+
+The system prompt is dynamically generated in `src/lib/systemPrompt.js`.
+
+To add or update a detector:
+1. Edit `rawMetadata` in `src/lib/detectorMetadata.js`.
+2. Ensure the subcategory exists in `LAYER_SUBCATEGORIES`.
+3. Preserve the detector ID format and layer numbering (`Lx-yy`).
+4. The prompt and validation logic will automatically pick up the changes.
 
 The prompt should stay aligned with runtime behavior:
-
 - do not promise rules that runtime logic does not implement
 - keep field names consistent with the UI and exports
-- update sample schema when fields change
-
-### Provider Settings Work
-
-If you add settings:
-
-- persist them through config read/write
-- pass them through preload and IPC if needed
-- ensure they affect runtime behavior, not just UI state
+- update sample schema in `src/lib/systemPrompt.js` when fields change
+- remember that unknown detector IDs are currently soft-warned, not hard-failed
 
 ### Adding a New Analysis Layer
 
-1. Add the layer definition to `src/lib/layers.js`
-2. Add detector definitions and schema guidance to `src/lib/systemPrompt.js`
-3. Make sure any new category is rendered correctly by:
+1. Add the layer definition to `src/lib/layers.js`.
+2. Add the subcategory list to `LAYER_SUBCATEGORIES` in `src/lib/detectorMetadata.js`.
+3. Add the detectors to `rawMetadata` in `src/lib/detectorMetadata.js`.
+4. Make sure any new category is rendered correctly by:
    - `src/components/LayerFilterBar.jsx`
    - `src/components/IssueCard.jsx`
    - `src/components/IssueList.jsx`
-4. Update docs that describe the layer inventory
-5. Verify exports and filtering still work
+5. Update docs that describe the layer inventory.
+6. Verify exports and filtering still work.
 
 ### Adding or Changing Export Formats
 
@@ -173,6 +177,8 @@ Run through the relevant subset before closing a change:
 15. JSON / Markdown / CSV exports still open and contain expected fields
 16. Session save/load still works
 17. Cached reuse does not break multi-file analysis
+18. Known detector/category/subcategory combinations validate correctly
+19. Older sessions without newer taxonomy fields still load safely
 
 ## Build Notes
 
@@ -213,7 +219,9 @@ Common issue fields currently used by the app:
 - `id`
 - `severity`
 - `category`
+- `subcategory`
 - `detector_id`
+- `detector_name`
 - `layer`
 - `files`
 - `section`
@@ -261,3 +269,23 @@ If runtime logic changes:
 - keep `src/lib/systemPrompt.js` aligned with implemented rules
 - do not leave stale escalation-rule counts in docs
 - do not leave stale build paths such as older `dist-electron-*` directories in markdown files
+
+## Testing
+
+The project uses [Vitest](https://vitest.dev/) for automated logic and taxonomy tests.
+
+### Running Tests
+
+```bash
+npm test
+```
+
+### Test Coverage
+
+Tests are located in `src/lib/__tests__` and cover:
+- **Taxonomy Integrity**: Verifies the 256-detector catalog consistency.
+- **Normalization & Validation**: Verifies that results are correctly enriched and semantics are enforced.
+- **Prompt Generation**: Verifies the dynamic builder logic.
+- **Diagnostics**: Verifies runtime observability metrics.
+
+ALWAYS run tests before submitting changes to the taxonomy or prompt generation logic.

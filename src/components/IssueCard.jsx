@@ -158,6 +158,20 @@ export default function IssueCard({ issue }) {
                 <span className="text-[10px] font-mono bg-[#374151] text-[#9CA3AF] px-1.5 py-0.5 rounded">{issue.detector_id}</span>
               )}
             </div>
+            {(issue.subcategory || issue.detector_name) && (
+              <div className="flex flex-wrap gap-2 pb-1">
+                {issue.subcategory && (
+                  <span className="px-2 py-0.5 bg-[#1F2937] border border-[#4B5563] rounded-full text-[10px] text-[#D1D5DB]">
+                    Subcat: {issue.subcategory}
+                  </span>
+                )}
+                {issue.detector_name && (
+                  <span className="px-2 py-0.5 bg-[#1F2937] border border-[#4B5563] rounded-full text-[10px] text-[#D1D5DB]">
+                    Detector: {issue.detector_name}
+                  </span>
+                )}
+              </div>
+            )}
             {issue.why_triggered && (
               <div>
                 <p className="text-xs font-semibold text-[#9CA3AF] mb-0.5">Why triggered:</p>

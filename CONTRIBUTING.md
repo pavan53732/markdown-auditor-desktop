@@ -32,7 +32,7 @@ npm run electron:dev
 npm run dist
 ```
 
-Portable output:
+Current packaged output:
 
 - `dist-electron-v4\MarkdownAuditor-portable.exe`
 

@@ -23,7 +23,7 @@ This release completes the major taxonomy refactor, moving from prompt-defined h
 
 ### Packaging
 
-- Portable Windows executable output: `dist-electron-v4\MarkdownAuditor-portable.exe`
+- Current packaged output: `dist-electron-v4\MarkdownAuditor-portable.exe`
 - **Security Note**: This build is unsigned. Windows may display a "Windows protected your PC" warning; users should select "More info" -> "Run anyway" to proceed.
 
 ## v1.0.0
@@ -51,7 +51,7 @@ Markdown Intelligence Auditor is now documented as a production-ready baseline f
 
 ### Packaging
 
-- Portable Windows executable output: `dist-electron-v4\MarkdownAuditor-portable.exe`
+- Current packaged output: `dist-electron-v4\MarkdownAuditor-portable.exe`
 - Packaging remains unsigned, so Windows trust prompts may still appear on some machines
 
 ### Recommended Next Steps

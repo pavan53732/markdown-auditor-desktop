@@ -39,7 +39,7 @@ The current build includes chunk-aware batching, deterministic post-processing, 
 
 ## Quick Start
 
-1. Double-click `dist-electron-v4\MarkdownAuditor-portable.exe`
+1. Double-click the current packaged output at `dist-electron-v4\MarkdownAuditor-portable.exe`
 2. Open Settings from the gear icon
 3. Configure a provider:
    - `baseURL`
@@ -279,7 +279,7 @@ npm test
 npm run dist
 ```
 
-Portable output:
+Current packaged output:
 
 - `dist-electron-v4\MarkdownAuditor-portable.exe` (v1.5.0)
 

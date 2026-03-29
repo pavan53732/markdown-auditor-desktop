@@ -1,5 +1,18 @@
 # Release Notes
 
+## v1.9.0
+
+Release date: 2026-03-30
+
+This release focuses on deepening the **Analytical Taxonomy**, enriching the existing 32 layers with stronger subcategories, precise cross-references, and benchmark-driven quality controls without bloating the top-level structure.
+
+### Highlights
+
+- **Deepened Taxonomy**: Refined subcategories across weak themes like "contradiction drift," "semantic ambiguity," and "missing prerequisites," improving classifier accuracy without adding new top-level layers.
+- **Benchmark Driven**: Added a suite of canonical Markdown benchmark fixtures ensuring the taxonomy handles edge cases correctly during local development.
+- **Detector Enrichment**: Enhanced existing micro-detectors with `related_layers` mappings and tighter false-positive guards.
+- **Quality Tooling**: Introduced an internal helper to report on taxonomy coverage, ensuring every category remains robust and healthy.
+
 ## v1.8.0
 
 Release date: 2026-03-29

@@ -86,12 +86,13 @@ Provider Layer
 
 ## Taxonomy Verification and Diagnostics
 
-The system supports a local verification workflow:
+The system supports a local verification workflow with deepened 32-layer coverage:
 
 1.  **Integrity Validation**: Local automated tests verify the 256-detector catalog against the 32-layer schema.
 2.  **Semantic Enforcement**: Validation logic ensures that AI-reported detector IDs, layers, and subcategories are mutually consistent.
-3.  **Runtime Diagnostics**: The application tracks enrichment, parsing, and clamping metrics during analysis and session loading.
-4.  **Observability**: Diagnostics are surfaced in the UI results summary and exports to ensure pipeline transparency.
+3.  **Benchmark Evaluation**: A suite of canonical Markdown fixtures (`taxonomyBenchmark.test.js`) evaluates empirical taxonomy coverage across complex edge cases without bloating the top-level categories.
+4.  **Runtime Diagnostics**: The application tracks enrichment, parsing, and clamping metrics during analysis and session loading.
+5.  **Observability**: Diagnostics are surfaced in the UI results summary and exports to ensure pipeline transparency.
 |-- build/
 |   `-- icon.png
 |-- dist/

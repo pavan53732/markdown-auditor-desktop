@@ -6,8 +6,10 @@ This document tracks the major product-level enhancements currently implemented 
 
 ### Analysis Engine
 
-- 32 analytical layers and 256 code-defined micro-detectors
+- 32 analytical layers with explicit deepened subcategories covering weak themes
+- 256 code-defined micro-detectors enriched with `related_layers`
 - structured detector metadata in `src/lib/detectorMetadata.js`
+- taxonomy benchmark fixtures and evaluation suite
 - dynamic detector catalog generation for the system prompt
 - domain profiles and cross-layer bundles composed into prompt generation
 - chunk-aware batching for oversized files

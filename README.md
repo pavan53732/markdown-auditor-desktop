@@ -11,8 +11,9 @@ The current build includes chunk-aware batching, deterministic post-processing, 
 ## Current Capabilities
 
 - Drag-and-drop upload for `.md` and `.markdown` files
-- 32 analytical layers with explicit subcategories and 256 code-defined micro-detectors
-- Full structured detector metadata including trigger patterns, evidence requirements, and false-positive guards
+- 32 analytical layers with explicit, deepened subcategories preventing thematic ambiguity
+- Full structured detector metadata including trigger patterns, evidence requirements, related layers, and false-positive guards
+- Taxonomy benchmark fixtures supporting automated evaluation of classification correctness
 - Programmatic system prompt generation from structured taxonomy and metadata
 - Taxonomy-driven runtime normalization: backfilling metadata and enforcing severity bounds
 - Advanced semantic validation enforcing category -> subcategory -> detector consistency

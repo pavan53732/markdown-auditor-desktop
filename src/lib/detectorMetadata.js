@@ -1,36 +1,36 @@
 export const LAYER_SUBCATEGORIES = {
-  contradiction: ['direct conflicts', 'version drift', 'diagram-text mismatch', 'terminology drift'],
-  logical: ['causality gaps', 'circular reasoning', 'invalid assumptions', 'scope leaps'],
-  structural: ['broken hierarchy', 'orphan sections', 'duplicate sections', 'missing prerequisites'],
-  semantic: ['undefined terms', 'vague quantifiers', 'overloaded terms', 'ambiguous references'],
-  factual: ['unsupported claims', 'stale facts', 'citation gaps', 'norm-vs-description confusion'],
-  functional: ['impossible workflows', 'missing outcomes', 'hidden prerequisites', 'incomplete procedures'],
-  temporal: ['sequence conflicts', 'stale timelines', 'invalid timing windows', 'lifecycle drift'],
-  architectural: ['missing components', 'boundary leaks', 'responsibility overlap', 'topology inconsistency'],
-  completeness: ['missing branches', 'missing rollback', 'missing edge cases', 'missing postconditions'],
-  intent: ['audience mismatch', 'goal drift', 'scope creep', 'business-vs-implementation mismatch'],
-  metacognition: ['overconfidence', 'unjustified certainty', 'shallow tradeoff analysis', 'unverifiable conclusions'],
-  adversarial: ['abuse paths', 'bypass scenarios', 'risky defaults', 'misuse opportunities'],
+  contradiction: ['direct conflicts', 'version drift', 'diagram-text mismatch', 'terminology drift', 'configuration precedence conflicts'],
+  logical: ['causality gaps', 'circular reasoning', 'invalid assumptions', 'scope leaps', 'logic-state mismatch'],
+  structural: ['broken hierarchy', 'orphan sections', 'duplicate sections', 'missing prerequisites', 'execution-path gaps'],
+  semantic: ['undefined terms', 'vague quantifiers', 'overloaded terms', 'ambiguous references', 'semantic ambiguity'],
+  factual: ['unsupported claims', 'stale facts', 'citation gaps', 'norm-vs-description confusion', 'stale-vs-citation distinction'],
+  functional: ['impossible workflows', 'missing outcomes', 'hidden prerequisites', 'incomplete procedures', 'structural missing-prerequisite cases'],
+  temporal: ['sequence conflicts', 'stale timelines', 'invalid timing windows', 'lifecycle drift', 'async race conditions'],
+  architectural: ['missing components', 'boundary leaks', 'responsibility overlap', 'topology inconsistency', 'cross-system boundary gaps'],
+  completeness: ['missing branches', 'missing rollback', 'missing edge cases', 'missing postconditions', 'execution-path gaps'],
+  intent: ['audience mismatch', 'goal drift', 'scope creep', 'business-vs-implementation mismatch', 'implicit requirement gaps'],
+  metacognition: ['overconfidence', 'unjustified certainty', 'shallow tradeoff analysis', 'unverifiable conclusions', 'ambiguous certainty'],
+  adversarial: ['abuse paths', 'bypass scenarios', 'risky defaults', 'misuse opportunities', 'threat-model gaps'],
   knowledge_graph: ['orphan entities', 'relationship gaps', 'alias drift', 'role confusion', 'circular references'],
-  quantitative: ['unit mismatch', 'impossible thresholds', 'numeric inconsistency', 'vague measurements'],
-  requirement: ['ambiguous acceptance criteria', 'RFC2119 misuse', 'priority ambiguity', 'traceability gaps'],
-  state_machine: ['impossible transitions', 'missing terminal states', 'retry loops', 'concurrency conflicts'],
-  api_contract: ['schema mismatch', 'auth ambiguity', 'idempotency gaps', 'error-contract omissions'],
-  dependency_graph: ['circular dependencies', 'undeclared dependencies', 'version conflicts', 'ownership ambiguity'],
-  data_flow: ['source-sink mismatch', 'missing transformations', 'retention ambiguity', 'PII flow gaps'],
-  execution_path: ['unreachable paths', 'dead ends', 'branch omissions', 'rollback path gaps'],
-  configuration: ['default ambiguity', 'precedence conflicts', 'env drift', 'secret-handling errors'],
-  error_handling: ['missing recovery', 'partial-failure gaps', 'retry storms', 'unclear operator actions'],
-  security: ['secret exposure', 'trust-boundary gaps', 'authz ambiguity', 'unsafe input handling'],
-  performance: ['scale assumptions', 'unbounded work', 'expensive retries', 'large-document cost blowups'],
-  testability: ['unverifiable claims', 'missing examples', 'weak expected outputs', 'validation blind spots'],
-  maintainability: ['duplication', 'brittle coupling', 'hidden ownership', 'missing conventions'],
-  usability: ['confusing task order', 'jargon overload', 'poor examples', 'accessibility/readability issues'],
-  interoperability: ['protocol mismatch', 'format assumptions', 'backward-compatibility gaps', 'integration ambiguity'],
-  governance: ['policy traceability', 'approval gates', 'auditability', 'retention/compliance gaps'],
-  resilience: ['single points of failure', 'degraded-mode gaps', 'outage handling', 'backup/restore gaps'],
-  observability: ['missing logs', 'metrics gaps', 'tracing gaps', 'correlation IDs and alert-threshold gaps'],
-  evolution: ['migration gaps', 'versioning gaps', 'deprecation policy gaps', 'compatibility promises']
+  quantitative: ['unit mismatch', 'impossible thresholds', 'numeric inconsistency', 'vague measurements', 'scaling boundary ambiguity'],
+  requirement: ['ambiguous acceptance criteria', 'RFC2119 misuse', 'priority ambiguity', 'traceability gaps', 'implicit dependencies'],
+  state_machine: ['impossible transitions', 'missing terminal states', 'retry loops', 'concurrency conflicts', 'dead-end states'],
+  api_contract: ['schema mismatch', 'auth ambiguity', 'idempotency gaps', 'error-contract omissions', 'backward-compatibility breaks'],
+  dependency_graph: ['circular dependencies', 'undeclared dependencies', 'version conflicts', 'ownership ambiguity', 'transitive mismatches'],
+  data_flow: ['source-sink mismatch', 'missing transformations', 'retention ambiguity', 'PII flow gaps', 'data-lifecycle gaps'],
+  execution_path: ['unreachable paths', 'dead ends', 'branch omissions', 'rollback path gaps', 'execution-path gaps'],
+  configuration: ['default ambiguity', 'precedence conflicts', 'env drift', 'secret-handling errors', 'configuration precedence conflicts'],
+  error_handling: ['missing recovery', 'partial-failure gaps', 'retry storms', 'unclear operator actions', 'error-handling recovery ambiguity'],
+  security: ['secret exposure', 'trust-boundary gaps', 'authz ambiguity', 'unsafe input handling', 'crypto-lifecycle gaps'],
+  performance: ['scale assumptions', 'unbounded work', 'expensive retries', 'large-document cost blowups', 'resource-leak ambiguity'],
+  testability: ['unverifiable claims', 'missing examples', 'weak expected outputs', 'validation blind spots', 'test-environment drift'],
+  maintainability: ['duplication', 'brittle coupling', 'hidden ownership', 'missing conventions', 'technical-debt ambiguity'],
+  usability: ['confusing task order', 'jargon overload', 'poor examples', 'accessibility/readability issues', 'cognitive-load gaps'],
+  interoperability: ['protocol mismatch', 'format assumptions', 'backward-compatibility gaps', 'integration ambiguity', 'interoperability compatibility mismatches'],
+  governance: ['policy traceability', 'approval gates', 'auditability', 'retention/compliance gaps', 'compliance-scope ambiguity'],
+  resilience: ['single points of failure', 'degraded-mode gaps', 'outage handling', 'backup/restore gaps', 'failover-ambiguity'],
+  observability: ['missing logs', 'metrics gaps', 'tracing gaps', 'correlation IDs and alert-threshold gaps', 'blind-spot gaps'],
+  evolution: ['migration gaps', 'versioning gaps', 'deprecation policy gaps', 'compatibility promises', 'evolution/versioning migration scenarios']
 };
 
 /**
@@ -39,7 +39,7 @@ export const LAYER_SUBCATEGORIES = {
 const rawMetadata = {
   // LAYER 1: Contradiction
   'L1-01': { name: 'direct contradictions', sub: 'direct conflicts', trigger: 'Two statements explicitly negate each other in the same scope.', evidence: 'Conflicting statements.', fp: 'Contextual alternatives.', floor: 'high', ceiling: 'critical' },
-  'L1-02': { name: 'indirect contradictions', sub: 'direct conflicts', trigger: 'Inferred conclusions from two sections conflict.', evidence: 'Supporting premises.', fp: 'Complex configurations.', floor: 'medium' },
+  'L1-02': { name: 'indirect contradictions', sub: 'configuration precedence conflicts', trigger: 'Inferred conclusions from two sections conflict, such as overriding defaults.', evidence: 'Supporting premises and overrides.', fp: 'Explicit exception rules.', floor: 'medium', ceiling: 'high', related_layers: ['L21'] },
   'L1-03': { name: 'cross-section contradictions', sub: 'version drift', trigger: 'Section A says X, Section B says Y for the same entity.', evidence: 'Section references.', fp: 'Intentional overrides.', floor: 'medium' },
   'L1-04': { name: 'terminology inconsistency', sub: 'terminology drift', trigger: 'Same concept described with different terms without aliases.', evidence: 'Term variations.', fp: 'Industry synonyms.', floor: 'low' },
   'L1-05': { name: 'numerical inconsistency', sub: 'version drift', trigger: 'Different values given for the same constant or limit.', evidence: 'Conflicting numbers.', fp: 'Unit variations.', floor: 'high' },
@@ -61,14 +61,14 @@ const rawMetadata = {
   'L3-01': { name: 'broken heading hierarchy', sub: 'broken hierarchy', trigger: 'H3 follows H1, or missing level.', evidence: 'Header levels.', fp: 'Flat structures.', floor: 'low' },
   'L3-02': { name: 'orphan sections', sub: 'orphan sections', trigger: 'Section not linked or referenced anywhere.', evidence: 'Isolated content.', fp: 'Appendices.', floor: 'low' },
   'L3-03': { name: 'redundant sections', sub: 'duplicate sections', trigger: 'Multiple sections cover identical content.', evidence: 'Duplicate content.', fp: 'Reference summaries.', floor: 'medium' },
-  'L3-04': { name: 'improper ordering', sub: 'broken hierarchy', trigger: 'Prerequisite steps appear after actions.', evidence: 'Step sequence.', fp: 'Non-linear docs.', floor: 'high' },
+  'L3-04': { name: 'improper ordering', sub: 'missing prerequisites', trigger: 'Prerequisite steps appear after actions, leading to failure.', evidence: 'Step sequence.', fp: 'Clearly marked appendices.', floor: 'high', ceiling: 'critical', related_layers: ['L6'] },
   'L3-05': { name: 'content fragmentation', sub: 'broken hierarchy', trigger: 'Topic split across too many small sections.', evidence: 'Scattered info.', fp: 'Modular design.', floor: 'low' },
   'L3-06': { name: 'overloaded sections', sub: 'broken hierarchy', trigger: 'Single section covers too many distinct topics.', evidence: 'Topic density.', fp: 'Overviews.', floor: 'medium' },
   'L3-07': { name: 'misplaced content', sub: 'broken hierarchy', trigger: 'API details in an onboarding guide (out of place).', evidence: 'Context mismatch.', fp: 'Deep links.', floor: 'medium' },
   'L3-08': { name: 'structural asymmetry', sub: 'broken hierarchy', trigger: 'Parallel features described with inconsistent structures.', evidence: 'Pattern break.', fp: 'Feature complexity.', floor: 'low' },
 
   // LAYER 4: Semantic
-  'L4-01': { name: 'ambiguous wording', sub: 'undefined terms', trigger: 'Sentences with multiple conflicting interpretations.', evidence: 'Vague sentence.', fp: 'Poetic license.', floor: 'medium' },
+  'L4-01': { name: 'ambiguous wording', sub: 'semantic ambiguity', trigger: 'Sentences with multiple conflicting technical interpretations.', evidence: 'Vague sentence context.', fp: 'Overview summaries.', floor: 'medium', related_layers: ['L1'] },
   'L4-02': { name: 'vague language', sub: 'vague quantifiers', trigger: 'Use of "some", "often", "fast" without metrics.', evidence: 'Vague term.', fp: 'Marketing text.', floor: 'low' },
   'L4-03': { name: 'undefined terms', sub: 'undefined terms', trigger: 'Technical jargon used without definition or link.', evidence: 'The term.', fp: 'Industry standard.', floor: 'medium' },
   'L4-04': { name: 'polysemy conflicts', sub: 'overloaded terms', trigger: 'Same word used for two different technical meanings.', evidence: 'Conflicting usage.', fp: 'Common words.', floor: 'medium' },
@@ -80,7 +80,7 @@ const rawMetadata = {
   // LAYER 5: Factual
   'L5-01': { name: 'unsupported claims', sub: 'unsupported claims', trigger: 'Claim made without evidence or citation.', evidence: 'The claim.', fp: 'Obvious truths.', floor: 'medium' },
   'L5-02': { name: 'missing citations', sub: 'citation gaps', trigger: 'Data or quote provided without source.', evidence: 'Data point.', fp: 'Internal data.', floor: 'low' },
-  'L5-03': { name: 'outdated info risk', sub: 'stale facts', trigger: 'Reference to deprecated systems or old dates.', evidence: 'Date/Version.', fp: 'Legacy support.', floor: 'high' },
+  'L5-03': { name: 'outdated info risk', sub: 'stale-vs-citation distinction', trigger: 'Reference to deprecated systems or old dates without modern context.', evidence: 'Date/Version mismatch.', fp: 'Historical context blocks.', floor: 'high', related_layers: ['L32'] },
   'L5-04': { name: 'hallucination risk', sub: 'unsupported claims', trigger: 'Claims about features that don\'t exist in current context.', evidence: 'False feature.', fp: 'Future roadmap.', floor: 'critical' },
   'L5-05': { name: 'misinterpreted facts', sub: 'norm-vs-description confusion', trigger: 'Incorrect application of a factual rule.', evidence: 'Misinterpretation.', fp: 'Nuanced cases.', floor: 'medium' },
   'L5-06': { name: 'inconsistent references', sub: 'citation gaps', trigger: 'Citation links to wrong or dead resource.', evidence: 'Dead link.', fp: 'Internal only.', floor: 'medium' },
@@ -95,7 +95,7 @@ const rawMetadata = {
   'L6-05': { name: 'operational impossibility', sub: 'impossible workflows', trigger: 'Logic requires 100% uptime or zero latency.', evidence: 'Impossible SLA.', fp: 'Idealized models.', floor: 'medium' },
   'L6-06': { name: 'invalid sequence', sub: 'incomplete procedures', trigger: 'Order of operations leads to data loss.', evidence: 'Wrong order.', fp: 'Commutative ops.', floor: 'high' },
   'L6-07': { name: 'untriggerable state', sub: 'impossible workflows', trigger: 'Conditional logic that can never be met.', evidence: 'Dead logic.', fp: 'Debug modes.', floor: 'medium' },
-  'L6-08': { name: 'missing preconditions', sub: 'hidden prerequisites', trigger: 'Action taken without required setup.', evidence: 'Missing setup.', fp: 'Pre-configured.', floor: 'high' },
+  'L6-08': { name: 'missing preconditions', sub: 'structural missing-prerequisite cases', trigger: 'Action taken without required setup or initialization.', evidence: 'Missing setup block.', fp: 'Standard environment assumptions.', floor: 'high', ceiling: 'critical', related_layers: ['L3'] },
 
   // LAYER 7: Temporal
   'L7-01': { name: 'timeline contradictions', sub: 'sequence conflicts', trigger: 'Event A said to happen before and after B.', evidence: 'Conflict.', fp: 'Cyclic events.', floor: 'high' },
@@ -251,7 +251,7 @@ const rawMetadata = {
   'L22-01': { name: 'missing error path', sub: 'missing recovery', trigger: 'What to do if API returns 500 is not defined.', evidence: 'Path gap.', fp: 'Fail-fast.', floor: 'high' },
   'L22-02': { name: 'silent failure risk', sub: 'partial-failure gaps', trigger: 'Errors caught but not logged or returned.', evidence: 'Silence risk.', fp: 'Expected NOPs.', floor: 'critical' },
   'L22-03': { name: 'unhandled exception', sub: 'missing recovery', trigger: 'Known exceptions not covered in try/catch docs.', evidence: 'Exception gap.', fp: 'Global handlers.', floor: 'high' },
-  'L22-04': { name: 'recovery path missing', sub: 'missing recovery', trigger: 'Error identified but no step to fix it.', evidence: 'Recovery gap.', fp: 'Manual ticket.', floor: 'medium' },
+  'L22-04': { name: 'recovery path missing', sub: 'error-handling recovery ambiguity', trigger: 'Error identified but ambiguous or missing recovery path.', evidence: 'Recovery gap or vague instructions.', fp: 'Fatal unrecoverable errors.', floor: 'high', related_layers: ['L6'] },
   'L22-05': { name: 'retry logic missing', sub: 'retry storms', trigger: 'Network errors fail immediately without retry.', evidence: 'Retry gap.', fp: 'Non-idempotent.', floor: 'medium' },
   'L22-06': { name: 'user feedback missing', sub: 'unclear operator actions', trigger: 'Internal error happens with no UI update.', evidence: 'Feedback gap.', fp: 'Background tasks.', floor: 'low' },
   'L22-07': { name: 'partial failure undefined', sub: 'partial-failure gaps', trigger: '3 of 5 steps succeed; state is unknown.', evidence: 'Partial gap.', fp: 'Atomic transactions.', floor: 'high' },
@@ -310,7 +310,7 @@ const rawMetadata = {
   // LAYER 28: Interoperability
   'L28-01': { name: 'protocol mismatch', sub: 'protocol mismatch', trigger: 'A uses REST, B expects GraphQL.', evidence: 'Mismatch.', fp: 'Gateways.', floor: 'high' },
   'L28-02': { name: 'format incompatibility', sub: 'format assumptions', trigger: 'JSON sent to XML consumer.', evidence: 'Format mismatch.', fp: 'Auto-converters.', floor: 'high' },
-  'L28-03': { name: 'version conflict', sub: 'backward-compatibility gaps', trigger: 'API v2 used with Client v1.', evidence: 'Version gap.', fp: 'Universal clients.', floor: 'high' },
+  'L28-03': { name: 'version conflict', sub: 'interoperability compatibility mismatches', trigger: 'API or protocol version mismatches leading to breaks.', evidence: 'Version gap details.', fp: 'Explicit backward compatibility layers.', floor: 'critical', related_layers: ['L32'] },
   'L28-04': { name: 'missing adapter', sub: 'integration ambiguity', trigger: 'Two systems cannot talk without a bridge.', evidence: 'Missing link.', fp: 'Direct coupling.', floor: 'medium' },
   'L28-05': { name: 'coupling to implementation', sub: 'integration ambiguity', trigger: 'Client depends on internal DB structure.', evidence: 'Leaky coupling.', fp: 'Shared libraries.', floor: 'high' },
   'L28-06': { name: 'missing abstraction layer', sub: 'integration ambiguity', trigger: 'Directly calling hardware/low-level.', evidence: 'Abstraction gap.', fp: 'Drivers.', floor: 'medium' },
@@ -349,7 +349,7 @@ const rawMetadata = {
 
   // LAYER 32: Evolution
   'L32-01': { name: 'missing versioning strategy', sub: 'versioning gaps', trigger: 'No path for v1 to v2.', evidence: 'Version gap.', fp: 'Single release.', floor: 'medium' },
-  'L32-02': { name: 'missing migration path', sub: 'migration gaps', trigger: 'User data trapped in old version.', evidence: 'Migration gap.', fp: 'Fresh starts.', floor: 'high' },
+  'L32-02': { name: 'missing migration path', sub: 'evolution/versioning migration scenarios', trigger: 'Missing migration steps for deprecated or older versions.', evidence: 'Migration gap details.', fp: 'Greenfield deployments.', floor: 'critical', related_layers: ['L28'] },
   'L32-03': { name: 'missing deprecation policy', sub: 'deprecation policy gaps', trigger: 'Features removed without warning.', evidence: 'Deprecation gap.', fp: 'Internal beta.', floor: 'medium' },
   'L32-04': { name: 'missing backward compatibility', sub: 'compatibility promises', trigger: 'Update breaks all existing clients.', evidence: 'Compat break.', fp: 'Major breaks.', floor: 'high' },
   'L32-05': { name: 'missing extensibility', sub: 'migration gaps', trigger: 'Hard-coded logic prevents plugins.', evidence: 'Extensibility gap.', fp: 'Proprietary.', floor: 'low' },
@@ -379,7 +379,8 @@ Object.entries(rawMetadata).forEach(([id, meta]) => {
     false_positive_guards: meta.fp,
     severity_floor: meta.floor,
     severity_ceiling: meta.ceiling,
-    remediation_template: meta.remediation || `Resolve the ${meta.name} by following best practices for ${layerSlug}.`
+    remediation_template: meta.remediation || `Resolve the ${meta.name} by following best practices for ${layerSlug}.`,
+    related_layers: meta.related_layers || []
   };
 });
 

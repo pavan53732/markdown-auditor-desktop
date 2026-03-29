@@ -4,6 +4,15 @@ All notable changes to this project should be documented in this file.
 
 This changelog establishes the current production-ready baseline for the app as it exists in this repository.
 
+## [1.9.0] - 2026-03-30
+
+### Added
+
+- **Taxonomy Deepening**: Enriched existing 32 layers with clearer, non-overlapping subcategories to resolve thematic ambiguity without adding top-level cognitive load.
+- **Taxonomy Benchmark Fixtures**: Added benchmark Markdown fixtures and a test suite (`taxonomyBenchmark.test.js`) to evaluate empirical taxonomy coverage and regression risks.
+- **Detector Metadata Enhancements**: Added `related_layers` cross-referencing and tightened trigger patterns for common weak themes (e.g. contradiction drift, functional missing steps).
+- **Taxonomy Coverage Helper**: Created `taxonomyCoverageHelper.js` to analyze the catalog for thin coverage and missing metadata fields.
+
 ## [1.8.0] - 2026-03-29
 
 ### Added

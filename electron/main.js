@@ -119,6 +119,16 @@ ipcMain.handle('history:clear', async () => {
   return historyService.clear();
 });
 
+// HISTORY UPDATE
+ipcMain.handle('history:update', async (event, { id, updates }) => {
+  return historyService.update(id, updates);
+});
+
+// HISTORY PRUNE
+ipcMain.handle('history:prune', async (event, maxEntries) => {
+  return historyService.prune(maxEntries);
+});
+
 // AI VALIDATION (lightweight test call)
 ipcMain.handle('api:validate', async (event, { baseURL, apiKey, model }) => {
   try {

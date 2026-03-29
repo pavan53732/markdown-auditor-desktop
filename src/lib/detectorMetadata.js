@@ -230,7 +230,7 @@ const rawMetadata = {
   // LAYER 20: Execution Path
   'L20-01': { name: 'unreachable execution path', sub: 'unreachable paths', trigger: 'Code block or branch that can never run.', evidence: 'Dead code.', fp: 'Safety fallbacks.', floor: 'medium' },
   'L20-02': { name: 'missing trigger', sub: 'branch omissions', trigger: 'Path exists but no event starts it.', evidence: 'Trigger gap.', fp: 'Manual start.', floor: 'high' },
-  'L20-03': { name: 'conflicting triggers', sub: 'branch omissions', trigger: 'Two triggers start same path with different params.', evidence: 'Conflict.', fp: 'Overloading.', floor: 'medium' },
+  'L20-03': { name: 'conflicting triggers', sub: 'branch omissions', trigger: 'Two triggers starts same path with different params.', evidence: 'Conflict.', fp: 'Overloading.', floor: 'medium' },
   'L20-04': { name: 'incomplete execution branch', sub: 'branch omissions', trigger: 'Path starts but doesn\'t handle "else" or "fail".', evidence: 'Missing branch.', fp: 'Happy-path only.', floor: 'high' },
   'L20-05': { name: 'dead-end workflow', sub: 'dead ends', trigger: 'User reaches state with no forward or back path.', evidence: 'Dead end.', fp: 'Completion state.', floor: 'critical' },
   'L20-06': { name: 'infinite loop risk', sub: 'rollback path gaps', trigger: 'A calls B, B calls A without exit.', evidence: 'The loop.', fp: 'Recursion.', floor: 'high' },
@@ -305,7 +305,7 @@ const rawMetadata = {
   'L27-05': { name: 'cognitive overload', sub: 'jargon overload', trigger: 'Presenting 50 options on one screen.', evidence: 'Density.', fp: 'Dashboard views.', floor: 'medium' },
   'L27-06': { name: 'missing feedback', sub: 'poor examples', trigger: 'Long action starts with no loading state.', evidence: 'Feedback gap.', fp: 'Fast actions.', floor: 'medium' },
   'L27-07': { name: 'error message quality', sub: 'accessibility/readability issues', trigger: '"An error occurred" (Error 0x01).', evidence: 'Vague error.', fp: 'System errors.', floor: 'medium' },
-  'L27-08': { name: 'onboarding gap', sub: 'poor examples', trigger: 'No "Getting Started" or sample data.', evidence: 'Onboarding gap.', fp: 'Advanced tools.', floor: 'low' },
+  'L27-08': { name: 'onboarding gap', sub: 'poor examples', trigger: 'No "Getting Started" or sample data.', evidence: 'onboarding gap', fp: 'Advanced tools.', floor: 'low' },
 
   // LAYER 28: Interoperability
   'L28-01': { name: 'protocol mismatch', sub: 'protocol mismatch', trigger: 'A uses REST, B expects GraphQL.', evidence: 'Mismatch.', fp: 'Gateways.', floor: 'high' },
@@ -428,7 +428,6 @@ export function normalizeSeverityForDetector(detectorId, severity) {
   if (!meta) return severity;
 
   const severityOrder = { critical: 3, high: 2, medium: 1, low: 0 };
-  const orderToName = ['low', 'medium', 'high', 'critical'];
   
   let val = severityOrder[severity?.toLowerCase()];
   if (val === undefined) val = 1; // Default to medium if unknown
@@ -623,6 +622,101 @@ export function resolveInitialCache(fileCache, legacyCacheString) {
 }
 
 /**
+ * Normalizes text for stable identity comparison.
+ */
+export const normalizeIdentityText = (text) => (text || '')
+  .replace(/\s+/g, ' ')
+  .trim()
+  .toLowerCase();
+
+/**
+ * Lightweight string hashing for stable keys.
+ */
+export const hashDescription = (text) => {
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    const char = text.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash).toString(36);
+};
+
+/**
+ * Generates a stable identity key for an issue.
+ */
+export const getIssueIdentity = (issue) => {
+  // Create unique key from detector ID, primary file, section, and line number
+  // If line_number is missing, use a stable description+evidence fingerprint as fallback
+  const detectorMatch = issue.description?.match(/\[L(\d+)-(\d+)\]/);
+  const detectorId = issue.detector_id || (detectorMatch ? `L${detectorMatch[1]}-${detectorMatch[2]}` : 'unknown');
+  const primaryFile = issue.files?.[0] || 'unknown';
+  const section = issue.section || 'no-section';
+  
+  if (issue.line_number) {
+    return `${detectorId}::${primaryFile}::${section}::${issue.line_number}`;
+  }
+  
+  // Stable fingerprint fallback
+  const description = normalizeIdentityText(issue.description);
+  const evidenceSnippet = normalizeIdentityText(issue.evidence).slice(0, 240);
+  const fingerprintSource = evidenceSnippet
+    ? `${description}::${evidenceSnippet}`
+    : description;
+
+  return `${detectorId}::${primaryFile}::${section}::fp:${hashDescription(fingerprintSource)}`;
+};
+
+/**
+ * Compares two audit result sets and returns a diff summary.
+ */
+export const compareAudits = (current, previous) => {
+  if (!previous || !current || !current.issues) return null;
+  
+  const currIssuesMap = new Map();
+  current.issues.forEach(i => currIssuesMap.set(getIssueIdentity(i), i));
+  
+  const prevIssuesMap = new Map();
+  (previous.issues || []).forEach(i => prevIssuesMap.set(getIssueIdentity(i), i));
+  
+  const newIssues = [];
+  const resolvedIssues = [];
+  const changedSeverity = [];
+  const unchanged = [];
+  
+  // New and changed
+  currIssuesMap.forEach((issue, id) => {
+    if (!prevIssuesMap.has(id)) {
+      newIssues.push({ ...issue, diffStatus: 'new' });
+    } else {
+      const prev = prevIssuesMap.get(id);
+      if (issue.severity !== prev.severity) {
+        changedSeverity.push({ ...issue, diffStatus: 'changed', prevSeverity: prev.severity });
+      } else {
+        unchanged.push({ ...issue, diffStatus: 'unchanged' });
+      }
+    }
+  });
+  
+  // Resolved
+  prevIssuesMap.forEach((issue, id) => {
+    if (!currIssuesMap.has(id)) {
+      resolvedIssues.push({ ...issue, diffStatus: 'resolved' });
+    }
+  });
+  
+  return {
+    new: newIssues,
+    resolved: resolvedIssues,
+    changed: changedSeverity,
+    unchanged,
+    totalNew: newIssues.length,
+    totalResolved: resolvedIssues.length,
+    totalChanged: changedSeverity.length
+  };
+};
+
+/**
  * Normalizes a loaded session by applying taxonomy backfilling and calculating diagnostics.
  */
 export function normalizeLoadedSession(session) {
@@ -648,12 +742,14 @@ export function normalizeLoadedSession(session) {
 /**
  * Builds a lightweight metadata object for the history index.
  */
-export function buildHistoryMetadata(results, files, config, domainProfileId) {
+export function buildHistoryMetadata(results, files, config, domainProfileId, sourceType = 'fresh_analysis') {
   if (!results) return null;
   
   return {
     timestamp: new Date().toISOString(),
     title: `Audit ${new Date().toLocaleString()}`,
+    note: '',
+    sourceType,
     fileCount: files?.length || 0,
     fileNames: files?.map(f => f.name) || [],
     issuesCount: {
@@ -663,6 +759,7 @@ export function buildHistoryMetadata(results, files, config, domainProfileId) {
       low: results.summary?.low || 0,
       total: results.summary?.total || 0
     },
+    rootCauseCount: results.root_causes?.length || 0,
     model: config?.model || 'unknown',
     profile: domainProfileId || 'auto'
   };

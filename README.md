@@ -28,7 +28,7 @@ The current build includes chunk-aware batching, deterministic post-processing, 
 - Severity reporting: `critical`, `high`, `medium`, `low`
 - Incremental analysis using SHA-256 file hashing and local cached results
 - Session diffing with `new`, `resolved`, and `changed` issue states
-- **Local Audit History**: Automatic file-backed persistence of past runs with a dedicated browsing UI
+- **Local Audit History Workbench**: Search, filter by source/model/profile, sort, label, and compare past audits in a local archive
 - Root-cause grouping in addition to the flat issue list
 - Detector traceability fields such as `detector_id`, `why_triggered`, and `escalation_reason`
 - Remediation guidance including `recommended_fix`, `fix_steps`, `estimated_effort`, and `verification_steps`
@@ -50,7 +50,7 @@ The current build includes chunk-aware batching, deterministic post-processing, 
 4. Validate the connection
 5. Drop one or more Markdown files into the upload area
 6. Run the audit
-7. Review results, diff against previous runs, browse local history, and export reports
+7. Review results, compare against history, manage your audit workbench, and export reports
 
 ## Configuration
 
@@ -305,7 +305,7 @@ Current packaged output:
 
 ## Release Readiness
 
-- **Current Version**: 1.5.0
+- **Current Version**: 1.8.0
 - **Verification Status**: Local verification performed via `npm run verify`
 - **Logic Status**: Verified 33/33 tests pass via `npm test`
 - **Packaging**: Local Windows packaging supported via `npm run dist`

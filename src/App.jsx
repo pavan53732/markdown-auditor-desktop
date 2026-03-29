@@ -20,7 +20,8 @@ import {
   buildSessionData,
   normalizeLoadedSession,
   resolveInitialCache,
-  buildHistoryMetadata
+  buildHistoryMetadata,
+  compareAudits
 } from './lib/detectorMetadata';
 
 const MAX_SAFE_TOKENS = 6000;
@@ -47,6 +48,7 @@ export default function App() {
   const [taxonomyDiagnostics, setTaxonomyDiagnostics] = useState(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyList, setHistoryList] = useState([]);
+  const [baselineEntry, setBaselineEntry] = useState(null); // { id, results, title }
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [contextWarning, setContextWarning] = useState(null);
   const [fileHashes, setFileHashes] = useState({});
@@ -385,43 +387,6 @@ export default function App() {
     });
   };
 
-  const normalizeIdentityText = (text) => (text || '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
-
-  const hashDescription = (text) => {
-    let hash = 0;
-    for (let i = 0; i < text.length; i++) {
-      const char = text.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32bit integer
-    }
-    return Math.abs(hash).toString(36);
-  };
-
-  const getIssueIdentity = (issue) => {
-    // Create unique key from detector ID, primary file, section, and line number
-    // If line_number is missing, use a stable description+evidence fingerprint as fallback
-    const detectorMatch = issue.description?.match(/\[L(\d+)-(\d+)\]/);
-    const detectorId = issue.detector_id || (detectorMatch ? `L${detectorMatch[1]}-${detectorMatch[2]}` : 'unknown');
-    const primaryFile = issue.files?.[0] || 'unknown';
-    const section = issue.section || 'no-section';
-    
-    if (issue.line_number) {
-      return `${detectorId}::${primaryFile}::${section}::${issue.line_number}`;
-    }
-    
-    // Stable fingerprint fallback
-    const description = normalizeIdentityText(issue.description);
-    const evidenceSnippet = normalizeIdentityText(issue.evidence).slice(0, 240);
-    const fingerprintSource = evidenceSnippet
-      ? `${description}::${evidenceSnippet}`
-      : description;
-
-    return `${detectorId}::${primaryFile}::${section}::fp:${hashDescription(fingerprintSource)}`;
-  };
-
   // Deduplication based on detector ID + file + section + line_number (or stable fallback fingerprint)
   const deduplicateIssues = (issues) => {
     const seen = new Map();
@@ -448,52 +413,6 @@ export default function App() {
     });
 
     return deduped;
-  };
-
-  const compareAudits = (current, previous) => {
-    if (!previous || !current) return null;
-    
-    const currIssuesMap = new Map();
-    current.issues.forEach(i => currIssuesMap.set(getIssueIdentity(i), i));
-    
-    const prevIssuesMap = new Map();
-    previous.issues.forEach(i => prevIssuesMap.set(getIssueIdentity(i), i));
-    
-    const newIssues = [];
-    const resolvedIssues = [];
-    const changedSeverity = [];
-    const unchanged = [];
-    
-    // New and changed
-    currIssuesMap.forEach((issue, id) => {
-      if (!prevIssuesMap.has(id)) {
-        newIssues.push({ ...issue, diffStatus: 'new' });
-      } else {
-        const prev = prevIssuesMap.get(id);
-        if (issue.severity !== prev.severity) {
-          changedSeverity.push({ ...issue, diffStatus: 'changed', prevSeverity: prev.severity });
-        } else {
-          unchanged.push({ ...issue, diffStatus: 'unchanged' });
-        }
-      }
-    });
-    
-    // Resolved
-    prevIssuesMap.forEach((issue, id) => {
-      if (!currIssuesMap.has(id)) {
-        resolvedIssues.push({ ...issue, diffStatus: 'resolved' });
-      }
-    });
-    
-    return {
-      new: newIssues,
-      resolved: resolvedIssues,
-      changed: changedSeverity,
-      unchanged,
-      totalNew: newIssues.length,
-      totalResolved: resolvedIssues.length,
-      totalChanged: changedSeverity.length
-    };
   };
 
   const handleAnalyze = async () => {
@@ -873,6 +792,53 @@ export default function App() {
     setHistoryList(updated);
   };
 
+  const handleUpdateHistoryEntry = async (id, updates) => {
+    await window.electronAPI.updateHistorySession(id, updates);
+    const updated = await window.electronAPI.listHistory();
+    setHistoryList(updated);
+    if (baselineEntry?.id === id) {
+      setBaselineEntry(prev => ({ ...prev, ...updates }));
+    }
+  };
+
+  const handleSelectBaseline = async (id) => {
+    if (!id) {
+      setBaselineEntry(null);
+      return;
+    }
+    const session = await window.electronAPI.readHistorySession(id);
+    if (session) {
+      const meta = historyList.find(e => e.id === id);
+      const normalized = normalizeLoadedSession({ results: session });
+      setBaselineEntry({ id, results: normalized.results, title: meta?.title || 'Selected Baseline' });
+    }
+  };
+
+  const handleCompareHistoryEntry = async (id) => {
+    const session = await window.electronAPI.readHistorySession(id);
+    if (!session) return;
+
+    const targetNormalized = normalizeLoadedSession({ results: session });
+    const targetMeta = historyList.find(e => e.id === id);
+    const targetTitle = targetMeta?.title || 'Selected Audit';
+
+    if (baselineEntry) {
+      // History-to-History comparison
+      setDiffSummary(compareAudits(targetNormalized.results, baselineEntry.results));
+      setContextWarning(`Comparing History: "${baselineEntry.title}" (Baseline) vs History: "${targetTitle}"`);
+    } else if (results) {
+      // Current-to-History comparison
+      setDiffSummary(compareAudits(results, targetNormalized.results));
+      setContextWarning(`Comparing Current Run vs History: "${targetTitle}"`);
+    } else {
+      alert('Please run an audit first or set a baseline from history to compare against.');
+      return;
+    }
+
+    setDiffMode(true);
+    setHistoryOpen(false);
+  };
+
   const handleOpenHistoryEntry = async (id) => {
     const session = await window.electronAPI.readHistorySession(id);
     if (session) {
@@ -884,6 +850,19 @@ export default function App() {
       setDiffMode(false);
       setHistoryOpen(false);
     }
+  };
+
+  const saveToHistory = async () => {
+    if (!results) return;
+    const historyMetadata = buildHistoryMetadata(results, files, config, domainProfile, 'imported_session');
+    await window.electronAPI.addHistorySession({ metadata: historyMetadata, session: results });
+    
+    // Prune history to keep only last 50 entries
+    await window.electronAPI.pruneHistory(50);
+    
+    const updatedHistory = await window.electronAPI.listHistory();
+    setHistoryList(updatedHistory);
+    alert('Session saved to local history.');
   };
 
   return (
@@ -908,6 +887,10 @@ export default function App() {
         onOpen={handleOpenHistoryEntry}
         onDelete={handleDeleteHistory}
         onClear={handleClearHistory}
+        onUpdate={handleUpdateHistoryEntry}
+        onCompare={handleCompareHistoryEntry}
+        onSelectBaseline={handleSelectBaseline}
+        baselineId={baselineEntry?.id}
         onCancel={() => setHistoryOpen(false)}
       />
 
@@ -998,9 +981,16 @@ export default function App() {
                 <button
                   onClick={saveSession}
                   className="px-3 py-2 bg-[#1F2937] hover:bg-[#283548] border border-[#374151] rounded-lg text-sm transition-colors"
-                  title="Save session"
+                  title="Export session to JSON file"
                 >
-                  💾 Save
+                  💾 Export JSON
+                </button>
+                <button
+                  onClick={saveToHistory}
+                  className="px-3 py-2 bg-[#1F2937] hover:bg-[#283548] border border-[#374151] rounded-lg text-sm transition-colors"
+                  title="Save session to local history workbench"
+                >
+                  📜 Save to History
                 </button>
                 <div className="relative">
                   <button
@@ -1033,6 +1023,24 @@ export default function App() {
               active={diffMode} 
               onToggle={setDiffMode} 
             />
+
+            {diffMode && contextWarning && (
+              <div className="mb-6 px-4 py-2 bg-[#1E1B4B] border border-[#4338CA] rounded-lg flex items-center justify-between">
+                <p className="text-xs text-[#818CF8] font-medium">
+                  <span className="font-bold uppercase tracking-wider mr-2">Mode:</span> {contextWarning}
+                </p>
+                <button 
+                  onClick={() => {
+                    setDiffMode(false);
+                    setDiffSummary(null);
+                    setContextWarning(null);
+                  }}
+                  className="text-[10px] font-bold text-[#818CF8] hover:underline uppercase"
+                >
+                  Exit Comparison
+                </button>
+              </div>
+            )}
 
             {taxonomyDiagnostics && (
               <div className="mb-6 p-3 bg-[#111827] border border-[#374151] rounded-xl">

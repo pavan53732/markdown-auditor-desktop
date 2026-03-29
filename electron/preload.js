@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   readHistorySession: (id) => ipcRenderer.invoke('history:read', id),
   addHistorySession: (payload) => ipcRenderer.invoke('history:add', payload),
   deleteHistorySession: (id) => ipcRenderer.invoke('history:delete', id),
+  updateHistorySession: (id, updates) => ipcRenderer.invoke('history:update', { id, updates }),
+  pruneHistory: (maxEntries) => ipcRenderer.invoke('history:prune', maxEntries),
   clearHistory: () => ipcRenderer.invoke('history:clear'),
   validateAPI: (payload) => ipcRenderer.invoke('api:validate', payload),
   callAPI: (payload) => ipcRenderer.invoke('api:call', payload)

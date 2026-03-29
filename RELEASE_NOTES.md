@@ -1,5 +1,26 @@
 # Release Notes
 
+## v1.8.0
+
+Release date: 2026-03-29
+
+This release evolves the local history feature into a full **Audit History Workbench**, providing powerful tools for power users to manage and analyze their audit archive.
+
+### Highlights
+
+- **Searchable History**: Instantly find past audits by title, file names, or your own custom notes.
+- **Advanced Workbench UI**: A new, more powerful history interface with filtering by AI model, domain profile, and run source.
+- **Cross-Session Comparison**: Pick any past run from your history and immediately compare it against your current audit results to track progress.
+- **Custom Labels & Notes**: Give your audits meaningful names like "Baseline Before Refactor" and add persistent notes for future reference.
+- **Smart Retention**: Automatically keeps your most recent 50 audits, pruning the oldest to keep your local workspace clean.
+- **Import into History**: Manually loaded session JSON files can now be saved into your local history archive with a single click.
+
+### Technical Improvements
+
+- Expanded the history metadata schema to include source types and note persistence.
+- Refactored history UI state into a cleaner, more modular structure.
+- Enhanced the history service with metadata update and auto-pruning capabilities.
+
 ## v1.7.0
 
 Release date: 2026-03-29

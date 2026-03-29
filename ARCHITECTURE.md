@@ -16,6 +16,7 @@ The current architecture supports:
 - deterministic runtime normalization
 - incremental cache reuse for unchanged files
 - session diffing and root-cause grouping
+- **Audit History Workbench** for local session management
 - portable Windows packaging
 
 ## Runtime Architecture
@@ -26,6 +27,8 @@ Electron Main Process
 - config persistence
 - provider validation
 - AI API execution via OpenAI SDK
+- History Service (index and session management)
+- Cache Service (file-backed storage)
 
 Renderer Process (React)
 - file intake and local UI state
@@ -33,6 +36,7 @@ Renderer Process (React)
 - taxonomy orchestration (profiles, bundles, subcategories, detectors)
 - taxonomy-driven normalization: metadata backfilling and severity clamping
 - result rendering with advanced subcategory filtering and grouping
+- History Workbench UI (search, filter, sort, edit, compare)
 - export generation (JSON, Markdown, CSV)
 
 Provider Layer
@@ -52,7 +56,9 @@ Provider Layer
 |-- postcss.config.js
 |-- electron/
 |   |-- main.js
-|   `-- preload.js
+|   |-- preload.js
+|   |-- cacheService.js
+|   `-- historyService.js
 |-- src/
 |   |-- App.jsx
 |   |-- main.jsx
@@ -62,6 +68,7 @@ Provider Layer
 |   |   |-- AnalyzeButton.jsx
 |   |   |-- DiffSummaryPanel.jsx
 |   |   |-- FileDropZone.jsx
+|   |   |-- HistoryModal.jsx
 |   |   |-- IssueCard.jsx
 |   |   |-- IssueList.jsx
 |   |   |-- LayerFilterBar.jsx
@@ -100,17 +107,19 @@ The system supports a local verification workflow:
 
 - creating the application window
 - reading and writing config in `%APPDATA%\MarkdownAuditor\config.json`
+- managing the `CacheService` for analysis reuse
+- managing the `HistoryService` for audit persistence
 - validating provider connectivity
 - sending chat-completions requests with timeout and retry settings
 
 ### Electron Preload
 
-`electron/preload.js` exposes a narrow bridge:
+`electron/preload.js` exposes a bridge for:
 
-- `readConfig`
-- `writeConfig`
-- `validateAPI`
-- `callAPI`
+- config persistence (`readConfig`, `writeConfig`)
+- cache management (`readCache`, `writeCache`, `clearCache`, `getCacheStats`)
+- history management (`listHistory`, `readHistorySession`, `addHistorySession`, `updateHistorySession`, `deleteHistorySession`, `clearHistory`, `pruneHistory`)
+- API execution (`validateAPI`, `callAPI`)
 
 ### React Renderer
 
@@ -122,6 +131,7 @@ The system supports a local verification workflow:
 - API request orchestration
 - JSON repair and response validation
 - merge, deduplication, escalation, and cross-layer validation
+- history management and comparison workflows
 - diffing and root-cause-aware grouping
 - export and session save/load
 
@@ -131,19 +141,20 @@ The system supports a local verification workflow:
 - all 256 detector definitions
 - detector prompt generation helpers
 - known-detector validation helpers
-- pure helpers for export and session data shaping (`buildExportData`, `buildSessionData`, `normalizeLoadedSession`)
+- pure helpers for export and session data shaping (`buildExportData`, `buildSessionData`, `normalizeLoadedSession`, `resolveInitialCache`, `buildHistoryMetadata`)
 
 ## Key UI Components
 
 | Component | Responsibility |
 |----------|----------------|
-| `TopBar.jsx` | title, provider status, settings access |
-| `SettingsModal.jsx` | provider config, presets, timeout/retry/token budget |
+| `TopBar.jsx` | title, provider status, history access, settings access |
+| `SettingsModal.jsx` | provider config, presets, cache management, token budget |
+| `HistoryModal.jsx` | history browser workbench: search, filter, sort, edit, compare |
 | `FileDropZone.jsx` | drag-and-drop and file selection |
 | `AnalyzeButton.jsx` | audit trigger state |
 | `ProgressPanel.jsx` | in-progress audit status |
 | `SummaryDashboard.jsx` | severity summary cards |
-| `DiffSummaryPanel.jsx` | comparison with previous audit |
+| `DiffSummaryPanel.jsx` | comparison between two audits |
 | `LayerFilterBar.jsx` | category/layer filtering |
 | `IssueList.jsx` | flat and grouped issue views |
 | `IssueCard.jsx` | issue detail rendering including traceability and remediation |
@@ -154,6 +165,7 @@ The system supports a local verification workflow:
 App
 |-- TopBar
 |-- SettingsModal
+|-- HistoryModal
 |-- FileDropZone
 |-- AnalyzeButton
 |-- ProgressPanel
@@ -179,208 +191,19 @@ App
 | `files` | loaded markdown file objects |
 | `analyzing` | analysis in progress flag |
 | `results` | current audit result payload |
-| `error` | user-visible error message |
+| `error` | error string if API or parsing fails |
 | `domainProfile` | currently selected evaluation domain profile |
 | `activeLayer` | current layer filter |
+| `activeSubcategory` | current subcategory filter |
 | `searchQuery` | free-text issue search |
-| `groupingMode` | flat / file / severity / layer / root_cause |
-| `diffMode` | whether diff-focused issue mode is active |
-| `previousResults` | previous in-memory audit for comparison |
+| `groupingMode` | flat / file / severity / layer / subcategory / root_cause |
+| `diffMode` | whether comparison/diff mode is active |
+| `previousResults` | prior results used for comparison |
 | `diffSummary` | computed comparison summary |
-| `exportMenuOpen` | export menu visibility |
-| `contextWarning` | token-budget warning for large inputs |
+| `historyOpen` | history workbench visibility |
+| `historyList` | metadata index of past audits |
 | `fileHashes` | current per-file SHA-256 hashes |
 | `cachedResults` | incremental cache keyed by file hash |
-| `analysisStats` | reused vs reanalyzed counts |
-
-### Derived State
-
-| Variable | Description |
-|----------|-------------|
-| `providerConfigured` | all main provider fields present |
-| `canAnalyze` | enough configuration exists to send analysis requests |
-| `filteredIssues` | search-filtered issue list |
-
-## IPC Surface
-
-| Channel | Direction | Purpose |
-|---------|-----------|---------|
-| `config:read` | renderer -> main | load provider config |
-| `config:write` | renderer -> main | persist provider config |
-| `api:validate` | renderer -> main | lightweight provider connectivity test |
-| `api:call` | renderer -> main | execute the full audit request |
-
-## Analysis Flow
-
-### 1. File Intake
-
-- User drops or selects `.md` / `.markdown` files
-- Renderer stores `{ name, content }`
-- SHA-256 hash is computed for each file
-
-### 2. Incremental Reuse
-
-- Hashes are checked against the file-backed analysis cache
-- Unchanged files reuse prior per-file results
-- Changed or uncached files go through analysis
-
-### 3. Chunking and Batching
-
-- Oversized files are split into chunks
-- Chunks are batched under a token budget
-- Requests are sent sequentially per batch
-
-### 4. Parse and Validate
-
-- Markdown fences are stripped if present
-- malformed JSON gets repaired when possible
-- top-level and per-issue fields are validated before use
-- known detector IDs are checked against the structured detector catalog
-- unknown detector IDs currently generate warnings instead of hard validation failures
-
-### 5. Merge and Normalize
-
-- batch and cached results are merged
-- issue identity is normalized with a shared stable key
-- deduplication runs on the merged result set
-- deterministic escalation rules run after deduplication
-- cross-layer validation updates issue metadata
-- severity counts are recalculated
-
-### 6. Render and Export
-
-- results can be searched, filtered, diffed, and grouped
-- exports are available in JSON, Markdown, and CSV
-- sessions can be saved to disk and reloaded
-
-## Stable Identity and Diffing
-
-The app uses a shared issue identity strategy for both deduplication and audit comparison.
-
-Identity is based on:
-
-- `detector_id` or detector parsed from description
-- primary file
-- section
-- line number when present
-- stable description/evidence fingerprint fallback when line number is missing
-
-This keeps dedupe and diffing aligned instead of using separate matching heuristics.
-
-## Detector Taxonomy Flow
-
-The structured detector system currently flows like this:
-
-1. `rawMetadata` in `src/lib/detectorMetadata.js` defines the 256 detector entries
-2. `DETECTOR_METADATA` normalizes those entries into the runtime catalog
-3. `buildDetectorPrompt()` renders the detector catalog for the model
-4. `buildSystemPrompt()` combines:
-   - domain profile guidance
-   - cross-layer bundles
-   - detector catalog
-   - output schema and reasoning instructions
-5. `validateResults()` enforces detector-aware consistency for known detector IDs
-
-This makes the taxonomy code-defined rather than primarily embedded as static prompt text.
-
-## Escalation Rules
-
-Runtime escalation currently implements four deterministic rules:
-
-1. 3 or more medium issues in the same section -> high
-2. security + performance on the same component -> critical
-3. completeness + functional missing-step issues -> high
-4. contradiction + intent conflict in the same section -> high
-
-Escalation rationale is stored in `escalation_reason`.
-
-## Result Schema
-
-### Top-Level Structure
-
-```json
-{
-  "summary": {},
-  "issues": [],
-  "root_causes": []
-}
-```
-
-### Issue Fields
-
-Important issue fields include:
-
-- `severity`
-- `category`
-- `subcategory`
-- `detector_id`
-- `detector_name`
-- `layer`
-- `files`
-- `section`
-- `line_number`
-- `description`
-- `evidence`
-- `why_triggered`
-- `escalation_reason`
-- `confidence`
-- `impact_score`
-- `fix_difficulty`
-- `estimated_effort`
-- `related_issues`
-- `root_cause_id`
-- `recommended_fix`
-- `fix_steps`
-- `verification_steps`
-- `tags`
-- `references`
-
-### Root Cause Fields
-
-- `id`
-- `title`
-- `description`
-- `impact`
-- `child_issues`
-
-### Example Issue Object
-
-```json
-{
-  "id": "1",
-  "severity": "critical",
-  "category": "architectural",
-  "subcategory": "missing components",
-  "detector_id": "L8-02",
-  "detector_name": "missing component",
-  "layer": "architectural",
-  "files": ["file.md"],
-  "section": "Architecture",
-  "line_number": 42,
-  "description": "[L8-02] Missing component: API gateway not defined in architecture",
-  "evidence": "Direct quote from the documentation",
-  "why_triggered": "Traffic routing is described but the gateway component is never defined.",
-  "escalation_reason": "Escalated to critical because the missing component creates a high-risk ambiguity.",
-  "confidence": 0.95,
-  "impact_score": 8,
-  "fix_difficulty": "moderate",
-  "estimated_effort": "2-4 hours",
-  "related_issues": ["2"],
-  "root_cause_id": "RC-01",
-  "recommended_fix": "Add a dedicated API gateway section.",
-  "fix_steps": [
-    "Define the gateway component",
-    "Document its responsibilities",
-    "Update the architecture diagram"
-  ],
-  "verification_steps": [
-    "Verify the gateway appears in diagrams",
-    "Verify responsibilities are documented"
-  ],
-  "tags": ["api", "architecture"],
-  "references": ["https://example.com/spec"]
-}
-```
 
 ## Persistence
 
@@ -396,13 +219,14 @@ Important issue fields include:
 - **Resilience**: Uses atomic writes (write-to-temp then rename) to prevent file corruption.
 - **Fault Tolerance**: If the cache file is missing or corrupted, the system falls back to an empty cache safely without interrupting analysis.
 
-### Local Audit History
+### Local Audit History (History Workbench)
 
 - stored under `history/` in the app's local Electron user-data directory
 - `index.json`: lightweight metadata index for the history browser
 - `sessions/*.json`: full session result payloads keyed by unique UUIDs
 - sessions are automatically saved after every successful analysis run
-- provides a dedicated internal browser for reopening and managing past runs
+- **Workbench Features**: Search, filter, sort, editable labels/notes, and cross-session comparison.
+- **Retention**: Automatically maintains the most recent 50 entries.
 
 ### Saved Sessions
 
@@ -434,38 +258,9 @@ Packaging notes:
 - provider config is stored under `%APPDATA%\MarkdownAuditor\config.json`
 - no general filesystem access is exposed to the renderer
 
-## Error Handling Overview
-
-| Situation | Current Handling |
-|----------|------------------|
-| missing config | analyze button remains disabled |
-| provider validation failure | inline error shown in settings modal |
-| API failure | user-visible analysis error message |
-| malformed AI JSON | repair attempt first, then hard error |
-| invalid schema | validation failure message |
-| unsupported file type | silently ignored by the drop zone |
-
-## Dependencies
-
-### Runtime
-
-- `openai`
-
-### Development
-
-- `electron`
-- `electron-builder`
-- `react`
-- `react-dom`
-- `vite`
-- `@vitejs/plugin-react`
-- `tailwindcss`
-- `postcss`
-- `autoprefixer`
-
 ## Known Constraints
 
-- incremental cache currently uses `localStorage`, which may not scale well for very large projects
+- file-backed cache improves reliability, but very large cache files (>50MB) may still impact initial load performance
 - chunk overlap improves context preservation, but chunk-derived line ranges should be treated as best effort when overlap is involved
 - full diff accuracy still depends on stable model output across repeated runs
 - unknown detector IDs currently warn instead of failing hard during validation

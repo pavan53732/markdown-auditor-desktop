@@ -27,7 +27,8 @@ This document tracks the major product-level enhancements currently implemented 
 - SHA-256 file hashing for reuse detection
 - local file-backed cached reuse of unchanged file results
 - automatic migration from legacy `localStorage` cache
-- **local audit history**: automatic persistence of past runs with a dedicated browser
+- **local audit history workbench**: searchable, editable, and filterable archive of past runs
+- **cross-session comparison**: compare any history entry against current results
 - per-run reused vs reanalyzed counts
 - session diffing against the previous in-memory audit
 - `new`, `resolved`, and `changed` issue states
@@ -51,7 +52,9 @@ This document tracks the major product-level enhancements currently implemented 
 - domain profile selector in the pre-analysis UI
 - layer and subcategory filtering
 - grouping by file, severity, layer, subcategory, and root cause
-- **history browser modal** for managing past audits
+- **audit history workbench modal** with advanced search, filter, and sort
+- **editable audit labels and persistent notes**
+- **import support** for saving manual sessions into local history
 - session diff summary panel
 - save/load session workflow
 - JSON / Markdown / CSV export
@@ -66,7 +69,7 @@ This document tracks the major product-level enhancements currently implemented 
 ### Packaging
 
 - reproducible Windows portable build via `electron-builder`
-- current packaged output: `dist-electron-v4\MarkdownAuditor-portable.exe`
+- output path: `dist-electron-v4\MarkdownAuditor-portable.exe`
 
 ## Known Constraints
 

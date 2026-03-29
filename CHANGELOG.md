@@ -4,6 +4,27 @@ All notable changes to this project should be documented in this file.
 
 This changelog establishes the current production-ready baseline for the app as it exists in this repository.
 
+## [1.8.0] - 2026-03-29
+
+### Added
+
+- **Audit History Workbench**: Transformed the basic history list into a searchable, filterable, and editable local archive.
+- **Comparison Workflows**: Integrated cross-session comparison allowing users to compare past history entries against the current run.
+- **Enhanced History UI**: Added real-time search (by title, notes, files) and advanced filtering (by model, profile, source).
+- **Editable Labels & Notes**: Users can now customize audit titles and add persistent notes to any history entry.
+- **Import into History**: Added support for importing manually loaded session JSON files into the local history archive.
+- **Automatic Retention**: Implemented a 50-entry history pruning policy to manage local storage footprint.
+- **History Metadata Polish**: Enriched index with source type, custom notes, and root-cause count metadata.
+
+### Changed
+
+- Updated `HistoryModal` with a full-featured management toolbar.
+- Standardized `buildHistoryMetadata` to support richer workbench features.
+
+### Fixed
+
+- Resolved UI layout inconsistencies in the history entry list.
+
 ## [1.7.0] - 2026-03-29
 
 ### Added

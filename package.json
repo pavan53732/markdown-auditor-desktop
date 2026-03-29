@@ -1,7 +1,8 @@
 {
   "name": "markdown-intelligence-auditor",
-  "version": "1.5.0",
+  "version": "1.8.0",
   "description": "Markdown Document Intelligence Auditor - Windows Desktop App",
+
   "author": "Prem V",
   "main": "electron/main.js",
   "scripts": {

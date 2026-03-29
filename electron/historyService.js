@@ -113,6 +113,62 @@ class HistoryService {
   }
 
   /**
+   * Updates an existing history entry's metadata in the index.
+   */
+  update(id, updates) {
+    try {
+      let index = this.list();
+      const entryIdx = index.findIndex(e => e.id === id);
+      
+      if (entryIdx === -1) {
+        throw new Error(`Entry ${id} not found in index`);
+      }
+
+      index[entryIdx] = { ...index[entryIdx], ...updates };
+      
+      const tempIndexPath = `${this.indexPath}.tmp`;
+      fs.writeFileSync(tempIndexPath, JSON.stringify(index, null, 2), 'utf-8');
+      fs.renameSync(tempIndexPath, this.indexPath);
+
+      return { success: true };
+    } catch (err) {
+      console.error(`[HistoryService] Failed to update history entry ${id}:`, err.message);
+      return { success: false, error: err.message };
+    }
+  }
+
+  /**
+   * Prunes history to keep only the most recent N entries.
+   */
+  prune(maxEntries) {
+    try {
+      let index = this.list();
+      if (index.length <= maxEntries) return { success: true, pruned: 0 };
+
+      const toKeep = index.slice(0, maxEntries);
+      const toDelete = index.slice(maxEntries);
+
+      // 1. Delete session files for entries being pruned
+      for (const entry of toDelete) {
+        const sessionPath = path.join(this.sessionsDir, `${entry.id}.json`);
+        if (fs.existsSync(sessionPath)) {
+          fs.unlinkSync(sessionPath);
+        }
+      }
+
+      // 2. Update index
+      const tempIndexPath = `${this.indexPath}.tmp`;
+      fs.writeFileSync(tempIndexPath, JSON.stringify(toKeep, null, 2), 'utf-8');
+      fs.renameSync(tempIndexPath, this.indexPath);
+
+      return { success: true, pruned: toDelete.length };
+    } catch (err) {
+      console.error(`[HistoryService] Failed to prune history:`, err.message);
+      return { success: false, error: err.message };
+    }
+  }
+
+  /**
    * Clears all history.
    */
   clear() {

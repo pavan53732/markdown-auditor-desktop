@@ -2,8 +2,12 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const OpenAI = require('openai');
+const CacheService = require('./cacheService');
+const HistoryService = require('./historyService');
 
 let mainWindow;
+let cacheService;
+let historyService;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -36,6 +40,22 @@ function getConfigPath() {
   );
 }
 
+function getCachePath() {
+  return path.join(
+    app.getPath('appData'),
+    'MarkdownAuditor',
+    'analysis_cache.json'
+  );
+}
+
+function getHistoryDir() {
+  return path.join(
+    app.getPath('appData'),
+    'MarkdownAuditor',
+    'history'
+  );
+}
+
 // CONFIG READ
 ipcMain.handle('config:read', async () => {
   try {
@@ -52,6 +72,51 @@ ipcMain.handle('config:write', async (event, data) => {
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(getConfigPath(), JSON.stringify(data, null, 2), 'utf-8');
   return { success: true };
+});
+
+// CACHE READ
+ipcMain.handle('cache:read', async () => {
+  return cacheService.read();
+});
+
+// CACHE WRITE
+ipcMain.handle('cache:write', async (event, data) => {
+  return cacheService.write(data);
+});
+
+// CACHE CLEAR
+ipcMain.handle('cache:clear', async () => {
+  return cacheService.clear();
+});
+
+// CACHE STATS
+ipcMain.handle('cache:stats', async () => {
+  return cacheService.getStats();
+});
+
+// HISTORY LIST
+ipcMain.handle('history:list', async () => {
+  return historyService.list();
+});
+
+// HISTORY READ
+ipcMain.handle('history:read', async (event, id) => {
+  return historyService.readSession(id);
+});
+
+// HISTORY ADD
+ipcMain.handle('history:add', async (event, { metadata, session }) => {
+  return historyService.add(metadata, session);
+});
+
+// HISTORY DELETE
+ipcMain.handle('history:delete', async (event, id) => {
+  return historyService.delete(id);
+});
+
+// HISTORY CLEAR
+ipcMain.handle('history:clear', async () => {
+  return historyService.clear();
 });
 
 // AI VALIDATION (lightweight test call)
@@ -101,7 +166,11 @@ ipcMain.handle('api:call', async (event, { baseURL, apiKey, model, systemPrompt,
   }
 });
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  cacheService = new CacheService(getCachePath());
+  historyService = new HistoryService(getHistoryDir());
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   app.quit();

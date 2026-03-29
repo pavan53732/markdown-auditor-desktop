@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function SettingsModal({ open, config, onSave, onCancel }) {
+export default function SettingsModal({ open, config, onSave, onCancel, onClearCache }) {
   const [baseURL, setBaseURL] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState('');
@@ -10,6 +10,7 @@ export default function SettingsModal({ open, config, onSave, onCancel }) {
   const [showKey, setShowKey] = useState(false);
   const [validating, setValidating] = useState(false);
   const [validationResult, setValidationResult] = useState(null);
+  const [cacheStats, setCacheStats] = useState(null);
 
   const presets = [
     { name: 'OpenAI', url: 'https://api.openai.com/v1', model: 'gpt-4o' },
@@ -30,6 +31,9 @@ export default function SettingsModal({ open, config, onSave, onCancel }) {
       setShowKey(false);
       setValidating(false);
       setValidationResult(null);
+      
+      // Load cache stats
+      window.electronAPI.getCacheStats().then(setCacheStats);
     }
   }, [open, config]);
 
@@ -50,6 +54,14 @@ export default function SettingsModal({ open, config, onSave, onCancel }) {
 
     setValidationResult(result);
     setValidating(false);
+  };
+
+  const handleClearCache = async () => {
+    if (confirm('Are you sure you want to clear the analysis cache? Unchanged files will need to be re-analyzed.')) {
+      await onClearCache();
+      const stats = await window.electronAPI.getCacheStats();
+      setCacheStats(stats);
+    }
   };
 
   const handleSave = () => {
@@ -184,6 +196,27 @@ export default function SettingsModal({ open, config, onSave, onCancel }) {
               <p className="mt-1 text-[10px] text-[#6B7280]">
                 Stop analysis if estimated tokens exceed this value
               </p>
+            </div>
+          </div>
+
+          {/* Cache Management */}
+          <div className="pt-2 border-t border-[#374151] space-y-4">
+            <h3 className="text-xs font-bold text-[#6B7280] uppercase tracking-widest">Cache Management</h3>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-[#F9FAFB]">Analysis Cache</p>
+                <p className="text-xs text-[#9CA3AF]">
+                  {cacheStats?.exists 
+                    ? `${cacheStats.entryCount} items stored locally`
+                    : 'No cache file found'}
+                </p>
+              </div>
+              <button
+                onClick={handleClearCache}
+                className="px-3 py-1.5 bg-[#3B1111] hover:bg-[#7F1D1D] text-[#F87171] border border-[#A32D2D] rounded-lg text-xs transition-colors"
+              >
+                Clear Cache
+              </button>
             </div>
           </div>
 

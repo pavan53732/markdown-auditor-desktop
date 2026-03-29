@@ -8,6 +8,7 @@ import SummaryDashboard from './components/SummaryDashboard';
 import LayerFilterBar from './components/LayerFilterBar';
 import IssueList from './components/IssueList';
 import DiffSummaryPanel from './components/DiffSummaryPanel';
+import HistoryModal from './components/HistoryModal';
 import { buildSystemPrompt } from './lib/systemPrompt';
 import { repairJSON, validateResults } from './lib/jsonRepair';
 import { DOMAIN_PROFILES } from './lib/domainProfiles';
@@ -17,7 +18,9 @@ import {
   createInitialDiagnostics,
   buildExportData,
   buildSessionData,
-  normalizeLoadedSession
+  normalizeLoadedSession,
+  resolveInitialCache,
+  buildHistoryMetadata
 } from './lib/detectorMetadata';
 
 const MAX_SAFE_TOKENS = 6000;
@@ -36,12 +39,14 @@ export default function App() {
   const [activeLayer, setActiveLayer] = useState('all');
   const [activeSubcategory, setActiveSubcategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [groupingMode, setGroupingMode] = useState('flat'); // flat, file, severity, layer, root_cause
+  const [groupingMode, setGroupingMode] = useState('flat'); // flat, file, severity, layer, subcategory, root_cause
   const [diffMode, setDiffMode] = useState(false);
   const [domainProfile, setDomainProfile] = useState('auto');
   const [previousResults, setPreviousResults] = useState(null);
   const [diffSummary, setDiffSummary] = useState(null);
   const [taxonomyDiagnostics, setTaxonomyDiagnostics] = useState(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyList, setHistoryList] = useState([]);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [contextWarning, setContextWarning] = useState(null);
   const [fileHashes, setFileHashes] = useState({});
@@ -54,21 +59,36 @@ export default function App() {
       setConfigLoaded(true);
     });
     
-    // Load cached results from localStorage for persistence
-    const savedCache = localStorage.getItem('audit_cache');
-    if (savedCache) {
-      try {
-        setCachedResults(JSON.parse(savedCache));
-      } catch (e) {
-        console.error('Failed to load audit cache', e);
+    // Migration logic: Load from file first, fallback to localStorage if file is empty
+    window.electronAPI.readCache().then((fileCache) => {
+      const legacyCacheString = localStorage.getItem('audit_cache');
+      const { cache, shouldMigrate } = resolveInitialCache(fileCache, legacyCacheString);
+      
+      setCachedResults(cache);
+      
+      if (shouldMigrate) {
+        console.log('[Cache] Migrating legacy localStorage cache to file storage');
+        window.electronAPI.writeCache(cache);
+      } else if (Object.keys(cache).length > 0) {
+        console.log('[Cache] Loaded from file-backed store');
       }
-    }
+    });
+
+    // Load history list
+    window.electronAPI.listHistory().then(setHistoryList);
   }, []);
 
   const saveCache = useCallback((newCache) => {
     setCachedResults(newCache);
-    localStorage.setItem('audit_cache', JSON.stringify(newCache));
+    window.electronAPI.writeCache(newCache);
   }, []);
+
+  const handleClearCache = async () => {
+    await window.electronAPI.clearCache();
+    localStorage.removeItem('audit_cache');
+    setCachedResults({});
+    console.log('[Cache] Analysis cache cleared');
+  };
 
   const calculateHash = async (text) => {
     const msgUint8 = new TextEncoder().encode(text);
@@ -117,28 +137,20 @@ export default function App() {
   const splitOversizedFile = useCallback((file, maxTokens) => {
     const fileTokens = Math.ceil(file.content.length / CHARS_PER_TOKEN);
     const baseFile = {
-      ...file,
-      sourceName: file.name
+      name: file.name,
+      path: file.path,
+      size: file.size,
+      lastModified: file.lastModified
     };
 
     if (fileTokens <= maxTokens) {
       return [{
         ...baseFile,
+        content: file.content,
         chunkIndex: 1,
         chunkCount: 1,
         lineStart: 1,
         lineEnd: Math.max(1, file.content.split('\n').length),
-        isChunked: false
-      }];
-    }
-
-    if (!file.content) {
-      return [{
-        ...baseFile,
-        chunkIndex: 1,
-        chunkCount: 1,
-        lineStart: 1,
-        lineEnd: 1,
         isChunked: false
       }];
     }
@@ -188,22 +200,21 @@ export default function App() {
     const chunkCount = rawChunks.length;
     return rawChunks.map((chunk, index) => ({
       ...chunk,
-      name: `${file.name} [chunk ${index + 1}/${chunkCount}, lines ${chunk.lineStart}-${chunk.lineEnd}]`,
       chunkIndex: index + 1,
       chunkCount,
       isChunked: true
     }));
   }, []);
 
-  const batchFiles = useCallback((fileList) => {
+  const batchFiles = (fileList) => {
     const availableTokens = getAvailableTokens();
-    const preparedFiles = fileList.flatMap((file) => splitOversizedFile(file, availableTokens));
-    
     const batches = [];
     let currentBatch = [];
     let currentTokens = 0;
-    
-    for (const file of preparedFiles) {
+
+    const flattenedFiles = fileList.flatMap(f => splitOversizedFile(f, availableTokens));
+
+    flattenedFiles.forEach((file) => {
       const fileTokens = Math.ceil(file.content.length / CHARS_PER_TOKEN);
       
       if (currentTokens + fileTokens > availableTokens && currentBatch.length > 0) {
@@ -214,18 +225,15 @@ export default function App() {
         currentBatch.push(file);
         currentTokens += fileTokens;
       }
-    }
-    
-    if (currentBatch.length > 0) {
-      batches.push(currentBatch);
-    }
-    
+    });
+
+    if (currentBatch.length > 0) batches.push(currentBatch);
     return batches;
-  }, [getAvailableTokens, splitOversizedFile]);
+  };
 
   const analyzeBatch = async (batch, batchIndex, totalBatches) => {
     const userMessage = batch
-      .map((f) => `=== FILE: ${f.name} ===\n\n${f.content}\n\n${'─'.repeat(60)}\n`)
+      .map((f) => `=== FILE: ${f.name}${f.isChunked ? ` (Chunk ${f.chunkIndex}/${f.chunkCount})` : ''} ===\n\n${f.content}\n\n${'─'.repeat(60)}\n`)
       .join('');
 
     const response = await window.electronAPI.callAPI({
@@ -265,19 +273,48 @@ export default function App() {
     };
   };
 
-  // Post-merge severity escalation rules (applied across all batches)
+  const mergeResults = (batchResults) => {
+    const merged = {
+      summary: { total: 0, critical: 0, high: 0, medium: 0, low: 0, files_analyzed: 0 },
+      issues: [],
+      root_causes: []
+    };
+
+    const seenFiles = new Set();
+
+    batchResults.forEach((res) => {
+      merged.issues = [...merged.issues, ...(res.issues || [])];
+      merged.root_causes = [...merged.root_causes, ...(res.root_causes || [])];
+      res._sourceFiles?.forEach(f => seenFiles.add(f));
+    });
+
+    merged.summary.files_analyzed = seenFiles.size;
+    merged.issues = deduplicateIssues(merged.issues);
+    applyPostMergeEscalation(merged.issues);
+    
+    // Recalculate summary counts after merge/dedupe/escalation
+    merged.summary.total = merged.issues.length;
+    merged.summary.critical = merged.issues.filter(i => i.severity === 'critical').length;
+    merged.summary.high = merged.issues.filter(i => i.severity === 'high').length;
+    merged.summary.medium = merged.issues.filter(i => i.severity === 'medium').length;
+    merged.summary.low = merged.issues.filter(i => i.severity === 'low').length;
+
+    return merged;
+  };
+
   const applyPostMergeEscalation = (issues) => {
     const severityOrder = { critical: 3, high: 2, medium: 1, low: 0 };
-    
-    // Rule 1: ≥3 medium issues in same section → escalate all to high
+
+    // Rule 1: ≥3 medium issues in same section → high
     const sectionMediumCounts = {};
     issues.forEach(issue => {
       if (issue.severity === 'medium' && issue.section) {
         const key = `${issue.files?.[0]}::${issue.section}`;
-        sectionMediumCounts[key] = (sectionMediumCounts[key] || []);
+        if (!sectionMediumCounts[key]) sectionMediumCounts[key] = [];
         sectionMediumCounts[key].push(issue);
       }
     });
+
     Object.values(sectionMediumCounts).forEach(group => {
       if (group.length >= 3) {
         group.forEach(issue => {
@@ -287,7 +324,7 @@ export default function App() {
       }
     });
 
-    // Rule 3: Security (L23) + Performance (L24) same component → escalate to critical
+    // Rule 2: Security (L23) + Performance (L24) same component → escalate to critical
     const componentIssues = {};
     issues.forEach(issue => {
       const component = issue.files?.[0] || 'unknown';
@@ -309,7 +346,7 @@ export default function App() {
       }
     });
 
-    // Rule 4: Completeness (L9) + Functional (L6) missing steps → escalate to high
+    // Rule 3: Completeness (L9) + Functional (L6) missing steps → escalate to high
     const sectionIssues = {};
     issues.forEach(issue => {
       if (issue.section) {
@@ -332,7 +369,7 @@ export default function App() {
       }
     });
 
-    // Rule 5: Contradiction (L1) + Intent (L10) same content → escalate to high
+    // Rule 4: Contradiction (L1) + Intent (L10) same content → escalate to high
     Object.values(sectionIssues).forEach(sectionIssueList => {
       const hasContradiction = sectionIssueList.some(i => i.category === 'contradiction');
       const hasIntent = sectionIssueList.some(i => i.category === 'intent');
@@ -346,13 +383,14 @@ export default function App() {
         });
       }
     });
-
-    return issues;
   };
 
-  // Simple hash function for description text
+  const normalizeIdentityText = (text) => (text || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
   const hashDescription = (text) => {
-    if (!text) return '0';
     let hash = 0;
     for (let i = 0; i < text.length; i++) {
       const char = text.charCodeAt(i);
@@ -410,156 +448,6 @@ export default function App() {
     });
 
     return deduped;
-  };
-
-  // Cross-layer validation on merged result set
-  const crossLayerValidation = (issues) => {
-    const validated = [...issues];
-    
-    // Check for contradictions between Layer 1 (contradiction) and Layer 10 (intent)
-    const contradictionIssues = validated.filter(i => i.category === 'contradiction');
-    const intentIssues = validated.filter(i => i.category === 'intent');
-    
-    contradictionIssues.forEach(cIssue => {
-      intentIssues.forEach(iIssue => {
-        if (cIssue.section === iIssue.section && cIssue.files?.[0] === iIssue.files?.[0]) {
-          if (!cIssue.description.includes('CROSS-LAYER')) {
-            cIssue.description = `[CROSS-LAYER CONFLICT with Intent] ${cIssue.description}`;
-            cIssue.related_issues = [...new Set([...(cIssue.related_issues || []), iIssue.id])];
-          }
-        }
-      });
-    });
-
-    // Check for contradictions between Layer 6 (functional) and Layer 20 (execution_path)
-    const functionalIssues = validated.filter(i => i.category === 'functional');
-    const executionIssues = validated.filter(i => i.category === 'execution_path');
-    
-    functionalIssues.forEach(fIssue => {
-      executionIssues.forEach(eIssue => {
-        if (fIssue.section === eIssue.section && fIssue.files?.[0] === eIssue.files?.[0]) {
-          if (!fIssue.description.includes('CROSS-LAYER')) {
-            fIssue.description = `[CROSS-LAYER CONFLICT with Execution Path] ${fIssue.description}`;
-            fIssue.related_issues = [...new Set([...(fIssue.related_issues || []), eIssue.id])];
-          }
-        }
-      });
-    });
-
-    // Check for conflicts between Layer 23 (security) and Layer 24 (performance)
-    const securityIssues = validated.filter(i => i.category === 'security');
-    const performanceIssues = validated.filter(i => i.category === 'performance');
-    
-    securityIssues.forEach(sIssue => {
-      performanceIssues.forEach(pIssue => {
-        if (sIssue.files?.[0] === pIssue.files?.[0]) {
-          if (!sIssue.description.includes('CROSS-LAYER')) {
-            sIssue.description = `[CROSS-LAYER INTERACTION with Performance] ${sIssue.description}`;
-            sIssue.related_issues = [...new Set([...(sIssue.related_issues || []), pIssue.id])];
-          }
-        }
-      });
-    });
-
-    // Recount severity after all escalations
-    const severityCounts = { critical: 0, high: 0, medium: 0, low: 0 };
-    validated.forEach(issue => {
-      if (severityCounts[issue.severity] !== undefined) {
-        severityCounts[issue.severity]++;
-      }
-    });
-
-    return { issues: validated, severityCounts };
-  };
-
-  const mergeResults = (batchResults) => {
-    const merged = {
-      summary: {
-        total: 0,
-        critical: 0,
-        high: 0,
-        medium: 0,
-        low: 0,
-        files_analyzed: 0,
-        layers_triggered: [],
-        detectors_evaluated: 0,
-        detectors_skipped: 0,
-        overall_score: 0,
-        improvement_priority: []
-      },
-      issues: []
-    };
-
-    let issueId = 1;
-    const seenLayers = new Set();
-    const seenDetectors = new Set(); // Track unique detectors across batches
-    const uniqueFiles = new Set();
-    let maxReportedDetectors = 0;
-
-    for (const batch of batchResults) {
-      if (batch.summary) {
-        merged.summary.total += batch.summary.total || 0;
-        merged.summary.critical += batch.summary.critical || 0;
-        merged.summary.high += batch.summary.high || 0;
-        merged.summary.medium += batch.summary.medium || 0;
-        merged.summary.low += batch.summary.low || 0;
-        merged.summary.detectors_skipped += batch.summary.detectors_skipped || 0;
-        maxReportedDetectors = Math.max(maxReportedDetectors, batch.summary.detectors_evaluated || 0);
-        
-        // Track unique detectors from issues in this batch
-        if (batch.issues) {
-          batch.issues.forEach(issue => {
-            const detectorMatch = issue.description?.match(/\[L(\d+)-(\d+)\]/);
-            if (detectorMatch) {
-              seenDetectors.add(`L${detectorMatch[1]}-${detectorMatch[2]}`);
-            }
-          });
-        }
-        
-        (batch.summary.layers_triggered || []).forEach(l => seenLayers.add(l));
-      }
-
-      (batch._sourceFiles || []).forEach((fileName) => uniqueFiles.add(fileName));
-
-      if (batch.issues) {
-        for (const issue of batch.issues) {
-          merged.issues.push({
-            ...issue,
-            id: String(issueId++)
-          });
-        }
-      }
-    }
-
-    merged.summary.layers_triggered = Array.from(seenLayers);
-    merged.summary.files_analyzed = uniqueFiles.size;
-
-    // Set unique detector count (capped at 256)
-    merged.summary.detectors_evaluated = Math.min(Math.max(seenDetectors.size, maxReportedDetectors), 256);
-
-    // Step 1: Deduplicate issues across batches
-    console.log(`[Merge] Before deduplication: ${merged.issues.length} issues`);
-    merged.issues = deduplicateIssues(merged.issues);
-    console.log(`[Merge] After deduplication: ${merged.issues.length} issues`);
-
-    // Step 2: Apply post-merge severity escalation across all batches
-    merged.issues = applyPostMergeEscalation(merged.issues);
-
-    // Step 3: Run cross-layer validation on merged result set
-    const { issues: validatedIssues, severityCounts } = crossLayerValidation(merged.issues);
-    merged.issues = validatedIssues;
-    
-    // Update summary counts after escalation and validation
-    merged.summary.critical = severityCounts.critical;
-    merged.summary.high = severityCounts.high;
-    merged.summary.medium = severityCounts.medium;
-    merged.summary.low = severityCounts.low;
-    merged.summary.total = merged.issues.length;
-
-    console.log(`[Final] Unique detectors evaluated: ${merged.summary.detectors_evaluated}/256, Skipped: ${merged.summary.detectors_skipped}`);
-    console.log(`[Final] Severity counts - Critical: ${merged.summary.critical}, High: ${merged.summary.high}, Medium: ${merged.summary.medium}, Low: ${merged.summary.low}`);
-
-    return merged;
   };
 
   const compareAudits = (current, previous) => {
@@ -720,6 +608,12 @@ export default function App() {
 
       setResults(merged);
       
+      // Auto-save to history
+      const historyMetadata = buildHistoryMetadata(merged, files, config, domainProfile);
+      await window.electronAPI.addHistorySession({ metadata: historyMetadata, session: merged });
+      const updatedHistory = await window.electronAPI.listHistory();
+      setHistoryList(updatedHistory);
+
       if (capturedPrevious) {
         setDiffSummary(compareAudits(merged, capturedPrevious));
       } else {
@@ -786,6 +680,7 @@ export default function App() {
 
     return filtered;
   }, [results?.issues, diffMode, diffSummary, searchQuery, activeLayer, activeSubcategory]);
+
   const exportJSON = () => {
     if (!results) return;
     const exportData = buildExportData(results, taxonomyDiagnostics);
@@ -801,26 +696,14 @@ export default function App() {
 
   const exportMarkdown = () => {
     if (!results) return;
-    let md = `# Audit Results\n\n`;
-    md += `**Date:** ${new Date().toLocaleDateString()}\n`;
-    md += `**Model:** ${config.model}\n`;
-    md += `**Files:** ${results.summary?.files_analyzed || 0}\n\n`;
-    
+    let md = `# Audit Report - ${new Date().toLocaleString()}\n\n`;
     md += `## Summary\n\n`;
-    md += `| Severity | Count |\n|----------|-------|\n`;
-    md += `| Total | ${results.summary?.total || 0} |\n`;
-    md += `| Critical | ${results.summary?.critical || 0} |\n`;
-    md += `| High | ${results.summary?.high || 0} |\n`;
-    md += `| Medium | ${results.summary?.medium || 0} |\n`;
-    md += `| Low | ${results.summary?.low || 0} |\n\n`;
-    
-    if (results.summary?.detectors_evaluated) {
-      md += `## Detector Coverage\n\n`;
-      md += `| Metric | Count |\n|--------|-------|\n`;
-      md += `| Detectors Evaluated | ${results.summary.detectors_evaluated} |\n`;
-      md += `| Detectors Skipped | ${results.summary.detectors_skipped || 0} |\n`;
-      md += `| Coverage | ${Math.round((results.summary.detectors_evaluated / 256) * 100)}% |\n\n`;
-    }
+    md += `- **Total Issues:** ${results.summary.total}\n`;
+    md += `- **Critical:** ${results.summary.critical}\n`;
+    md += `- **High:** ${results.summary.high}\n`;
+    md += `- **Medium:** ${results.summary.medium}\n`;
+    md += `- **Low:** ${results.summary.low}\n`;
+    md += `- **Files Analyzed:** ${results.summary.files_analyzed}\n\n`;
     
     md += `## Issues\n\n`;
     (results.issues || []).forEach((issue, i) => {
@@ -893,7 +776,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `audit-results-${new Date().toISOString().slice(0, 10)}.md`;
+    a.download = `audit-report-${new Date().toISOString().slice(0, 10)}.md`;
     a.click();
     URL.revokeObjectURL(url);
     setExportMenuOpen(false);
@@ -927,8 +810,8 @@ export default function App() {
       `"${(issue.tags || []).join(', ')}"`
     ]);
     
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -979,11 +862,36 @@ export default function App() {
     input.click();
   };
 
+  const handleClearHistory = async () => {
+    await window.electronAPI.clearHistory();
+    setHistoryList([]);
+  };
+
+  const handleDeleteHistory = async (id) => {
+    await window.electronAPI.deleteHistorySession(id);
+    const updated = await window.electronAPI.listHistory();
+    setHistoryList(updated);
+  };
+
+  const handleOpenHistoryEntry = async (id) => {
+    const session = await window.electronAPI.readHistorySession(id);
+    if (session) {
+      const normalized = normalizeLoadedSession({ results: session });
+      setResults(normalized.results);
+      setTaxonomyDiagnostics(normalized.taxonomyDiagnostics);
+      setError(null);
+      setDiffSummary(null);
+      setDiffMode(false);
+      setHistoryOpen(false);
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col bg-[#111827] text-[#F9FAFB] overflow-hidden">
       <TopBar
         providerConfigured={providerConfigured}
         onOpenSettings={() => setSettingsOpen(true)}
+        onOpenHistory={() => setHistoryOpen(true)}
       />
 
       <SettingsModal
@@ -991,6 +899,16 @@ export default function App() {
         config={config}
         onSave={handleSaveSettings}
         onCancel={() => setSettingsOpen(false)}
+        onClearCache={handleClearCache}
+      />
+
+      <HistoryModal
+        open={historyOpen}
+        history={historyList}
+        onOpen={handleOpenHistoryEntry}
+        onDelete={handleDeleteHistory}
+        onClear={handleClearHistory}
+        onCancel={() => setHistoryOpen(false)}
       />
 
       <div className="flex-1 overflow-y-auto">

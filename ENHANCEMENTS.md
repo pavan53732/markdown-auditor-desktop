@@ -20,11 +20,14 @@ This document tracks the major product-level enhancements currently implemented 
 - automated test suite for taxonomy integrity, prompt generation, normalization, and session persistence
 - runtime taxonomy diagnostics surfaced in UI, Markdown, and JSON/Session exports
 - basic response validation before rendering
+- file-backed incremental analysis cache (`analysis_cache.json`)
 
 ### Incremental and Comparative Workflows
 
 - SHA-256 file hashing for reuse detection
-- local cached reuse of unchanged file results
+- local file-backed cached reuse of unchanged file results
+- automatic migration from legacy `localStorage` cache
+- **local audit history**: automatic persistence of past runs with a dedicated browser
 - per-run reused vs reanalyzed counts
 - session diffing against the previous in-memory audit
 - `new`, `resolved`, and `changed` issue states
@@ -48,6 +51,7 @@ This document tracks the major product-level enhancements currently implemented 
 - domain profile selector in the pre-analysis UI
 - layer and subcategory filtering
 - grouping by file, severity, layer, subcategory, and root cause
+- **history browser modal** for managing past audits
 - session diff summary panel
 - save/load session workflow
 - JSON / Markdown / CSV export
@@ -62,11 +66,11 @@ This document tracks the major product-level enhancements currently implemented 
 ### Packaging
 
 - reproducible Windows portable build via `electron-builder`
-- output path: `dist-electron-v4\MarkdownAuditor-portable.exe`
+- current packaged output: `dist-electron-v4\MarkdownAuditor-portable.exe`
 
 ## Known Constraints
 
-- Incremental cache uses renderer `localStorage`, which may become a limitation for very large document sets.
+- File-backed cache improves reliability, but very large cache files (>50MB) may still impact initial load performance.
 - Chunk overlap improves context retention, but line range reporting for overlapped chunks is still best-effort.
 - Validation is stronger than before, but it is still not a full strict schema validator for every optional field.
 - Unknown detector IDs currently produce warnings during validation instead of failing hard.
@@ -76,9 +80,7 @@ This document tracks the major product-level enhancements currently implemented 
 
 ### High Value
 
-- Move analysis cache from `localStorage` to a file-backed Electron store
 - Add stricter schema validation for optional traceability and remediation fields
-- Add session history browsing instead of only save/load by file
 - Add explicit cost / token usage reporting per run
 - Add automated regression tests for caching, diffing, and export behavior
 

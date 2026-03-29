@@ -597,6 +597,32 @@ export function buildSessionData({ results, taxonomyDiagnostics, files, config }
 }
 
 /**
+ * Decides which cache to use and whether migration is needed.
+ * Returns { cache, shouldMigrate }.
+ */
+export function resolveInitialCache(fileCache, legacyCacheString) {
+  // 1. If file cache is present and non-empty, it takes precedence
+  if (fileCache && Object.keys(fileCache).length > 0) {
+    return { cache: fileCache, shouldMigrate: false };
+  }
+
+  // 2. If file cache is empty/missing, attempt to migrate from legacy localStorage
+  if (legacyCacheString) {
+    try {
+      const parsed = JSON.parse(legacyCacheString);
+      if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+        return { cache: parsed, shouldMigrate: true };
+      }
+    } catch (e) {
+      // Malformed legacy data is ignored
+    }
+  }
+
+  // 3. Fallback to empty state
+  return { cache: {}, shouldMigrate: false };
+}
+
+/**
  * Normalizes a loaded session by applying taxonomy backfilling and calculating diagnostics.
  */
 export function normalizeLoadedSession(session) {
@@ -617,4 +643,27 @@ export function normalizeLoadedSession(session) {
   normalized.taxonomyDiagnostics = diagnostics;
   
   return normalized;
+}
+
+/**
+ * Builds a lightweight metadata object for the history index.
+ */
+export function buildHistoryMetadata(results, files, config, domainProfileId) {
+  if (!results) return null;
+  
+  return {
+    timestamp: new Date().toISOString(),
+    title: `Audit ${new Date().toLocaleString()}`,
+    fileCount: files?.length || 0,
+    fileNames: files?.map(f => f.name) || [],
+    issuesCount: {
+      critical: results.summary?.critical || 0,
+      high: results.summary?.high || 0,
+      medium: results.summary?.medium || 0,
+      low: results.summary?.low || 0,
+      total: results.summary?.total || 0
+    },
+    model: config?.model || 'unknown',
+    profile: domainProfileId || 'auto'
+  };
 }

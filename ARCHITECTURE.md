@@ -79,12 +79,12 @@ Provider Layer
 
 ## Taxonomy Verification and Diagnostics
 
-The system implements a regression-safe taxonomy pipeline:
+The system supports a local verification workflow:
 
-1.  **Integrity Validation**: Automated tests verify the 256-detector catalog against the 32-layer schema.
+1.  **Integrity Validation**: Local automated tests verify the 256-detector catalog against the 32-layer schema.
 2.  **Semantic Enforcement**: Validation logic ensures that AI-reported detector IDs, layers, and subcategories are mutually consistent.
-3.  **Runtime Diagnostics**: The application tracks enrichment, parsing, and clamping metrics during analysis.
-4.  **Observability**: Diagnostics are surfaced in the UI results summary and Markdown exports to ensure pipeline transparency.
+3.  **Runtime Diagnostics**: The application tracks enrichment, parsing, and clamping metrics during analysis and session loading.
+4.  **Observability**: Diagnostics are surfaced in the UI results summary and exports to ensure pipeline transparency.
 |-- build/
 |   `-- icon.png
 |-- dist/
@@ -220,7 +220,7 @@ App
 
 ### 2. Incremental Reuse
 
-- Hashes are checked against `localStorage` cache
+- Hashes are checked against the file-backed analysis cache
 - Unchanged files reuse prior per-file results
 - Changed or uncached files go through analysis
 
@@ -390,8 +390,19 @@ Important issue fields include:
 
 ### Incremental Cache
 
-- stored in renderer `localStorage`
+- stored in `analysis_cache.json` under the app's local Electron user-data directory
 - keyed by SHA-256 file hash
+- automatically migrates legacy `localStorage` data on first launch if the file-backed store is empty
+- **Resilience**: Uses atomic writes (write-to-temp then rename) to prevent file corruption.
+- **Fault Tolerance**: If the cache file is missing or corrupted, the system falls back to an empty cache safely without interrupting analysis.
+
+### Local Audit History
+
+- stored under `history/` in the app's local Electron user-data directory
+- `index.json`: lightweight metadata index for the history browser
+- `sessions/*.json`: full session result payloads keyed by unique UUIDs
+- sessions are automatically saved after every successful analysis run
+- provides a dedicated internal browser for reopening and managing past runs
 
 ### Saved Sessions
 

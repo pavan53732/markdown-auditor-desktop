@@ -18,10 +18,12 @@
   "build": {
     "appId": "com.local.markdownauditor",
     "productName": "Markdown Intelligence Auditor",
+    "copyright": "Copyright © 2026 Prem V",
     "directories": {
       "output": "dist-electron-v4"
     },
     "win": {
+      "publisherName": "Prem V",
       "target": [
         {
           "target": "portable",
@@ -45,7 +47,8 @@
     ]
   },
   "dependencies": {
-    "openai": "^4.73.0"
+    "openai": "^4.73.0",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",

@@ -4,6 +4,41 @@ All notable changes to this project should be documented in this file.
 
 This changelog establishes the current production-ready baseline for the app as it exists in this repository.
 
+## [1.7.0] - 2026-03-29
+
+### Added
+
+- **Local Audit History**: Automatic file-backed persistence of every successful analysis run.
+- **History Browser**: New compact UI modal accessible from the top bar to browse, reopen, and delete past audits.
+- Automated History Management: Dedicated `HistoryService` in the Electron layer handling index and session files.
+- Metadata Indexing: Lightweight history index storing timestamps, file counts, issue summaries, and model info.
+- Dedicated Testing: Added automated Vitest suite for the history metadata and normalization logic.
+
+### Changed
+
+- Updated `TopBar` to include an "Audit History" button for quick access.
+- Integrated `normalizeLoadedSession` into the history opening flow to ensure consistent taxonomy enrichment.
+
+### Fixed
+
+- Improved consistency between manually loaded sessions and history-reopened sessions.
+
+## [1.6.0] - 2026-03-29
+
+### Added
+
+- File-Backed Persistence: Migrated incremental analysis cache from browser `localStorage` to a local JSON file (`analysis_cache.json`) for improved reliability and scale.
+- **Cache Hardening**: Implemented atomic writes (via temp files) to prevent cache corruption during crashes.
+- **Resilience**: Added graceful handling for missing or corrupt cache files with automatic fallback to a safe state.
+- **Dedicated Testing**: Added automated Vitest suite for the `CacheService` persistence layer.
+- Cache Management: Added a "Clear Cache" button and real-time entry count display in the Settings modal.
+- Improved Observability: Added cache stats (entry count, existence) to the Settings UI.
+
+### Changed
+
+- Enhanced `electron/main.js` with dedicated IPC handlers for safe filesystem access to the analysis cache.
+- Updated `App.jsx` to orchestration cache lifecycle through the Electron preload bridge.
+
 ## [1.5.0] - 2026-03-29
 
 ### Added
@@ -55,11 +90,11 @@ This changelog establishes the current production-ready baseline for the app as 
 
 ### Added
 
-- Automated regression suite using Vitest covering taxonomy integrity, prompt generation, validation, and normalization
+- Local regression suite using Vitest covering taxonomy integrity, prompt generation, validation, and normalization
 - Runtime taxonomy diagnostics: tracking enrichment, parsing, and clamping metrics during analysis
 - Taxonomy observability UI: compact diagnostics block in the results summary area
 - Markdown export enhancement: now includes structured taxonomy diagnostics summary
-- New `npm test` script for developer verification
+- New `npm test` script for local verification
 
 ### Fixed
 
@@ -124,6 +159,6 @@ This changelog establishes the current production-ready baseline for the app as 
 
 ### Known Limitations
 
-- Incremental cache currently uses renderer `localStorage`
+- Incremental cache originally used renderer `localStorage` (migrated to file-backed in 1.6.0)
 - Chunk overlap improves context retention, but some chunk-derived line mapping remains best effort
 - The packaged Windows executable is currently unsigned

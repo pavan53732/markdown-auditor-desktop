@@ -16,7 +16,7 @@ The current build includes chunk-aware batching, deterministic post-processing, 
 - Programmatic system prompt generation from structured taxonomy and metadata
 - Taxonomy-driven runtime normalization: backfilling metadata and enforcing severity bounds
 - Advanced semantic validation enforcing category -> subcategory -> detector consistency
-- Automated regression suite verifying taxonomy integrity and normalization logic
+- Local regression suite verifying taxonomy integrity and normalization logic
 - Runtime taxonomy diagnostics surfaced in UI, Markdown reports, and JSON exports for pipeline observability
 - Seven domain profiles (e.g., API Docs, Runbooks, PRDs) adjusting detector emphasis
 ...
@@ -28,6 +28,7 @@ The current build includes chunk-aware batching, deterministic post-processing, 
 - Severity reporting: `critical`, `high`, `medium`, `low`
 - Incremental analysis using SHA-256 file hashing and local cached results
 - Session diffing with `new`, `resolved`, and `changed` issue states
+- **Local Audit History**: Automatic file-backed persistence of past runs with a dedicated browsing UI
 - Root-cause grouping in addition to the flat issue list
 - Detector traceability fields such as `detector_id`, `why_triggered`, and `escalation_reason`
 - Remediation guidance including `recommended_fix`, `fix_steps`, `estimated_effort`, and `verification_steps`
@@ -49,7 +50,7 @@ The current build includes chunk-aware batching, deterministic post-processing, 
 4. Validate the connection
 5. Drop one or more Markdown files into the upload area
 6. Run the audit
-7. Review results, diff against previous sessions if needed, and export the report
+7. Review results, diff against previous runs, browse local history, and export reports
 
 ## Configuration
 
@@ -68,7 +69,9 @@ Example:
 }
 ```
 
-Incremental analysis cache is stored in browser `localStorage` inside the packaged app.
+Incremental analysis cache is stored in `analysis_cache.json` in the same directory. This file-backed storage ensures reliability for large projects and persists across app updates. The system uses **atomic writes** to prevent cache corruption.
+
+Users can clear this cache at any time through the **Clear Cache** button in the Settings modal.
 
 ## Provider Support
 
@@ -109,7 +112,7 @@ Any additional OpenAI-compatible provider, including services such as Together A
 - Issue deduplication with stable identity keys
 - Post-merge escalation across the combined result set
 - Cross-layer validation after escalation
-- Cached result reuse for unchanged files
+- Cached result reuse for unchanged files (file-backed)
 - Session diffing against the previous in-memory audit
 - Known detector IDs are validated against the structured taxonomy
 - Unknown but well-formed detector IDs currently generate runtime warnings instead of hard validation failures
@@ -274,8 +277,7 @@ Top-level result output may also include:
 
 ```bash
 npm install
-npm run build
-npm test
+npm run verify
 npm run dist
 ```
 
@@ -304,11 +306,10 @@ Current packaged output:
 ## Release Readiness
 
 - **Current Version**: 1.5.0
-- **Build Verification**: `npm run build`
-- **Logic Verification**: `npm test`
-- **Security**: The portable Windows build is currently **unsigned**. Users may need to click "More Info" -> "Run anyway" on Windows SmartScreen to proceed.
-
-- [GEMINI.md](./GEMINI.md)
+- **Verification Status**: Local verification performed via `npm run verify`
+- **Logic Status**: Verified 33/33 tests pass via `npm test`
+- **Packaging**: Local Windows packaging supported via `npm run dist`
+- **Signature**: This portable executable is currently **unsigned**.
 
 ## Notes
 

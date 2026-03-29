@@ -286,6 +286,27 @@ Tests are located in `src/lib/__tests__` and cover:
 - **Taxonomy Integrity**: Verifies the 256-detector catalog consistency.
 - **Normalization & Validation**: Verifies that results are correctly enriched and semantics are enforced.
 - **Prompt Generation**: Verifies the dynamic builder logic.
+- **Cache Service**: Verifies the file-backed persistence layer, atomic writes, and corruption handling.
 - **Diagnostics**: Verifies runtime observability metrics.
 
 ALWAYS run tests before submitting changes to the taxonomy or prompt generation logic.
+
+## Maintenance Workflow
+
+This project is optimized for local maintenance and personal use.
+
+### 1. Verification
+- Before making significant changes, run `npm run verify` to ensure the existing tests pass and the application builds correctly.
+- Add new tests in `src/lib/__tests__/` for any new logic or taxonomy additions.
+
+### 2. Versioning
+- If a new version is desired, update the version in `package.json`.
+- Document changes in `CHANGELOG.md` and `RELEASE_NOTES.md`.
+
+### 3. Local Packaging
+- To create a fresh portable Windows executable, run `npm run dist`.
+- The current packaged output will be located in `dist-electron-v4\MarkdownAuditor-portable.exe`.
+- It is recommended to perform a quick smoke test of the generated executable.
+
+### 4. Security Note
+- The portable executable is **unsigned**. Windows SmartScreen may show a warning when running the `.exe` for the first time. Select "More info" -> "Run anyway" to proceed.

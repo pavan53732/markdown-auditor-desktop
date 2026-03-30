@@ -11,7 +11,7 @@ import { normalizeIssueFromDetector, createInitialDiagnostics } from '../detecto
  * This suite validates the actual execution path of the application (repair -> validation -> normalization)
  * using mocked JSON responses representing canonical edge cases. It is NOT a live LLM test, but it
  * guarantees that if the AI flags an issue, the app correctly processes, clamps severities, 
- * and backfills taxonomy metadata according to the 40-layer core.
+ * and backfills taxonomy metadata according to the 45-layer core.
  */
 describe('Taxonomy Pipeline Benchmark (Deterministic)', () => {
 
@@ -113,6 +113,78 @@ describe('Taxonomy Pipeline Benchmark (Deterministic)', () => {
     expect(diagnostics.severity_clamped_count).toBe(2);
   });
 
+
+  it('processes deep-spec reasoning, control-plane, and world-state issues correctly', () => {
+    // Represents an AI response for benchmark-deep-spec.md
+    const mockedResponse = `
+    {
+      "summary": { "critical": 4, "high": 2, "medium": 0, "low": 0, "total": 6 },
+      "issues": [
+        {
+          "detector_id": "L44-01",
+          "description": "ActionButton directly modifies ExecutionPolicy in the control plane.",
+          "severity": "critical"
+        },
+        {
+          "detector_id": "L45-02",
+          "description": "Mutation gateway bypassed for shadow state writes.",
+          "severity": "critical"
+        },
+        {
+          "detector_id": "L41-03",
+          "description": "Reasoning trace refers to private chat log (unenforceable).",
+          "severity": "medium"
+        },
+        {
+          "detector_id": "L41-05",
+          "description": "Infinite retries allowed for ActionY.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L4-09",
+          "description": "Terminology registry gap.",
+          "severity": "low"
+        },
+        {
+          "detector_id": "L33-05",
+          "description": "Vague input types for ActionY.",
+          "severity": "medium"
+        }
+      ]
+    }
+    `;
+
+    const parsed = repairJSON(mockedResponse);
+    expect(() => validateResults(parsed)).not.toThrow();
+
+    const diagnostics = createInitialDiagnostics();
+    const normalized = parsed.issues.map(i => normalizeIssueFromDetector(i, diagnostics));
+
+    // L44-01 floor is critical
+    expect(normalized[0].severity).toBe('critical');
+    expect(normalized[0].layer).toBe('control_plane_authority');
+
+    // L45-02 floor is critical
+    expect(normalized[1].severity).toBe('critical');
+    expect(normalized[1].layer).toBe('world_state_governance');
+
+    // L41-03 floor is medium
+    expect(normalized[2].severity).toBe('medium');
+    expect(normalized[2].layer).toBe('reasoning_integrity');
+
+    // L41-05 floor is high
+    expect(normalized[3].severity).toBe('high');
+    expect(normalized[3].subcategory).toBe('global contradiction detection');
+
+    // L4-09 floor is low
+    expect(normalized[4].severity).toBe('low');
+    expect(normalized[4].layer).toBe('semantic');
+
+    // L33-05 floor is medium
+    expect(normalized[5].severity).toBe('medium');
+    expect(normalized[5].layer).toBe('specification_formalism');
+  });
+
   it('handles unknown but well-formed detectors gracefully when category is provided', () => {
     const mockedResponse = `
     {
@@ -130,5 +202,200 @@ describe('Taxonomy Pipeline Benchmark (Deterministic)', () => {
     const parsed = repairJSON(mockedResponse);
     // Should not throw because category is provided for unknown L99-99
     expect(() => validateResults(parsed)).not.toThrow();
+  });
+
+  it('processes governance and tool safety issues correctly', () => {
+    const mockedResponse = `
+    {
+      "summary": { "critical": 2, "high": 2, "medium": 0, "low": 0, "total": 4 },
+      "issues": [
+        {
+          "detector_id": "L29-09",
+          "description": "Override conditions undefined for admin actions.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L37-04",
+          "description": "Deploy tool writes directly to production DB without gateway.",
+          "severity": "critical"
+        },
+        {
+          "detector_id": "L37-05",
+          "description": "Deploy tool has broader permissions than its contract.",
+          "severity": "critical"
+        },
+        {
+          "detector_id": "L30-09",
+          "description": "Deployment changes cannot be reversed.",
+          "severity": "high"
+        }
+      ]
+    }
+    `;
+
+    const parsed = repairJSON(mockedResponse);
+    expect(() => validateResults(parsed)).not.toThrow();
+
+    const diagnostics = createInitialDiagnostics();
+    const normalized = parsed.issues.map(i => normalizeIssueFromDetector(i, diagnostics));
+
+    expect(normalized[0].severity).toBe('high');
+    expect(normalized[0].layer).toBe('governance');
+    expect(normalized[0].subcategory).toBe('override ambiguity');
+
+    expect(normalized[1].severity).toBe('critical');
+    expect(normalized[1].layer).toBe('tool_execution_safety');
+
+    expect(normalized[2].severity).toBe('critical');
+    expect(normalized[2].layer).toBe('tool_execution_safety');
+    expect(normalized[2].subcategory).toBe('execution authority violations');
+
+    expect(normalized[3].severity).toBe('high');
+    expect(normalized[3].layer).toBe('resilience');
+  });
+
+  it('processes UI surface contract and state machine issues correctly', () => {
+    const mockedResponse = `
+    {
+      "summary": { "critical": 1, "high": 2, "medium": 1, "low": 0, "total": 4 },
+      "issues": [
+        {
+          "detector_id": "L42-04",
+          "description": "Fatal error state displayed raw to user without recovery path.",
+          "severity": "critical"
+        },
+        {
+          "detector_id": "L42-01",
+          "description": "Required confirmation dialog missing from destructive action.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L16-09",
+          "description": "System reaches unrecoverable state from normal operation.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L42-06",
+          "description": "Color-only status indicators without text alternatives.",
+          "severity": "medium"
+        }
+      ]
+    }
+    `;
+
+    const parsed = repairJSON(mockedResponse);
+    expect(() => validateResults(parsed)).not.toThrow();
+
+    const diagnostics = createInitialDiagnostics();
+    const normalized = parsed.issues.map(i => normalizeIssueFromDetector(i, diagnostics));
+
+    expect(normalized[0].severity).toBe('critical');
+    expect(normalized[0].layer).toBe('ui_surface_contract');
+
+    expect(normalized[1].severity).toBe('high');
+    expect(normalized[1].layer).toBe('ui_surface_contract');
+
+    expect(normalized[2].severity).toBe('critical');
+    expect(normalized[2].layer).toBe('state_machine');
+    expect(normalized[2].subcategory).toBe('fatal-state exposure');
+
+    expect(normalized[3].severity).toBe('medium');
+    expect(normalized[3].layer).toBe('ui_surface_contract');
+  });
+
+  it('processes deterministic execution and control plane issues correctly', () => {
+    const mockedResponse = `
+    {
+      "summary": { "critical": 2, "high": 2, "medium": 0, "low": 0, "total": 4 },
+      "issues": [
+        {
+          "detector_id": "L43-01",
+          "description": "State transition outcome varies between identical runs.",
+          "severity": "critical"
+        },
+        {
+          "detector_id": "L43-03",
+          "description": "Two operations wait on each other indefinitely.",
+          "severity": "critical"
+        },
+        {
+          "detector_id": "L44-06",
+          "description": "Control and data plane logic interleaved without isolation.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L44-08",
+          "description": "Control plane changes not logged with actor and timestamp.",
+          "severity": "high"
+        }
+      ]
+    }
+    `;
+
+    const parsed = repairJSON(mockedResponse);
+    expect(() => validateResults(parsed)).not.toThrow();
+
+    const diagnostics = createInitialDiagnostics();
+    const normalized = parsed.issues.map(i => normalizeIssueFromDetector(i, diagnostics));
+
+    expect(normalized[0].severity).toBe('critical');
+    expect(normalized[0].layer).toBe('deterministic_execution');
+
+    expect(normalized[1].severity).toBe('critical');
+    expect(normalized[1].layer).toBe('deterministic_execution');
+
+    expect(normalized[2].severity).toBe('high');
+    expect(normalized[2].layer).toBe('control_plane_authority');
+
+    expect(normalized[3].severity).toBe('high');
+    expect(normalized[3].layer).toBe('control_plane_authority');
+  });
+
+  it('processes world state governance and reasoning integrity issues correctly', () => {
+    const mockedResponse = `
+    {
+      "summary": { "critical": 2, "high": 2, "medium": 0, "low": 0, "total": 4 },
+      "issues": [
+        {
+          "detector_id": "L45-02",
+          "description": "State modified without going through the mutation gateway.",
+          "severity": "critical"
+        },
+        {
+          "detector_id": "L45-08",
+          "description": "One subsystem reads another subsystem private state.",
+          "severity": "critical"
+        },
+        {
+          "detector_id": "L41-01",
+          "description": "Reasoning conclusion not linked to supporting evidence.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L41-06",
+          "description": "Self-correction retries have no max iteration limit.",
+          "severity": "high"
+        }
+      ]
+    }
+    `;
+
+    const parsed = repairJSON(mockedResponse);
+    expect(() => validateResults(parsed)).not.toThrow();
+
+    const diagnostics = createInitialDiagnostics();
+    const normalized = parsed.issues.map(i => normalizeIssueFromDetector(i, diagnostics));
+
+    expect(normalized[0].severity).toBe('critical');
+    expect(normalized[0].layer).toBe('world_state_governance');
+
+    expect(normalized[1].severity).toBe('critical');
+    expect(normalized[1].layer).toBe('world_state_governance');
+
+    expect(normalized[2].severity).toBe('high');
+    expect(normalized[2].layer).toBe('reasoning_integrity');
+
+    expect(normalized[3].severity).toBe('high');
+    expect(normalized[3].layer).toBe('reasoning_integrity');
   });
 });

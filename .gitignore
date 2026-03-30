@@ -12,6 +12,7 @@ build/
 # IDE
 .vscode/
 .idea/
+.claude/settings.local.json
 
 # OS
 .DS_Store

@@ -1,5 +1,25 @@
 # Release Notes
 
+## v1.10.0
+
+Release date: 2026-03-31
+
+This release extends the deep-spec taxonomy from 40 to **45 top-level layers** with **383 code-defined micro-detectors**, adding first-class detection for deterministic execution, control-plane authority, and world-state governance.
+
+### Highlights
+
+- **45-Layer Core Taxonomy**: Added three new layers — `Deterministic Execution`, `Control Plane Authority`, and `World State Governance` — covering scheduling non-determinism, deadlock/livelock risks, plane-separation breaches, authority delegation gaps, state mutation invariant violations, PSG gateway bypass, and commit-hash binding.
+- **383 Micro-Detectors**: All 45 layers have at least 8 detectors. The three new layers contribute 24 detectors, with additional detectors added to existing deep-spec layers to fill thin coverage gaps.
+- **Extended Benchmark Coverage**: New deterministic benchmark fixtures exercise control-plane, world-state, and reasoning-integrity normalization paths alongside existing AstraBuild-style fixtures.
+- **Prompt Alignment**: The runtime system prompt now carries explicit instructions for deep-spec auditing invariants (execution invariants, control plane authority, world state governance, reasoning integrity, UI surface contracts, platform abstraction).
+
+### Technical Details
+
+- Source of truth: `src/lib/detectorMetadata.js` (383 detectors), `src/lib/layers.js` (45 layers)
+- All layers have complete subcategory coverage with no empty subcategories
+- Deterministic benchmark tests verified through real `jsonRepair` and `normalizeIssueFromDetector` paths
+- 70 automated tests pass across taxonomy integrity, benchmark, normalization, validation, diagnostics, sessions, exports, cache, and history suites
+
 ## v1.9.0
 
 Release date: 2026-03-30

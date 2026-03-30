@@ -40,6 +40,55 @@ export const CROSS_LAYER_BUNDLES = [
     layers: ['requirement', 'testability', 'maintainability'],
     description: 'Validates that requirements are clear, verifiable, and implemented in a way that avoids technical debt.',
     escalation_rule: 'If a core requirement is unverifiable or heavily couples distinct modules, flag as Medium/High.'
+  },
+  {
+    id: 'tool_safety_agent_governance',
+    name: 'Tool Safety, Agent Orchestration & Governance',
+    layers: ['tool_execution_safety', 'agent_orchestration', 'governance'],
+    description: 'Evaluates whether tool invocations respect agent authority boundaries and governance enforcement paths.',
+    escalation_rule: 'If a tool bypasses agent authority or governance checkpoint, escalate to Critical.'
+  },
+  {
+    id: 'world_state_memory',
+    name: 'World State, Memory & PSG Invariants',
+    layers: ['world_state_governance', 'memory_world_model', 'specification_formalism'],
+    description: 'Validates that world state mutations go through the PSG gateway, are bound to commit hashes, and respect snapshot isolation.',
+    escalation_rule: 'If a direct state write bypasses the PSG gateway or violates snapshot isolation, escalate to Critical.'
+  },
+  {
+    id: 'control_plane_architecture',
+    name: 'Control Plane, Architectural & Governance',
+    layers: ['control_plane_authority', 'architectural', 'governance'],
+    description: 'Verifies that control plane authority is properly separated from data plane and that governance enforces the separation.',
+    escalation_rule: 'If UI or data-plane directly modifies control-plane configuration, escalate to Critical.'
+  },
+  {
+    id: 'reasoning_metacognition',
+    name: 'Reasoning Integrity & Metacognition',
+    layers: ['reasoning_integrity', 'metacognition', 'adversarial'],
+    description: 'Checks that reasoning traces are evidence-bound, uncertainty is propagated, and self-correction loops are bounded.',
+    escalation_rule: 'If a reasoning chain has unbound evidence or unbounded self-correction, escalate to High.'
+  },
+  {
+    id: 'ui_state_usability',
+    name: 'UI Surface Contract, State Machine & Usability',
+    layers: ['ui_surface_contract', 'state_machine', 'usability'],
+    description: 'Validates that UI components map correctly to system states, fatal states are not exposed, and mandatory components exist.',
+    escalation_rule: 'If a fatal system state is exposed in the UI or a mandatory component is missing, escalate to High/Critical.'
+  },
+  {
+    id: 'deterministic_execution_resilience',
+    name: 'Deterministic Execution, Resilience & Error Handling',
+    layers: ['deterministic_execution', 'resilience', 'error_handling'],
+    description: 'Ensures execution is deterministic, retry policies are bounded, and error recovery paths are defined.',
+    escalation_rule: 'If scheduling non-determinism or deadlock risk combines with missing error recovery, escalate to Critical.'
+  },
+  {
+    id: 'deployment_platform',
+    name: 'Deployment Contract & Platform Abstraction',
+    layers: ['deployment_contract', 'platform_abstraction', 'interoperability'],
+    description: 'Verifies that local export contracts are enforced, platform targets are locked, and cross-platform behavior is consistent.',
+    escalation_rule: 'If remote deployment is required for a local system or platform exclusion is violated, escalate to Critical.'
   }
 ];
 

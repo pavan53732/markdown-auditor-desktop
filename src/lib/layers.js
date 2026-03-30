@@ -39,6 +39,11 @@ export const LAYERS = [
   { id: 'deployment_contract', label: 'Deployment Contract', icon: '📦', color: '#166534', bg: '#DCFCE7', border: '#6EE7B7' },
   { id: 'platform_abstraction', label: 'Platform Abstraction', icon: '🖥️', color: '#3730A3', bg: '#E0E7FF', border: '#A5B4FC' },
   { id: 'context_orchestration', label: 'Context Orchestration', icon: '🧩', color: '#0F766E', bg: '#D1FAE5', border: '#6EE7B7' },
+  { id: 'reasoning_integrity', label: 'Reasoning Integrity', icon: '🧠', color: '#7C3AED', bg: '#F5F3FF', border: '#C4B5FD' },
+  { id: 'ui_surface_contract', label: 'UI Surface Contract', icon: '📱', color: '#DB2777', bg: '#FDF2F8', border: '#F9A8D4' },
+  { id: 'deterministic_execution', label: 'Deterministic Execution', icon: '⚙️', color: '#059669', bg: '#F0FDF4', border: '#6EE7B7' },
+  { id: 'control_plane_authority', label: 'Control Plane Authority', icon: '🕹️', color: '#4F46E5', bg: '#EEF2FF', border: '#A5B4FC' },
+  { id: 'world_state_governance', label: 'World State Governance', icon: '🌍', color: '#D97706', bg: '#FFFBEB', border: '#FCD34D' },
 ];
 
 export const SEVERITY_STYLE = {

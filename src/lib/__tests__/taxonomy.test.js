@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { 
-  DETECTOR_METADATA, 
-  LAYER_SUBCATEGORIES, 
-  isKnownDetectorId, 
-  getDetectorMetadata, 
+import {
+  DETECTOR_METADATA,
+  LAYER_SUBCATEGORIES,
+  isKnownDetectorId,
+  getDetectorMetadata,
   parseDetectorId,
   isValidSubcategory,
   isValidDetectorForLayer,
@@ -12,11 +12,12 @@ import {
 } from '../detectorMetadata';
 import { buildSystemPrompt } from '../systemPrompt';
 import { LAYERS } from '../layers';
+import { generateTaxonomyQualityReport } from '../taxonomyCoverageHelper';
 
 describe('Taxonomy Integrity', () => {
-  it('should have exactly 288 detectors', () => {
+  it('should have exactly 383 detectors', () => {
     const ids = Object.keys(DETECTOR_METADATA);
-    expect(ids.length).toBe(288);
+    expect(ids.length).toBe(383);
   });
 
   it('should have unique detector IDs following Lx-yy format', () => {
@@ -118,7 +119,7 @@ describe('Prompt Generation', () => {
     expect(prompt.length).toBeGreaterThan(1000);
     expect(prompt).toContain('DOMAIN PROFILE: Auto (Default)');
     expect(prompt).toContain('CROSS-LAYER BUNDLES');
-    expect(prompt).toContain('--- DETECTOR CATALOG (288 DETECTORS) ---');
+    expect(prompt).toContain('--- DETECTOR CATALOG (383 DETECTORS) ---');
   });
 
   it('buildSystemPrompt includes detector details', () => {
@@ -129,11 +130,11 @@ describe('Prompt Generation', () => {
   });
 
   describe('Prompt and Documentation Alignment', () => {
-    it('system prompt reflects the correct 40/288 counts', () => {
+    it('system prompt reflects the correct 45/383 counts', () => {
       const prompt = buildSystemPrompt();
       const detectorCount = Object.keys(DETECTOR_METADATA).length;
       const layerCount = Object.keys(LAYER_SUBCATEGORIES).length;
-      
+
       expect(prompt).toContain(`**${layerCount} analytical layers and ${detectorCount} micro-detectors**`);
       expect(prompt).toContain(`Evaluate all ${detectorCount} detectors across all ${layerCount} layers`);
       expect(prompt).toContain(`Include detectors_evaluated count (must be ≤${detectorCount})`);
@@ -143,6 +144,74 @@ describe('Prompt Generation', () => {
       const prompt = buildSystemPrompt();
       const detectorCount = Object.keys(DETECTOR_METADATA).length;
       expect(prompt).toContain(`--- DETECTOR CATALOG (${detectorCount} DETECTORS) ---`);
+    });
+  });
+});
+
+describe('Deep-Spec Layer Coverage', () => {
+  const deepSpecLayers = [
+    'specification_formalism',
+    'simulation_verification',
+    'memory_world_model',
+    'agent_orchestration',
+    'tool_execution_safety',
+    'deployment_contract',
+    'platform_abstraction',
+    'context_orchestration',
+    'reasoning_integrity',
+    'ui_surface_contract',
+    'deterministic_execution',
+    'control_plane_authority',
+    'world_state_governance'
+  ];
+
+  it('all deep-spec layers have at least 8 detectors', () => {
+    deepSpecLayers.forEach(layer => {
+      const count = Object.values(DETECTOR_METADATA).filter(d => d.layer === layer).length;
+      expect(count).toBeGreaterThanOrEqual(8);
+    });
+  });
+
+  it('all deep-spec layers have detectors covering their subcategories', () => {
+    deepSpecLayers.forEach(layer => {
+      const subcats = LAYER_SUBCATEGORIES[layer];
+      const layerDetectors = Object.values(DETECTOR_METADATA).filter(d => d.layer === layer);
+      const coveredSubcats = new Set(layerDetectors.map(d => d.subcategory));
+      subcats.forEach(sub => {
+        expect(coveredSubcats.has(sub)).toBe(true);
+      });
+    });
+  });
+
+  it('all layers have at least 8 detectors', () => {
+    const allLayerIds = Object.keys(LAYER_SUBCATEGORIES);
+    allLayerIds.forEach(layer => {
+      const count = Object.values(DETECTOR_METADATA).filter(d => d.layer === layer).length;
+      expect(count).toBeGreaterThanOrEqual(8);
+    });
+  });
+});
+
+describe('Taxonomy Coverage Helper', () => {
+  it('generates a valid report', () => {
+    const report = generateTaxonomyQualityReport();
+    expect(report.totalLayers).toBeGreaterThan(0);
+    expect(report.totalDetectors).toBeGreaterThan(0);
+    expect(report.metadataRichness).toBeDefined();
+    expect(report.densityAnalysis).toBeDefined();
+    expect(report.densityAnalysis.medianDetectorCount).toBeGreaterThan(0);
+  });
+
+  it('report has no layers with thin coverage (< 8 detectors)', () => {
+    const report = generateTaxonomyQualityReport();
+    expect(report.layersWithThinCoverage.length).toBe(0);
+  });
+
+  it('report completeness scores are reasonable', () => {
+    const report = generateTaxonomyQualityReport();
+    Object.values(report.layerMetrics).forEach(metrics => {
+      expect(metrics.completenessScore).toBeGreaterThanOrEqual(0);
+      expect(metrics.completenessScore).toBeLessThanOrEqual(100);
     });
   });
 });

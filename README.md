@@ -1,17 +1,18 @@
 # Markdown Document Intelligence Auditor
 
-Windows desktop application for auditing Markdown documentation with AI across 40 analytical layers and 288 micro-detectors.
+Windows desktop application for auditing Markdown documentation with AI across 45 analytical layers and 383 micro-detectors.
 
 ## Overview
 
 Markdown Intelligence Auditor is an Electron + React desktop app that accepts one or more `.md` / `.markdown` files, sends them to an OpenAI-compatible provider, and returns a structured report of documentation issues with severity, traceability, remediation guidance, and export support.
 
-The current build includes chunk-aware batching, deterministic post-processing, incremental result reuse, session diffing, root-cause grouping, a structured 288-detector catalog, and portable Windows packaging.
+The current build includes chunk-aware batching, deterministic post-processing, incremental result reuse, session diffing, root-cause grouping, a structured 383-detector catalog, and portable Windows packaging.
 
 ## Current Capabilities
 
 - Drag-and-drop upload for `.md` and `.markdown` files
-- 40 analytical layers with explicit, deepened subcategories preventing thematic ambiguity
+- 45 analytical layers with explicit, deepened subcategories preventing thematic ambiguity
+- 383 code-defined micro-detectors across all 45 layers, including 13 deep-spec layers with full detector coverage
 - Full structured detector metadata including trigger patterns, evidence requirements, related layers, and false-positive guards
 - Taxonomy benchmark fixtures supporting automated evaluation of classification correctness
 - Programmatic system prompt generation from structured taxonomy and metadata
@@ -22,7 +23,7 @@ The current build includes chunk-aware batching, deterministic post-processing, 
 - Seven domain profiles (e.g., API Docs, Runbooks, PRDs) adjusting detector emphasis
 ...
 - `total_issues_loaded`: specifically tracks issues processed during session load or import
-- Six cross-layer bundles connecting concepts like Security, Data Flow, and Governance
+- Six cross-layer bundles connecting concepts like Security, Data Flow, and Governance, plus eight deep-spec bundles for tool safety, world state, control plane, reasoning, UI contracts, deterministic execution, deployment, and platform abstraction
 - Enhanced UI filtering by subcategory and grouping by subcategory or root cause
 - Four-phase analysis flow: scan -> cross-layer correlation -> severity escalation -> final output
 - Four deterministic escalation rules applied during runtime normalization
@@ -95,7 +96,7 @@ Any additional OpenAI-compatible provider, including services such as Together A
 
 1. `SCAN`
    - read input files
-   - evaluate 288 detectors
+   - evaluate 383 detectors
    - record detector coverage
 2. `CROSS-LAYER CORRELATION`
    - relate findings across layers
@@ -125,7 +126,7 @@ Any additional OpenAI-compatible provider, including services such as Together A
 - Rule 3: completeness + functional issues on missing steps -> escalate to high
 - Rule 4: contradiction + intent issues on the same content -> escalate to high
 
-## Analysis Layers (40 Total)
+## Analysis Layers (45 Total)
 
 ### Foundation Layers (1-14)
 
@@ -168,7 +169,7 @@ Any additional OpenAI-compatible provider, including services such as Together A
 31. Observability & Monitoring
 32. Evolution & Future-Proofing
 
-### Deep Specification Layers (33-40)
+### Deep Specification Layers (33-45)
 
 33. Specification Formalism
 34. Simulation & Verification
@@ -178,6 +179,11 @@ Any additional OpenAI-compatible provider, including services such as Together A
 38. Deployment Contract
 39. Platform Abstraction
 40. Context Orchestration
+41. Reasoning Integrity
+42. UI Surface Contract
+43. Deterministic Execution
+44. Control Plane Authority
+45. World State Governance
 
 ## Issue Schema
 
@@ -317,7 +323,7 @@ Current packaged output:
 
 ## Release Readiness
 
-- **Current Version**: 1.9.0
+- **Current Version**: 1.10.0
 - **Verification Status**: Local verification performed via `npm run verify`
 - **Logic Status**: Verified all tests pass via `npm test`
 - **Packaging**: Local Windows packaging supported via `npm run dist`

@@ -4,6 +4,20 @@ All notable changes to this project should be documented in this file.
 
 This changelog establishes the current production-ready baseline for the app as it exists in this repository.
 
+## [1.10.0] - 2026-03-31
+
+### Added
+
+- **Deep-Spec Taxonomy Expansion (45 Layers / 383 Detectors)**: Extended the taxonomy from 40 to 45 top-level layers with 383 code-defined micro-detectors. The new layers cover Deterministic Execution, Control Plane Authority, and World State Governance, adding first-class detection for scheduling non-determinism, deadlock risks, plane-separation breaches, authority delegation gaps, state mutation invariant violations, and PSG gateway bypasses.
+- **Deeper Subcategories and Detectors for Existing Deep Layers**: Expanded Reasoning Integrity, UI Surface Contract, Specification Formalism, Simulation & Verification, Memory & World Model, Agent Orchestration, Tool & Execution Safety, Deployment Contract, Platform Abstraction, and Context Orchestration layers with additional subcategories and detectors where coverage was thin.
+- **Extended Benchmark Fixtures**: Added new benchmark test cases exercising control-plane, world-state, and deterministic-execution detector normalization paths.
+- **Runtime Prompt Alignment**: System prompt now reflects 45 layers and 383 detectors with specific instructions for deep-spec auditing invariants.
+
+### Changed
+
+- Updated all current-state documentation (README, ARCHITECTURE, CONTRIBUTING, GEMINI, ENHANCEMENTS) to reflect the 45-layer/383-detector baseline.
+- Removed temporary migration scripts used during the expansion pass.
+
 ## [1.9.0] - 2026-03-30
 
 ### Added

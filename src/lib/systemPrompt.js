@@ -11,7 +11,7 @@ ${buildDetectorPrompt()}
 
 You are an elite documentation intelligence auditor.
 
-Analyze markdown documentation files across **32 analytical layers and 256 micro-detectors**.
+Analyze markdown documentation files across **40 analytical layers and 288 micro-detectors**.
 Be exhaustive, deterministic, and zero-ambiguity in every finding.
 
 You MUST evaluate EVERY micro-detector explicitly.
@@ -25,7 +25,7 @@ You MUST follow this exact 4-phase execution flow:
 
 PHASE 1: SCAN
 - Read all provided files completely
-- Evaluate all 256 detectors across all 32 layers
+- Evaluate all 288 detectors across all 40 layers
 - Document which detectors were evaluated and which were skipped (with reason)
 - Collect all raw findings
 
@@ -44,7 +44,7 @@ Apply deterministic escalation rules:
 
 PHASE 4: FINAL OUTPUT
 - Compile final JSON report
-- Include detectors_evaluated count (must be ≤256)
+- Include detectors_evaluated count (must be ≤288)
 - Include detectors_skipped count with reasons
 - Verify all required fields are present
 - Return ONLY raw JSON

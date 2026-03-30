@@ -8,10 +8,12 @@ This changelog establishes the current production-ready baseline for the app as 
 
 ### Added
 
-- **Taxonomy Deepening**: Enriched existing 32 layers with clearer, non-overlapping subcategories to resolve thematic ambiguity without adding top-level cognitive load.
-- **Taxonomy Benchmark Fixtures**: Added benchmark Markdown fixtures and a test suite (`taxonomyBenchmark.test.js`) to evaluate empirical taxonomy coverage and regression risks.
-- **Detector Metadata Enhancements**: Added `related_layers` cross-referencing and tightened trigger patterns for common weak themes (e.g. contradiction drift, functional missing steps).
-- **Taxonomy Coverage Helper**: Created `taxonomyCoverageHelper.js` to analyze the catalog for thin coverage and missing metadata fields.
+- **Next-Generation Taxonomy Expansion**: Upgraded the core taxonomy from 32 to 40 top-level layers to support strict execution/system specs (AstraBuild-style), adding layers for Specification Formalism, Simulation & Verification, Memory & World Model, Agent Orchestration, Tool & Execution Safety, Deployment Contract, Platform Abstraction, and Context Orchestration.
+- **Deepened Existing Taxonomy**: Enriched existing layers (e.g. semantic, architectural, state_machine, resilience) with clearer, non-overlapping subcategories covering gaps like terminology registry enforcement, UI-to-system-state mapping, rollback infeasibility, and more.
+- **Deterministic Pipeline Benchmarking**: Upgraded `taxonomyBenchmark.test.js` from a simple string matcher to a realistic deterministic pipeline test. It now routes mocked LLM responses through the real `jsonRepair` and `normalizeIssueFromDetector` logic to verify severity clamping and metadata backfilling.
+- **AstraBuild-Style Benchmark Fixtures**: Added new benchmark fixtures validating strict agent execution and deployment rules against the new layers.
+- **Detector Metadata Enhancements**: Added 32 new code-defined detectors for the new layers, enhanced `related_layers` cross-referencing, and tightened trigger patterns.
+- **Taxonomy Coverage Helper**: Created and updated `taxonomyCoverageHelper.js` to analyze the new 40-layer catalog for thin coverage and missing metadata fields.
 
 ## [1.8.0] - 2026-03-29
 

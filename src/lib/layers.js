@@ -31,6 +31,14 @@ export const LAYERS = [
   { id: 'resilience', label: 'Resilience & Fault Tolerance', icon: '🛡', color: '#EA580C', bg: '#FFEDD5', border: '#FDBA74' },
   { id: 'observability', label: 'Observability & Monitoring', icon: '👁', color: '#993C1D', bg: '#FAECE7', border: '#F0997B' },
   { id: 'evolution', label: 'Evolution & Future-Proofing', icon: '🔄', color: '#712B13', bg: '#F5C4B3', border: '#F0997B' },
+  { id: 'specification_formalism', label: 'Specification Formalism', icon: '📝', color: '#1E3A8A', bg: '#DBEAFE', border: '#93C5FD' },
+  { id: 'simulation_verification', label: 'Simulation & Verification', icon: '🧪', color: '#065F46', bg: '#D1FAE5', border: '#6EE7B7' },
+  { id: 'memory_world_model', label: 'Memory & World Model', icon: '🧠', color: '#701A75', bg: '#FCE7F3', border: '#F9A8D4' },
+  { id: 'agent_orchestration', label: 'Agent Orchestration', icon: '🤖', color: '#9A3412', bg: '#FCE7F3', border: '#F472B6' },
+  { id: 'tool_execution_safety', label: 'Tool & Execution Safety', icon: '🛠️', color: '#991B1B', bg: '#FFEDD5', border: '#FDBA74' },
+  { id: 'deployment_contract', label: 'Deployment Contract', icon: '📦', color: '#166534', bg: '#DCFCE7', border: '#6EE7B7' },
+  { id: 'platform_abstraction', label: 'Platform Abstraction', icon: '🖥️', color: '#3730A3', bg: '#E0E7FF', border: '#A5B4FC' },
+  { id: 'context_orchestration', label: 'Context Orchestration', icon: '🧩', color: '#0F766E', bg: '#D1FAE5', border: '#6EE7B7' },
 ];
 
 export const SEVERITY_STYLE = {

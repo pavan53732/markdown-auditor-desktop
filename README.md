@@ -1,17 +1,17 @@
 # Markdown Document Intelligence Auditor
 
-Windows desktop application for auditing Markdown documentation with AI across 32 analytical layers and 256 micro-detectors.
+Windows desktop application for auditing Markdown documentation with AI across 40 analytical layers and 288 micro-detectors.
 
 ## Overview
 
 Markdown Intelligence Auditor is an Electron + React desktop app that accepts one or more `.md` / `.markdown` files, sends them to an OpenAI-compatible provider, and returns a structured report of documentation issues with severity, traceability, remediation guidance, and export support.
 
-The current build includes chunk-aware batching, deterministic post-processing, incremental result reuse, session diffing, root-cause grouping, a structured 256-detector catalog, and portable Windows packaging.
+The current build includes chunk-aware batching, deterministic post-processing, incremental result reuse, session diffing, root-cause grouping, a structured 288-detector catalog, and portable Windows packaging.
 
 ## Current Capabilities
 
 - Drag-and-drop upload for `.md` and `.markdown` files
-- 32 analytical layers with explicit, deepened subcategories preventing thematic ambiguity
+- 40 analytical layers with explicit, deepened subcategories preventing thematic ambiguity
 - Full structured detector metadata including trigger patterns, evidence requirements, related layers, and false-positive guards
 - Taxonomy benchmark fixtures supporting automated evaluation of classification correctness
 - Programmatic system prompt generation from structured taxonomy and metadata
@@ -95,7 +95,7 @@ Any additional OpenAI-compatible provider, including services such as Together A
 
 1. `SCAN`
    - read input files
-   - evaluate 256 detectors
+   - evaluate 288 detectors
    - record detector coverage
 2. `CROSS-LAYER CORRELATION`
    - relate findings across layers
@@ -125,7 +125,7 @@ Any additional OpenAI-compatible provider, including services such as Together A
 - Rule 3: completeness + functional issues on missing steps -> escalate to high
 - Rule 4: contradiction + intent issues on the same content -> escalate to high
 
-## Analysis Layers (32 Total)
+## Analysis Layers (40 Total)
 
 ### Foundation Layers (1-14)
 
@@ -136,17 +136,17 @@ Any additional OpenAI-compatible provider, including services such as Together A
 5. Factual & Evidence
 6. Functional & Practical
 7. Temporal & State
-8. Architectural & System Design
+8. Architectural & Design
 9. Completeness & Coverage
-10. Intent, Goal & Alignment
-11. Meta-Cognition
-12. Adversarial Analysis
-13. Knowledge Graph
-14. Quantitative Reasoning
+10. Intent & Goal Alignment
+11. Metacognition & Rationale
+12. Adversarial & Edge Cases
+13. Knowledge Graph Integrity
+14. Quantitative & Numeric
 
-### Advanced System Layers (15-24)
+### Advanced Systems Layers (15-24)
 
-15. Requirement Integrity
+15. Requirement Traceability
 16. State Machine Consistency
 17. API Contract
 18. Dependency Graph
@@ -167,6 +167,17 @@ Any additional OpenAI-compatible provider, including services such as Together A
 30. Resilience & Fault Tolerance
 31. Observability & Monitoring
 32. Evolution & Future-Proofing
+
+### Deep Specification Layers (33-40)
+
+33. Specification Formalism
+34. Simulation & Verification
+35. Memory & World Model
+36. Agent Orchestration
+37. Tool & Execution Safety
+38. Deployment Contract
+39. Platform Abstraction
+40. Context Orchestration
 
 ## Issue Schema
 
@@ -284,7 +295,7 @@ npm run dist
 
 Current packaged output:
 
-- `dist-electron-v4\MarkdownAuditor-portable.exe` (v1.5.0)
+- `dist-electron-v4\MarkdownAuditor-portable.exe`
 
 ## Technology Stack
 
@@ -306,9 +317,9 @@ Current packaged output:
 
 ## Release Readiness
 
-- **Current Version**: 1.8.0
+- **Current Version**: 1.9.0
 - **Verification Status**: Local verification performed via `npm run verify`
-- **Logic Status**: Verified 33/33 tests pass via `npm test`
+- **Logic Status**: Verified all tests pass via `npm test`
 - **Packaging**: Local Windows packaging supported via `npm run dist`
 - **Signature**: This portable executable is currently **unsigned**.
 

@@ -20,7 +20,7 @@ Desktop app for auditing Markdown documentation with AI-assisted analysis.
 ## Current Product Expectations
 - Drag-and-drop upload for `.md` and `.markdown` files
 - Multi-file analysis
-- 32 analytical layers and 256 micro-detectors
+- 40 analytical layers and 288 micro-detectors
 - Deterministic post-processing where implemented
 - Severity-based issue reporting
 - Settings modal for provider configuration

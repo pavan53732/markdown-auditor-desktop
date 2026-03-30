@@ -4,14 +4,15 @@
 
 Release date: 2026-03-30
 
-This release focuses on deepening the **Analytical Taxonomy**, enriching the existing 32 layers with stronger subcategories, precise cross-references, and benchmark-driven quality controls without bloating the top-level structure.
+This release brings the **Next-Generation Taxonomy Expansion**, evolving the application from a general document checker into a deep deterministic specification auditor. The core analytical taxonomy has been upgraded from 32 to 40 layers to natively support AstraBuild-style strict execution specs, memory-model specs, agent-system specs, and deployment contracts.
 
 ### Highlights
 
-- **Deepened Taxonomy**: Refined subcategories across weak themes like "contradiction drift," "semantic ambiguity," and "missing prerequisites," improving classifier accuracy without adding new top-level layers.
-- **Benchmark Driven**: Added a suite of canonical Markdown benchmark fixtures ensuring the taxonomy handles edge cases correctly during local development.
-- **Detector Enrichment**: Enhanced existing micro-detectors with `related_layers` mappings and tighter false-positive guards.
-- **Quality Tooling**: Introduced an internal helper to report on taxonomy coverage, ensuring every category remains robust and healthy.
+- **40-Layer Core Taxonomy**: Added first-class audit capabilities for `Specification Formalism`, `Simulation & Verification`, `Memory & World Model`, `Agent Orchestration`, `Tool & Execution Safety`, `Deployment Contract`, `Platform Abstraction`, and `Context Orchestration`.
+- **Deepened Existing Taxonomy**: Refined subcategories across existing weak themes like "semantic ambiguity," "UI-state mapping," and "rollback infeasibility."
+- **Deterministic Benchmark Harness**: Upgraded the test suite into a truthful pipeline benchmark. Tests now run deterministic mocked LLM outputs directly through the `jsonRepair` and taxonomy normalization paths.
+- **AstraBuild-Style Fixtures**: Added new benchmark fixtures ensuring the new layers successfully catch missing pre-simulation steps, direct database write violations, and remote deployment prohibitions.
+- **Detector Enrichment**: Added 32 new micro-detectors to map the new layers, bringing the catalog to 288 code-defined detectors.
 
 ## v1.8.0
 

@@ -71,7 +71,7 @@ export default function ProgressPanel({ model, baseURL }) {
 
         {/* Subtext */}
         <p className="text-center text-[#6B7280] text-xs">
-          All 32 layers running · 256 micro-detectors · single context window
+          All 40 layers running · 288 micro-detectors · single context window
         </p>
 
         {/* Provider info */}

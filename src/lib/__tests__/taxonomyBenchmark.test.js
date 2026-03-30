@@ -2,62 +2,133 @@ import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 
-// Note: This is a placeholder test simulating an AI analysis that validates taxonomy expectations.
-// In a real e2e benchmark, we would mock the LLM response or parse pre-computed benchmark results.
-// Here we are verifying that our taxonomy holds the right detectors for the issues in these fixtures.
+import { repairJSON, validateResults } from '../jsonRepair';
+import { normalizeIssueFromDetector, createInitialDiagnostics } from '../detectorMetadata';
 
-import { DETECTOR_METADATA, getAvailableDetectors } from '../detectorMetadata';
-
-describe('Taxonomy Benchmark Verification', () => {
+/**
+ * Deterministic Pipeline Benchmark
+ * 
+ * This suite validates the actual execution path of the application (repair -> validation -> normalization)
+ * using mocked JSON responses representing canonical edge cases. It is NOT a live LLM test, but it
+ * guarantees that if the AI flags an issue, the app correctly processes, clamps severities, 
+ * and backfills taxonomy metadata according to the 40-layer core.
+ */
+describe('Taxonomy Pipeline Benchmark (Deterministic)', () => {
 
   const readFixture = (name) => {
     return fs.readFileSync(path.join(__dirname, 'fixtures', name), 'utf8');
   };
 
-  it('benchmark-contradiction.md expects contradiction layers', () => {
-    const md = readFixture('benchmark-contradiction.md');
-    expect(md).toContain('Node.js version 18 exactly');
-    expect(md).toContain('Node.js version 20');
-    
-    // We expect L1-01 "direct contradictions" and L21-02 "conflicting config"
-    const l1_01 = DETECTOR_METADATA['L1-01'];
-    expect(l1_01).toBeDefined();
-    expect(l1_01.layer).toBe('contradiction');
-    expect(l1_01.subcategory).toBe('direct conflicts');
+  it('processes a canonical contradiction and normalizes severity', () => {
+    // Represents an AI response for benchmark-contradiction.md
+    const mockedResponse = `
+    \`\`\`json
+    {
+      "summary": { "critical": 0, "high": 1, "medium": 0, "low": 0, "total": 1 },
+      "issues": [
+        {
+          "detector_id": "L1-02",
+          "description": "Conflict between node 18 and node 20 requirements.",
+          "severity": "critical",
+          "files": ["benchmark-contradiction.md"]
+        }
+      ]
+    }
+    \`\`\`
+    `;
 
-    const l1_02 = DETECTOR_METADATA['L1-02'];
-    expect(l1_02.subcategory).toBe('configuration precedence conflicts');
-    expect(l1_02.related_layers).toContain('L21');
+    // 1. Repair
+    const parsed = repairJSON(mockedResponse);
+    expect(parsed.issues.length).toBe(1);
+
+    // 2. Validate
+    expect(() => validateResults(parsed)).not.toThrow();
+
+    // 3. Normalize
+    const diagnostics = createInitialDiagnostics();
+    const normalizedIssue = normalizeIssueFromDetector(parsed.issues[0], diagnostics);
+
+    // L1-02 ceiling is 'high', so 'critical' should be clamped down to 'high'.
+    expect(normalizedIssue.severity).toBe('high');
+    expect(normalizedIssue.layer).toBe('contradiction');
+    expect(normalizedIssue.subcategory).toBe('configuration precedence conflicts');
+    expect(diagnostics.severity_clamped_count).toBe(1);
+    expect(diagnostics.normalized_from_detector_count).toBeGreaterThan(0);
   });
 
-  it('benchmark-missing-steps.md expects functional and structural layers', () => {
-    const md = readFixture('benchmark-missing-steps.md');
-    expect(md).toContain('requires a running Redis instance');
-    
-    // We expect L6-08 "missing preconditions" and L3-04 "improper ordering" or L6-03
-    const l6_08 = DETECTOR_METADATA['L6-08'];
-    expect(l6_08).toBeDefined();
-    expect(l6_08.layer).toBe('functional');
-    expect(l6_08.subcategory).toBe('structural missing-prerequisite cases');
-    expect(l6_08.severity_ceiling).toBe('critical');
+  it('processes deep AstraBuild-style system spec issues correctly', () => {
+    // Represents an AI response for benchmark-astrabuild-strict.md
+    const mockedResponse = `
+    {
+      "summary": { "critical": 3, "high": 1, "medium": 0, "low": 0, "total": 4 },
+      "issues": [
+        {
+          "detector_id": "L38-01",
+          "description": "Requires cloud deployment for local system.",
+          "severity": "medium",
+          "files": ["benchmark-astrabuild-strict.md"]
+        },
+        {
+          "detector_id": "L37-04",
+          "description": "Agent directly writes to the local database instead of using PSG gateway.",
+          "severity": "critical"
+        },
+        {
+          "detector_id": "L35-01",
+          "description": "Reads current epoch and updates previous without locking.",
+          "severity": "critical"
+        },
+        {
+          "detector_id": "L34-01",
+          "description": "No pre-simulation step required.",
+          "severity": "medium"
+        }
+      ]
+    }
+    `;
 
-    const l3_04 = DETECTOR_METADATA['L3-04'];
-    expect(l3_04.subcategory).toBe('missing prerequisites');
-    expect(l3_04.severity_ceiling).toBe('critical');
-    expect(l3_04.related_layers).toContain('L6');
+    const parsed = repairJSON(mockedResponse);
+    expect(() => validateResults(parsed)).not.toThrow();
+
+    const diagnostics = createInitialDiagnostics();
+    const normalized = parsed.issues.map(i => normalizeIssueFromDetector(i, diagnostics));
+
+    // L38-01 floor is critical, input was medium -> clamps UP to critical
+    expect(normalized[0].severity).toBe('critical');
+    expect(normalized[0].layer).toBe('deployment_contract');
+
+    // L37-04 floor is critical, input was critical -> stays critical
+    expect(normalized[1].severity).toBe('critical');
+    expect(normalized[1].layer).toBe('tool_execution_safety');
+
+    // L35-01 floor is high, input was critical -> stays critical (no ceiling defined so it allows higher)
+    expect(normalized[2].severity).toBe('critical');
+    expect(normalized[2].layer).toBe('memory_world_model');
+
+    // L34-01 floor is high, input was medium -> clamps UP to high
+    expect(normalized[3].severity).toBe('high');
+    expect(normalized[3].layer).toBe('simulation_verification');
+
+    // Diagnostics should catch the clamp ups
+    expect(diagnostics.severity_clamped_count).toBe(2);
   });
 
-  it('benchmark-ambiguity.md expects semantic and quantitative layers', () => {
-    const md = readFixture('benchmark-ambiguity.md');
-    expect(md).toContain('a lot of concurrent users');
-    
-    // We expect L4-01 "ambiguous wording" and L14-04 "unsupported statistics"
-    const l4_01 = DETECTOR_METADATA['L4-01'];
-    expect(l4_01).toBeDefined();
-    expect(l4_01.subcategory).toBe('semantic ambiguity');
-    expect(l4_01.related_layers).toContain('L1');
-
-    const l4Detectors = getAvailableDetectors('semantic');
-    expect(l4Detectors.length).toBeGreaterThan(0);
+  it('handles unknown but well-formed detectors gracefully when category is provided', () => {
+    const mockedResponse = `
+    {
+      "summary": { "total": 1 },
+      "issues": [
+        {
+          "detector_id": "L99-99",
+          "category": "state_machine",
+          "description": "Future detector.",
+          "severity": "low"
+        }
+      ]
+    }
+    `;
+    const parsed = repairJSON(mockedResponse);
+    // Should not throw because category is provided for unknown L99-99
+    expect(() => validateResults(parsed)).not.toThrow();
   });
 });

@@ -49,7 +49,7 @@ Current packaged output:
 
 ### Analysis
 
-- 32 layers / 256 detectors
+- 40 layers / 288 detectors
 - structured detector metadata catalog in `src/lib/detectorMetadata.js`
 - dynamic prompt generation from domain profiles, cross-layer bundles, and detector metadata
 - detector-aware validation for known detector IDs
@@ -283,7 +283,7 @@ npm test
 ### Test Coverage
 
 Tests are located in `src/lib/__tests__` and cover:
-- **Taxonomy Integrity**: Verifies the 256-detector catalog consistency.
+- **Taxonomy Integrity**: Verifies the 288-detector catalog consistency.
 - **Normalization & Validation**: Verifies that results are correctly enriched and semantics are enforced.
 - **Prompt Generation**: Verifies the dynamic builder logic.
 - **Cache Service**: Verifies the file-backed persistence layer, atomic writes, and corruption handling.

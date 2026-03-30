@@ -14,9 +14,9 @@ import { buildSystemPrompt } from '../systemPrompt';
 import { LAYERS } from '../layers';
 
 describe('Taxonomy Integrity', () => {
-  it('should have exactly 256 detectors', () => {
+  it('should have exactly 288 detectors', () => {
     const ids = Object.keys(DETECTOR_METADATA);
-    expect(ids.length).toBe(256);
+    expect(ids.length).toBe(288);
   });
 
   it('should have unique detector IDs following Lx-yy format', () => {
@@ -118,7 +118,7 @@ describe('Prompt Generation', () => {
     expect(prompt.length).toBeGreaterThan(1000);
     expect(prompt).toContain('DOMAIN PROFILE: Auto (Default)');
     expect(prompt).toContain('CROSS-LAYER BUNDLES');
-    expect(prompt).toContain('--- DETECTOR CATALOG (256 DETECTORS) ---');
+    expect(prompt).toContain('--- DETECTOR CATALOG (288 DETECTORS) ---');
   });
 
   it('buildSystemPrompt includes detector details', () => {
@@ -126,5 +126,23 @@ describe('Prompt Generation', () => {
     expect(prompt).toContain('[L1-01] direct contradictions');
     expect(prompt).toContain('Trigger: Two statements explicitly negate each other');
     expect(prompt).toContain('Evidence: Conflicting statements.');
+  });
+
+  describe('Prompt and Documentation Alignment', () => {
+    it('system prompt reflects the correct 40/288 counts', () => {
+      const prompt = buildSystemPrompt();
+      const detectorCount = Object.keys(DETECTOR_METADATA).length;
+      const layerCount = Object.keys(LAYER_SUBCATEGORIES).length;
+      
+      expect(prompt).toContain(`**${layerCount} analytical layers and ${detectorCount} micro-detectors**`);
+      expect(prompt).toContain(`Evaluate all ${detectorCount} detectors across all ${layerCount} layers`);
+      expect(prompt).toContain(`Include detectors_evaluated count (must be ≤${detectorCount})`);
+    });
+
+    it('detector catalog header in prompt matches reality', () => {
+      const prompt = buildSystemPrompt();
+      const detectorCount = Object.keys(DETECTOR_METADATA).length;
+      expect(prompt).toContain(`--- DETECTOR CATALOG (${detectorCount} DETECTORS) ---`);
+    });
   });
 });

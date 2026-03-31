@@ -49,9 +49,9 @@ Current packaged output:
 
 ### Analysis
 
-- 45 layers / 612 detectors
+- 45 layers / 637 detectors
 - structured detector metadata catalog in `src/lib/detectorMetadata.js`
-- dynamic prompt generation from domain profiles, cross-layer bundles, and detector metadata
+- dynamic prompt generation from domain profiles, cross-layer bundles (25 total), and detector metadata
 - detector-aware validation for known detector IDs
 - chunk-aware batching
 - deterministic normalization
@@ -60,6 +60,8 @@ Current packaged output:
 - incremental cached reuse
 - session diffing
 - root-cause grouping
+- 127 deterministic benchmark tests across 22 fixtures including 8 new deep-spec fixtures
+- enhanced taxonomy coverage helper with per-layer density, richness, subcategory, and bundle coverage analysis
 
 ### UI
 
@@ -283,11 +285,13 @@ npm test
 ### Test Coverage
 
 Tests are located in `src/lib/__tests__` and cover:
-- **Taxonomy Integrity**: Verifies the 612-detector catalog consistency.
+- **Taxonomy Integrity**: Verifies the 637-detector catalog consistency.
 - **Normalization & Validation**: Verifies that results are correctly enriched and semantics are enforced.
 - **Prompt Generation**: Verifies the dynamic builder logic.
 - **Cache Service**: Verifies the file-backed persistence layer, atomic writes, and corruption handling.
 - **Diagnostics**: Verifies runtime observability metrics.
+- **Deep-Spec Benchmarks**: 127 deterministic benchmark tests in `deepSpecBenchmarks.test.js` validate deep-spec layer behavior across 22 fixtures including control plane override abuse, evidence-free escalation, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty dropped, and world state atomicity.
+- **Taxonomy Coverage Helper**: `taxonomyCoverageHelper.js` provides per-layer density analysis, richness metrics, subcategory coverage tracking, and bundle coverage analysis for comprehensive taxonomy observability.
 
 ALWAYS run tests before submitting changes to the taxonomy or prompt generation logic.
 

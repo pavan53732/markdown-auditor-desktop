@@ -7,11 +7,11 @@ This document tracks the major product-level enhancements currently implemented 
 ### Analysis Engine
 
 - 45 analytical layers with explicit deepened subcategories covering weak themes
-- 612 code-defined micro-detectors enriched with `related_layers`, with all 45 layers having at least 8-detector coverage
+- 637 code-defined micro-detectors enriched with `related_layers`, with all 45 layers having at least 8-detector coverage
 - structured detector metadata in `src/lib/detectorMetadata.js`
 - taxonomy benchmark fixtures and evaluation suite
 - dynamic detector catalog generation for the system prompt
-- domain profiles and cross-layer bundles (14 total) composed into prompt generation
+- domain profiles and cross-layer bundles (25 total) composed into prompt generation, including 3 new deep-spec bundles: agent_memory_coordination, context_orchestration_execution, and deployment_resilience_contract
 - chunk-aware batching for oversized files
 - deterministic post-merge normalization
 - four runtime escalation rules
@@ -20,6 +20,10 @@ This document tracks the major product-level enhancements currently implemented 
 - detector-aware validation for Lx-yy ID format, existence, and semantic consistency
 - taxonomy-driven normalization: automatic metadata backfilling and severity bound clamping
 - automated test suite for taxonomy integrity, prompt generation, normalization, and session persistence
+- 127 deterministic benchmark tests across 22 fixtures (14 existing + 8 new deep-spec fixtures)
+- deep-spec benchmark suite (`deepSpecBenchmarks.test.js`) covering control plane override abuse, evidence-free escalation, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty dropped, and world state atomicity
+- enhanced taxonomy coverage helper (`taxonomyCoverageHelper.js`) with per-layer density analysis, richness metrics, subcategory coverage tracking, and bundle coverage analysis
+- deep-spec layer strengthening with improved detector quality (4 new detectors: L44-14, L44-15, L45-15, L45-16) and bundle escalation logic (3 new bundles: agent_memory_coordination, context_orchestration_execution, deployment_resilience_contract)
 - runtime taxonomy diagnostics surfaced in UI, Markdown, and JSON/Session exports
 - basic response validation before rendering
 - file-backed incremental analysis cache (`analysis_cache.json`)

@@ -569,4 +569,396 @@ describe('Taxonomy Pipeline Benchmark (Deterministic)', () => {
     expect(normalized[4].severity).toBe('high');
     expect(normalized[4].layer).toBe('adversarial');
   });
+
+  it('processes simulation governance mismatch correctly', () => {
+    const mockedResponse = `
+    {
+      "summary": { "critical": 2, "high": 2, "medium": 0, "low": 0, "total": 4 },
+      "issues": [
+        {
+          "detector_id": "L34-08",
+          "description": "Post-simulation validation absent after sandbox execution.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L29-15",
+          "description": "Governance bypass path through direct write outside simulation.",
+          "severity": "critical"
+        },
+        {
+          "detector_id": "L35-04",
+          "description": "No commit-hash binding recorded for simulation results.",
+          "severity": "medium"
+        },
+        {
+          "detector_id": "L34-02",
+          "description": "Simulation mutated production state instead of read-only sandbox.",
+          "severity": "critical"
+        }
+      ]
+    }
+    `;
+
+    const parsed = repairJSON(mockedResponse);
+    expect(() => validateResults(parsed)).not.toThrow();
+
+    const diagnostics = createInitialDiagnostics();
+    const normalized = parsed.issues.map(i => normalizeIssueFromDetector(i, diagnostics));
+
+    expect(normalized[0].severity).toBe('high');
+    expect(normalized[0].layer).toBe('simulation_verification');
+    expect(normalized[0].subcategory).toBe('post-simulation governance');
+
+    expect(normalized[1].severity).toBe('critical');
+    expect(normalized[1].layer).toBe('governance');
+
+    expect(normalized[2].severity).toBe('medium');
+    expect(normalized[2].layer).toBe('memory_world_model');
+
+    expect(normalized[3].severity).toBe('critical');
+    expect(normalized[3].layer).toBe('simulation_verification');
+  });
+
+  it('processes control-plane override abuse correctly', () => {
+    const mockedResponse = `
+    {
+      "summary": { "critical": 2, "high": 2, "medium": 0, "low": 0, "total": 4 },
+      "issues": [
+        {
+          "detector_id": "L44-03",
+          "description": "Override conditions not specified for control-plane decisions.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L44-07",
+          "description": "No audit trail recorded for control-plane override actions.",
+          "severity": "critical"
+        },
+        {
+          "detector_id": "L44-04",
+          "description": "Execution owner boundary ambiguous allowing unauthorized writes.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L44-01",
+          "description": "Control-plane separation breached in unified interface.",
+          "severity": "critical"
+        }
+      ]
+    }
+    `;
+
+    const parsed = repairJSON(mockedResponse);
+    expect(() => validateResults(parsed)).not.toThrow();
+
+    const diagnostics = createInitialDiagnostics();
+    const normalized = parsed.issues.map(i => normalizeIssueFromDetector(i, diagnostics));
+
+    expect(normalized[0].severity).toBe('high');
+    expect(normalized[0].layer).toBe('control_plane_authority');
+    expect(normalized[0].subcategory).toBe('override conditions');
+
+    expect(normalized[1].severity).toBe('critical');
+    expect(normalized[1].layer).toBe('control_plane_authority');
+
+    expect(normalized[2].severity).toBe('high');
+    expect(normalized[2].layer).toBe('control_plane_authority');
+
+    expect(normalized[3].severity).toBe('critical');
+    expect(normalized[3].layer).toBe('control_plane_authority');
+  });
+
+  it('processes world-state mutation without atomicity correctly', () => {
+    const mockedResponse = `
+    {
+      "summary": { "critical": 3, "high": 1, "medium": 0, "low": 0, "total": 4 },
+      "issues": [
+        {
+          "detector_id": "L45-04",
+          "description": "Read/write atomicity failure on independent state fields.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L45-02",
+          "description": "Mutation gateway bypassed during system recovery path.",
+          "severity": "critical"
+        },
+        {
+          "detector_id": "L45-13",
+          "description": "Snapshot isolation not atomic with mutation creating dirty read window.",
+          "severity": "critical"
+        },
+        {
+          "detector_id": "L45-01",
+          "description": "State mutation invariant breached during transitional states.",
+          "severity": "critical"
+        }
+      ]
+    }
+    `;
+
+    const parsed = repairJSON(mockedResponse);
+    expect(() => validateResults(parsed)).not.toThrow();
+
+    const diagnostics = createInitialDiagnostics();
+    const normalized = parsed.issues.map(i => normalizeIssueFromDetector(i, diagnostics));
+
+    expect(normalized[0].severity).toBe('high');
+    expect(normalized[0].layer).toBe('world_state_governance');
+    expect(normalized[0].subcategory).toBe('read/write atomicity');
+
+    expect(normalized[1].severity).toBe('critical');
+    expect(normalized[1].layer).toBe('world_state_governance');
+
+    expect(normalized[2].severity).toBe('critical');
+    expect(normalized[2].layer).toBe('world_state_governance');
+
+    expect(normalized[3].severity).toBe('critical');
+    expect(normalized[3].layer).toBe('world_state_governance');
+  });
+
+  it('processes export path non-determinism correctly', () => {
+    const mockedResponse = `
+    {
+      "summary": { "critical": 1, "high": 3, "medium": 0, "low": 0, "total": 4 },
+      "issues": [
+        {
+          "detector_id": "L38-05",
+          "description": "Export path varies by environment with timestamp suffix.",
+          "severity": "medium"
+        },
+        {
+          "detector_id": "L38-14",
+          "description": "Remote deployment prohibition not rigorously enforced.",
+          "severity": "critical"
+        },
+        {
+          "detector_id": "L38-15",
+          "description": "Export path determinism detail gap in build environment.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L43-06",
+          "description": "Deterministic replay impossible due to export path variance.",
+          "severity": "high"
+        }
+      ]
+    }
+    `;
+
+    const parsed = repairJSON(mockedResponse);
+    expect(() => validateResults(parsed)).not.toThrow();
+
+    const diagnostics = createInitialDiagnostics();
+    const normalized = parsed.issues.map(i => normalizeIssueFromDetector(i, diagnostics));
+
+    expect(normalized[0].severity).toBe('medium');
+    expect(normalized[0].layer).toBe('deployment_contract');
+    expect(normalized[0].subcategory).toBe('export path determinism');
+
+    expect(normalized[1].severity).toBe('critical');
+    expect(normalized[1].layer).toBe('deployment_contract');
+
+    expect(normalized[2].severity).toBe('high');
+    expect(normalized[2].layer).toBe('deployment_contract');
+
+    expect(normalized[3].severity).toBe('high');
+    expect(normalized[3].layer).toBe('deterministic_execution');
+  });
+
+  it('processes evidence-free escalation correctly', () => {
+    const mockedResponse = `
+    {
+      "summary": { "critical": 1, "high": 3, "medium": 0, "low": 0, "total": 4 },
+      "issues": [
+        {
+          "detector_id": "L41-16",
+          "description": "Escalation to critical severity without supporting evidence.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L41-13",
+          "description": "Evidence binding rigor gap in reasoning chain.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L41-14",
+          "description": "Uncertainty propagation failure case in high-confidence chain.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L41-15",
+          "description": "Bounded self-correction loop rule gap allows infinite retries.",
+          "severity": "medium"
+        }
+      ]
+    }
+    `;
+
+    const parsed = repairJSON(mockedResponse);
+    expect(() => validateResults(parsed)).not.toThrow();
+
+    const diagnostics = createInitialDiagnostics();
+    const normalized = parsed.issues.map(i => normalizeIssueFromDetector(i, diagnostics));
+
+    expect(normalized[0].severity).toBe('high');
+    expect(normalized[0].layer).toBe('reasoning_integrity');
+    expect(normalized[0].subcategory).toBe('evidence-free escalation');
+
+    expect(normalized[1].severity).toBe('high');
+    expect(normalized[1].layer).toBe('reasoning_integrity');
+
+    expect(normalized[2].severity).toBe('high');
+    expect(normalized[2].layer).toBe('reasoning_integrity');
+
+    expect(normalized[3].severity).toBe('medium');
+    expect(normalized[3].layer).toBe('reasoning_integrity');
+  });
+
+  it('processes uncertainty dropped in final reasoning correctly', () => {
+    const mockedResponse = `
+    {
+      "summary": { "critical": 0, "high": 4, "medium": 0, "low": 0, "total": 4 },
+      "issues": [
+        {
+          "detector_id": "L41-02",
+          "description": "Uncertainty propagation failure creates false certainty.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L41-08",
+          "description": "Ignored uncertainty in high-confidence reasoning chain.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L41-04",
+          "description": "Multi-step reasoning validation failure in chain summaries.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L41-01",
+          "description": "Evidence binding gap allows unsupported inference.",
+          "severity": "high"
+        }
+      ]
+    }
+    `;
+
+    const parsed = repairJSON(mockedResponse);
+    expect(() => validateResults(parsed)).not.toThrow();
+
+    const diagnostics = createInitialDiagnostics();
+    const normalized = parsed.issues.map(i => normalizeIssueFromDetector(i, diagnostics));
+
+    expect(normalized[0].severity).toBe('high');
+    expect(normalized[0].layer).toBe('reasoning_integrity');
+    expect(normalized[0].subcategory).toBe('uncertainty propagation');
+
+    expect(normalized[1].severity).toBe('high');
+    expect(normalized[1].layer).toBe('reasoning_integrity');
+
+    expect(normalized[2].severity).toBe('high');
+    expect(normalized[2].layer).toBe('reasoning_integrity');
+
+    expect(normalized[3].severity).toBe('high');
+    expect(normalized[3].layer).toBe('reasoning_integrity');
+  });
+
+  it('processes UI fatal-state exposure correctly', () => {
+    const mockedResponse = `
+    {
+      "summary": { "critical": 2, "high": 2, "medium": 0, "low": 0, "total": 4 },
+      "issues": [
+        {
+          "detector_id": "L42-14",
+          "description": "Fatal state exposed to user without recovery path.",
+          "severity": "critical"
+        },
+        {
+          "detector_id": "L42-13",
+          "description": "Mandatory UI component contract not enforced for error dialogs.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L42-03",
+          "description": "UI-to-system-state mapping gap during async operations.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L42-05",
+          "description": "Component state-machine mismatch in invalid UI transitions.",
+          "severity": "medium"
+        }
+      ]
+    }
+    `;
+
+    const parsed = repairJSON(mockedResponse);
+    expect(() => validateResults(parsed)).not.toThrow();
+
+    const diagnostics = createInitialDiagnostics();
+    const normalized = parsed.issues.map(i => normalizeIssueFromDetector(i, diagnostics));
+
+    expect(normalized[0].severity).toBe('critical');
+    expect(normalized[0].layer).toBe('ui_surface_contract');
+    expect(normalized[0].subcategory).toBe('UI fatal-state exposure');
+
+    expect(normalized[1].severity).toBe('high');
+    expect(normalized[1].layer).toBe('ui_surface_contract');
+
+    expect(normalized[2].severity).toBe('high');
+    expect(normalized[2].layer).toBe('ui_surface_contract');
+
+    expect(normalized[3].severity).toBe('medium');
+    expect(normalized[3].layer).toBe('ui_surface_contract');
+  });
+
+  it('processes direct tool side-effect leakage correctly', () => {
+    const mockedResponse = `
+    {
+      "summary": { "critical": 2, "high": 2, "medium": 0, "low": 0, "total": 4 },
+      "issues": [
+        {
+          "detector_id": "L37-15",
+          "description": "Direct tool side-effect leakage to unrelated global state.",
+          "severity": "critical"
+        },
+        {
+          "detector_id": "L37-14",
+          "description": "Sandbox isolation boundary not enforced for privileged tools.",
+          "severity": "critical"
+        },
+        {
+          "detector_id": "L37-08",
+          "description": "Side effect validation absence for read-only tool execution.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L37-07",
+          "description": "Tool invocation contract gap for validated calls.",
+          "severity": "high"
+        }
+      ]
+    }
+    `;
+
+    const parsed = repairJSON(mockedResponse);
+    expect(() => validateResults(parsed)).not.toThrow();
+
+    const diagnostics = createInitialDiagnostics();
+    const normalized = parsed.issues.map(i => normalizeIssueFromDetector(i, diagnostics));
+
+    expect(normalized[0].severity).toBe('critical');
+    expect(normalized[0].layer).toBe('tool_execution_safety');
+    expect(normalized[0].subcategory).toBe('direct tool side-effect leakage');
+
+    expect(normalized[1].severity).toBe('critical');
+    expect(normalized[1].layer).toBe('tool_execution_safety');
+
+    expect(normalized[2].severity).toBe('high');
+    expect(normalized[2].layer).toBe('tool_execution_safety');
+
+    expect(normalized[3].severity).toBe('high');
+    expect(normalized[3].layer).toBe('tool_execution_safety');
+  });
 });

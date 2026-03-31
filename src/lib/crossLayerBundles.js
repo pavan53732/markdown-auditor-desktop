@@ -25,7 +25,7 @@ export const CROSS_LAYER_BUNDLES = [
     name: 'World State Governance & Memory',
     layers: ['world_state_governance', 'memory_world_model', 'data_flow'],
     description: 'Ensures the integrity of the system world model, focusing on atomic updates, snapshot isolation, and PSG exclusivity.',
-    escalation_rule: 'Escalate to CRITICAL if state mutation gateway bypass (L45) is detected alongside snapshot isolation gaps (L35).'
+    escalation_rule: 'Escalate to CRITICAL if state mutation gateway bypass (L45) is detected alongside snapshot isolation gaps (L35) or data flow invariant violations (L19) that corrupt world model state.'
   },
   {
     id: 'spec_formalism_completeness',
@@ -117,6 +117,62 @@ export const CROSS_LAYER_BUNDLES = [
     layers: ['reasoning_integrity', 'specification_formalism', 'metacognition'],
     description: 'Audits the enforceability of reasoning traces against the formal specification and metacognitive tradeoff analysis.',
     escalation_rule: 'Escalate to HIGH if unenforceable reasoning traces (L41) depend on unstated specification assumptions (L33).'
+  },
+  {
+    id: 'simulation_governance_determinism',
+    name: 'Simulation, Governance & Deterministic Execution',
+    layers: ['simulation_verification', 'governance', 'deterministic_execution'],
+    description: 'Ensures simulation gates are enforced deterministically with proper governance oversight and post-simulation validation.',
+    escalation_rule: 'Escalate to CRITICAL if simulation gate omission (L34) coincides with governance bypass path (L29) in a deterministic execution context (L43). Escalate to CRITICAL if simulation results contradict governance constraints without explicit override justification or rollback plan.'
+  },
+  {
+    id: 'control_plane_architectural_execution',
+    name: 'Control Plane Authority & Architectural Execution',
+    layers: ['control_plane_authority', 'architectural', 'execution_path'],
+    description: 'Verifies control-plane authority is properly delegated across architectural boundaries and execution paths.',
+    escalation_rule: 'Escalate to CRITICAL if control-plane separation breach (L44) enables unauthorized execution path access (L20) through architectural boundary leaks (L8). Escalate to CRITICAL if control plane decisions conflict with execution path requirements, creating authority ambiguity that could lead to unsafe state transitions.'
+  },
+  {
+    id: 'tool_safety_deployment_platform',
+    name: 'Tool Execution Safety & Deployment Platform',
+    layers: ['tool_execution_safety', 'deployment_contract', 'platform_abstraction'],
+    description: 'Audits tool execution safety within deployment contracts and platform abstraction boundaries.',
+    escalation_rule: 'Escalate to CRITICAL if sandbox isolation breach (L37) occurs alongside remote deployment violation (L38) with platform abstraction leakage (L39). Escalate to CRITICAL if tool side-effects leak through platform abstraction, violating deployment contract isolation guarantees.'
+  },
+  {
+    id: 'reasoning_contradiction_metacognition',
+    name: 'Reasoning Integrity, Contradiction & Metacognition',
+    layers: ['reasoning_integrity', 'contradiction', 'factual', 'metacognition'],
+    description: 'Ensures reasoning integrity by detecting contradictions, factual gaps, and metacognitive failures in evidence chains.',
+    escalation_rule: 'Escalate to HIGH if evidence-free escalation (L41) coincides with factual contradiction (L1) and unverifiable metacognitive claims (L11). Escalate to CRITICAL if reasoning contradicts established facts without explicit acknowledgment or uncertainty propagation.'
+  },
+  {
+    id: 'ui_state_machine_usability',
+    name: 'UI Surface Contract & State Machine Usability',
+    layers: ['ui_surface_contract', 'state_machine', 'usability'],
+    description: 'Verifies UI surface contracts align with state machine transitions and usability requirements.',
+    escalation_rule: 'Escalate to HIGH if UI fatal-state exposure (L42) coincides with fatal-state state machine exposure (L16) and usability feedback gaps (L27). Escalate to CRITICAL if UI states expose fatal error conditions to users without safe recovery paths or clear error communication.'
+  },
+  {
+    id: 'agent_memory_coordination',
+    name: 'Agent Memory Coordination',
+    layers: ['agent_orchestration', 'memory_world_model'],
+    description: 'Ensures agent coordination relies on consistent world model state, preventing decisions based on stale or conflicting memory.',
+    escalation_rule: 'Escalate to CRITICAL if agent orchestration decisions (L36) are based on inconsistent or stale world model state (L35), leading to coordination failures or conflicting actions.'
+  },
+  {
+    id: 'context_orchestration_execution',
+    name: 'Context Orchestration & Execution Path',
+    layers: ['context_orchestration', 'execution_path'],
+    description: 'Verifies context boundaries align with execution requirements, preventing context contamination or execution leakage.',
+    escalation_rule: 'Escalate to CRITICAL if context orchestration boundaries (L41) conflict with execution path requirements (L20), causing context contamination or unauthorized cross-context execution.'
+  },
+  {
+    id: 'deployment_resilience_contract',
+    name: 'Deployment Resilience Contract',
+    layers: ['deployment_contract', 'resilience'],
+    description: 'Ensures deployment constraints do not undermine system resilience guarantees such as retry budgets, circuit breakers, and graceful degradation.',
+    escalation_rule: 'Escalate to CRITICAL if deployment contract constraints (L38) undermine resilience guarantees (L30), such as insufficient retry budgets, missing circuit breakers, or inability to degrade gracefully under deployment-imposed resource limits.'
   }
 ];
 

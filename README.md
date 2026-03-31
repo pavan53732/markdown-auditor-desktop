@@ -1,20 +1,21 @@
 # Markdown Document Intelligence Auditor
 
-Windows desktop application for auditing Markdown documentation with AI across 45 analytical layers and 612 micro-detectors.
+Windows desktop application for auditing Markdown documentation with AI across 45 analytical layers and 637 micro-detectors.
 
 ## Overview
 
 Markdown Intelligence Auditor is an Electron + React desktop app that accepts one or more `.md` / `.markdown` files, sends them to an OpenAI-compatible provider, and returns a structured report of documentation issues with severity, traceability, remediation guidance, and export support.
 
-The current build includes chunk-aware batching, deterministic post-processing, incremental result reuse, session diffing, root-cause grouping, a structured 612-detector catalog, and portable Windows packaging.
+The current build includes chunk-aware batching, deterministic post-processing, incremental result reuse, session diffing, root-cause grouping, a structured 637-detector catalog, and portable Windows packaging.
 
 ## Current Capabilities
 
 - Drag-and-drop upload for `.md` and `.markdown` files
 - 45 analytical layers with explicit, deepened subcategories preventing thematic ambiguity
-- 612 code-defined micro-detectors across all 45 layers, including 13 deep-spec layers with full detector coverage
+- 637 code-defined micro-detectors across all 45 layers, including 13 deep-spec layers with full detector coverage
 - Full structured detector metadata including trigger patterns, evidence requirements, related layers, and false-positive guards
 - Taxonomy benchmark fixtures supporting automated evaluation of classification correctness
+- 127 deterministic benchmark tests across 22 benchmark fixtures including 8 new deep-spec fixtures for control plane override abuse, evidence-free escalation, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty dropped, and world state atomicity
 - Programmatic system prompt generation from structured taxonomy and metadata
 - Taxonomy-driven runtime normalization: backfilling metadata and enforcing severity bounds
 - Advanced semantic validation enforcing category -> subcategory -> detector consistency
@@ -23,7 +24,7 @@ The current build includes chunk-aware batching, deterministic post-processing, 
 - Seven domain profiles (e.g., API Docs, Runbooks, PRDs) adjusting detector emphasis
 ...
 - `total_issues_loaded`: specifically tracks issues processed during session load or import
-- Six cross-layer bundles connecting concepts like Security, Data Flow, and Governance, plus eight deep-spec bundles for tool safety, world state, control plane, reasoning, UI contracts, deterministic execution, deployment, and platform abstraction
+- 25 cross-layer bundles connecting concepts like Security, Data Flow, Governance, Agent Memory Coordination, Context Orchestration Execution, and Deployment Resilience Contracts, plus deep-spec bundles for tool safety, world state, control plane, reasoning, UI contracts, deterministic execution, deployment, and platform abstraction
 - Enhanced UI filtering by subcategory and grouping by subcategory or root cause
 - Four-phase analysis flow: scan -> cross-layer correlation -> severity escalation -> final output
 - Four deterministic escalation rules applied during runtime normalization
@@ -96,7 +97,7 @@ Any additional OpenAI-compatible provider, including services such as Together A
 
 1. `SCAN`
    - read input files
-    - evaluate 612 detectors
+     - evaluate 637 detectors
    - record detector coverage
 2. `CROSS-LAYER CORRELATION`
    - relate findings across layers

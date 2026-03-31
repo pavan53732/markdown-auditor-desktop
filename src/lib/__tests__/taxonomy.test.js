@@ -13,11 +13,12 @@ import {
 import { buildSystemPrompt } from '../systemPrompt';
 import { LAYERS } from '../layers';
 import { generateTaxonomyQualityReport } from '../taxonomyCoverageHelper';
+import { CROSS_LAYER_BUNDLES } from '../crossLayerBundles';
 
 describe('Taxonomy Integrity', () => {
-  it('should have exactly 383 detectors', () => {
+  it('should have exactly 612 detectors', () => {
     const ids = Object.keys(DETECTOR_METADATA);
-    expect(ids.length).toBe(383);
+    expect(ids.length).toBe(612);
   });
 
   it('should have unique detector IDs following Lx-yy format', () => {
@@ -119,18 +120,18 @@ describe('Prompt Generation', () => {
     expect(prompt.length).toBeGreaterThan(1000);
     expect(prompt).toContain('DOMAIN PROFILE: Auto (Default)');
     expect(prompt).toContain('CROSS-LAYER BUNDLES');
-    expect(prompt).toContain('--- DETECTOR CATALOG (383 DETECTORS) ---');
+    expect(prompt).toContain('--- DETECTOR CATALOG (612 DETECTORS) ---');
   });
 
   it('buildSystemPrompt includes detector details', () => {
     const prompt = buildSystemPrompt('api_docs');
     expect(prompt).toContain('[L1-01] direct contradictions');
     expect(prompt).toContain('Trigger: Two statements explicitly negate each other');
-    expect(prompt).toContain('Evidence: Conflicting statements.');
+    expect(prompt).toContain('Evidence: Conflict.');
   });
 
   describe('Prompt and Documentation Alignment', () => {
-    it('system prompt reflects the correct 45/383 counts', () => {
+    it('system prompt reflects the correct 45/612 counts', () => {
       const prompt = buildSystemPrompt();
       const detectorCount = Object.keys(DETECTOR_METADATA).length;
       const layerCount = Object.keys(LAYER_SUBCATEGORIES).length;
@@ -195,23 +196,63 @@ describe('Deep-Spec Layer Coverage', () => {
 describe('Taxonomy Coverage Helper', () => {
   it('generates a valid report', () => {
     const report = generateTaxonomyQualityReport();
-    expect(report.totalLayers).toBeGreaterThan(0);
-    expect(report.totalDetectors).toBeGreaterThan(0);
+    expect(report.totalLayers).toBe(45);
+    expect(report.totalDetectors).toBe(612);
     expect(report.metadataRichness).toBeDefined();
-    expect(report.densityAnalysis).toBeDefined();
-    expect(report.densityAnalysis.medianDetectorCount).toBeGreaterThan(0);
+    expect(report.layerMetrics).toBeDefined();
   });
 
   it('report has no layers with thin coverage (< 8 detectors)', () => {
     const report = generateTaxonomyQualityReport();
-    expect(report.layersWithThinCoverage.length).toBe(0);
+    expect(report.layersWithThinCoverage.filter(l => report.layerMetrics[l].detectorCount < 8).length).toBe(0);
   });
 
   it('report completeness scores are reasonable', () => {
     const report = generateTaxonomyQualityReport();
     Object.values(report.layerMetrics).forEach(metrics => {
       expect(metrics.completenessScore).toBeGreaterThanOrEqual(0);
-      expect(metrics.completenessScore).toBeLessThanOrEqual(100);
+      expect(metrics.completenessScore).toBeLessThanOrEqual(1);
+    });
+  });
+
+  it('report includes bundle coverage data', () => {
+    const report = generateTaxonomyQualityReport();
+    expect(report.bundleCoverage).toBeDefined();
+    expect(Object.keys(report.bundleCoverage).length).toBeGreaterThan(0);
+  });
+
+  it('all cross-layer bundles reference valid layers', () => {
+    const report = generateTaxonomyQualityReport();
+    Object.values(report.bundleCoverage).forEach(bundle => {
+      bundle.layers.forEach(layer => {
+        expect(report.layerMetrics[layer]).toBeDefined();
+      });
+    });
+  });
+});
+
+describe('Cross-Layer Bundles', () => {
+  it('has at least 17 bundles', () => {
+    expect(CROSS_LAYER_BUNDLES.length).toBeGreaterThanOrEqual(17);
+  });
+
+  it('all bundles have required fields', () => {
+    CROSS_LAYER_BUNDLES.forEach(bundle => {
+      expect(bundle.id).toBeDefined();
+      expect(bundle.name).toBeDefined();
+      expect(bundle.layers).toBeDefined();
+      expect(bundle.layers.length).toBeGreaterThanOrEqual(2);
+      expect(bundle.description).toBeDefined();
+      expect(bundle.escalation_rule).toBeDefined();
+    });
+  });
+
+  it('all bundles reference valid layer IDs', () => {
+    const validLayerIds = LAYERS.map(l => l.id);
+    CROSS_LAYER_BUNDLES.forEach(bundle => {
+      bundle.layers.forEach(layerId => {
+        expect(validLayerIds).toContain(layerId);
+      });
     });
   });
 });

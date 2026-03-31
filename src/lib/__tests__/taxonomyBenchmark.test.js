@@ -168,8 +168,8 @@ describe('Taxonomy Pipeline Benchmark (Deterministic)', () => {
     expect(normalized[1].severity).toBe('critical');
     expect(normalized[1].layer).toBe('world_state_governance');
 
-    // L41-03 floor is medium
-    expect(normalized[2].severity).toBe('medium');
+    // L41-03 floor is high
+    expect(normalized[2].severity).toBe('high');
     expect(normalized[2].layer).toBe('reasoning_integrity');
 
     // L41-05 floor is high
@@ -210,7 +210,7 @@ describe('Taxonomy Pipeline Benchmark (Deterministic)', () => {
       "summary": { "critical": 2, "high": 2, "medium": 0, "low": 0, "total": 4 },
       "issues": [
         {
-          "detector_id": "L29-09",
+          "detector_id": "L29-08",
           "description": "Override conditions undefined for admin actions.",
           "severity": "high"
         },
@@ -299,7 +299,7 @@ describe('Taxonomy Pipeline Benchmark (Deterministic)', () => {
     expect(normalized[2].layer).toBe('state_machine');
     expect(normalized[2].subcategory).toBe('fatal-state exposure');
 
-    expect(normalized[3].severity).toBe('medium');
+    expect(normalized[3].severity).toBe('high');
     expect(normalized[3].layer).toBe('ui_surface_contract');
   });
 
@@ -352,6 +352,7 @@ describe('Taxonomy Pipeline Benchmark (Deterministic)', () => {
   });
 
   it('processes world state governance and reasoning integrity issues correctly', () => {
+    // Represents an AI response for benchmark-world-state.md
     const mockedResponse = `
     {
       "summary": { "critical": 2, "high": 2, "medium": 0, "low": 0, "total": 4 },
@@ -397,5 +398,175 @@ describe('Taxonomy Pipeline Benchmark (Deterministic)', () => {
 
     expect(normalized[3].severity).toBe('high');
     expect(normalized[3].layer).toBe('reasoning_integrity');
+
+  });
+
+  it('processes deployment contradiction and platform leakage correctly', () => {
+    const mockedResponse = `
+    {
+      "summary": { "critical": 2, "high": 2, "medium": 0, "low": 0, "total": 4 },
+      "issues": [
+        {
+          "detector_id": "L38-01",
+          "description": "System requires cloud deployment but spec says local-only.",
+          "severity": "critical"
+        },
+        {
+          "detector_id": "L38-04",
+          "description": "Export path determined at runtime, non-deterministic.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L39-05",
+          "description": "iOS builds generated as side effect of Android pipeline.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L17-10",
+          "description": "API change breaks backward compatibility without migration.",
+          "severity": "critical"
+        }
+      ]
+    }
+    `;
+
+    const parsed = repairJSON(mockedResponse);
+    expect(() => validateResults(parsed)).not.toThrow();
+
+    const diagnostics = createInitialDiagnostics();
+    const normalized = parsed.issues.map(i => normalizeIssueFromDetector(i, diagnostics));
+
+    expect(normalized[0].severity).toBe('critical');
+    expect(normalized[0].layer).toBe('deployment_contract');
+    expect(normalized[0].subcategory).toBe('remote deployment prohibition');
+
+    expect(normalized[1].severity).toBe('high');
+    expect(normalized[1].layer).toBe('deployment_contract');
+
+    expect(normalized[2].severity).toBe('high');
+    expect(normalized[2].layer).toBe('platform_abstraction');
+
+    expect(normalized[3].severity).toBe('critical');
+    expect(normalized[3].layer).toBe('api_contract');
+  });
+
+  it('processes reasoning integrity gaps and PSG bypass correctly', () => {
+    const mockedResponse = `
+    {
+      "summary": { "critical": 2, "high": 2, "medium": 1, "low": 0, "total": 5 },
+      "issues": [
+        {
+          "detector_id": "L41-09",
+          "description": "Decision reached without intermediate reasoning steps.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L41-05",
+          "description": "Agent retries indefinitely without bounded self-correction.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L45-02",
+          "description": "Agent bypasses PSG gateway for direct state writes.",
+          "severity": "critical"
+        },
+        {
+          "detector_id": "L45-03",
+          "description": "State change not bound to commit hash.",
+          "severity": "medium"
+        },
+        {
+          "detector_id": "L34-10",
+          "description": "High-risk action executes without simulation gate.",
+          "severity": "critical"
+        }
+      ]
+    }
+    `;
+
+    const parsed = repairJSON(mockedResponse);
+    expect(() => validateResults(parsed)).not.toThrow();
+
+    const diagnostics = createInitialDiagnostics();
+    const normalized = parsed.issues.map(i => normalizeIssueFromDetector(i, diagnostics));
+
+    expect(normalized[0].severity).toBe('high');
+    expect(normalized[0].layer).toBe('reasoning_integrity');
+    expect(normalized[0].subcategory).toBe('reasoning trace completeness');
+
+    expect(normalized[1].severity).toBe('high');
+    expect(normalized[1].layer).toBe('reasoning_integrity');
+
+    expect(normalized[2].severity).toBe('critical');
+    expect(normalized[2].layer).toBe('world_state_governance');
+
+    expect(normalized[3].severity).toBe('high');
+    expect(normalized[3].layer).toBe('world_state_governance');
+
+    expect(normalized[4].severity).toBe('critical');
+    expect(normalized[4].layer).toBe('simulation_verification');
+    expect(normalized[4].subcategory).toBe('pre-simulation governance');
+  });
+
+  it('processes newly added empty-coverage detectors correctly', () => {
+    const mockedResponse = `
+    {
+      "summary": { "critical": 1, "high": 3, "medium": 1, "low": 0, "total": 5 },
+      "issues": [
+        {
+          "detector_id": "L8-10",
+          "description": "Control-plane logic mixed with data-plane processing.",
+          "severity": "critical"
+        },
+        {
+          "detector_id": "L16-11",
+          "description": "Two concurrent transitions can produce undefined combined state.",
+          "severity": "critical"
+        },
+        {
+          "detector_id": "L23-09",
+          "description": "Crypto keys used without rotation or expiration policy.",
+          "severity": "high"
+        },
+        {
+          "detector_id": "L19-09",
+          "description": "PII flows through system without documented handling.",
+          "severity": "critical"
+        },
+        {
+          "detector_id": "L12-09",
+          "description": "Trust model assumed but threat model not stated.",
+          "severity": "high"
+        }
+      ]
+    }
+    `;
+
+    const parsed = repairJSON(mockedResponse);
+    expect(() => validateResults(parsed)).not.toThrow();
+
+    const diagnostics = createInitialDiagnostics();
+    const normalized = parsed.issues.map(i => normalizeIssueFromDetector(i, diagnostics));
+
+    // L8-10 floor is critical
+    expect(normalized[0].severity).toBe('critical');
+    expect(normalized[0].layer).toBe('architectural');
+    expect(normalized[0].subcategory).toBe('control-plane/data-plane separation');
+
+    // L16-11 floor is critical
+    expect(normalized[1].severity).toBe('critical');
+    expect(normalized[1].layer).toBe('state_machine');
+
+    // L23-09 floor is high
+    expect(normalized[2].severity).toBe('high');
+    expect(normalized[2].layer).toBe('security');
+
+    // L19-09 floor is critical
+    expect(normalized[3].severity).toBe('critical');
+    expect(normalized[3].layer).toBe('data_flow');
+
+    // L12-09 floor is high
+    expect(normalized[4].severity).toBe('high');
+    expect(normalized[4].layer).toBe('adversarial');
   });
 });

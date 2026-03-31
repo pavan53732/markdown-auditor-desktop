@@ -1,5 +1,29 @@
 # Release Notes
 
+## v1.11.0
+
+Release date: 2026-03-31
+
+This release expands the detector catalog from 383 to **612 code-defined micro-detectors** across the same 45 top-level layers, providing deeper coverage for documentation auditing without changing the core analytical framework.
+
+### What's New
+
+- **612 Micro-Detectors**: All 45 layers now have richer subcategory coverage. The expanded detector set catches more documentation gaps, inconsistencies, and specification violations across complex Markdown projects.
+- **Expanded Benchmark Fixtures**: New deterministic test fixtures cover context contamination, deployment contradictions, governance bypass scenarios, non-deterministic replay detection, platform abstraction leakage, reasoning integrity gaps, and UI contract omissions.
+- **Improved Completeness Scoring**: The overall completeness score is now properly clamped to a maximum of 1.0, preventing misleading scores above 100%.
+
+### What's Fixed
+
+- **Test Alignment**: The automated test suite now runs 83 tests across 10 files, all passing, with taxonomy integrity and benchmark evaluation fully aligned to the 612-detector catalog.
+- **Subcategory Mapping**: Several detectors had inconsistent subcategory mappings that could cause runtime normalization warnings. These are now corrected.
+- **Documentation Coherence**: All current-state docs, prompt text, and UI labels now consistently reference the 612-detector baseline.
+
+### Known Issues
+
+- The packaged Windows executable remains unsigned; Windows SmartScreen may show a trust warning on first run.
+- Unknown detector IDs still produce warnings rather than hard failures during validation.
+- Very large cache files (>50MB) may impact initial load performance.
+
 ## v1.10.0
 
 Release date: 2026-03-31

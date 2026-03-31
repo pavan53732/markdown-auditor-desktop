@@ -6,7 +6,7 @@ Markdown Intelligence Auditor is a desktop application built with Electron, Reac
 
 The current architecture supports:
 
-- 45 analytical layers with 383 code-defined micro-detectors
+- 45 analytical layers with 612 code-defined micro-detectors
 - Full structured detector metadata (trigger patterns, evidence, FP guards)
 - Programmatic system prompt generation using a dynamic builder
 - Detector-aware validation for known detector/category/subcategory combinations
@@ -78,7 +78,7 @@ Provider Layer
 |   |   `-- TopBar.jsx
 |   `-- lib/
 |       |-- crossLayerBundles.js
-|       |-- detectorMetadata.js (Source of truth for 383 detectors)
+|       |-- detectorMetadata.js (Source of truth for 612 detectors)
 |       |-- domainProfiles.js
 |       |-- jsonRepair.js (Advanced semantic validation)
 |       |-- layers.js
@@ -88,7 +88,7 @@ Provider Layer
 
 The system supports a local verification workflow with deepened 45-layer coverage:
 
-1.  **Integrity Validation**: Local automated tests verify the 383-detector catalog against the 45-layer schema.
+1.  **Integrity Validation**: Local automated tests verify the 612-detector catalog against the 45-layer schema.
 2.  **Semantic Enforcement**: Validation logic ensures that AI-reported detector IDs, layers, and subcategories are mutually consistent.
 3.  **Benchmark Evaluation**: A suite of canonical Markdown fixtures (`taxonomyBenchmark.test.js`) evaluates empirical taxonomy coverage across complex edge cases without bloating the top-level categories.
 4.  **Runtime Diagnostics**: The application tracks enrichment, parsing, and clamping metrics during analysis and session loading.
@@ -139,7 +139,7 @@ The system supports a local verification workflow with deepened 45-layer coverag
 `src/lib/detectorMetadata.js` is the taxonomy source of truth for:
 
 - layer subcategories
-- all 383 detector definitions
+- all 612 detector definitions
 - detector prompt generation helpers
 - known-detector validation helpers
 - pure helpers for export and session data shaping (`buildExportData`, `buildSessionData`, `normalizeLoadedSession`, `resolveInitialCache`, `buildHistoryMetadata`)

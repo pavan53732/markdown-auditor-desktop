@@ -4,6 +4,20 @@ All notable changes to this project should be documented in this file.
 
 This changelog establishes the current production-ready baseline for the app as it exists in this repository.
 
+## [1.11.0] - 2026-03-31
+
+### Added
+
+- **Taxonomy Expansion to 612 Detectors**: Extended the detector catalog from 383 to 612 code-defined micro-detectors across the existing 45 top-level layers. All layers now have deeper subcategory coverage with no thin-coverage gaps remaining.
+- **Deterministic Benchmark Suite Additions**: Added new benchmark fixtures and a dedicated deep-spec benchmark test file exercising context contamination, deployment contradiction, governance bypass, non-deterministic replay, platform leakage, reasoning gaps, and UI omission detection paths.
+- **Test Suite Stabilization**: Test suite now includes 83 tests across 10 test files covering taxonomy integrity, benchmark evaluation, normalization, validation, diagnostics, sessions, exports, cache, and history suites.
+
+### Changed
+
+- **Completeness Score Semantics**: Fixed completeness score clamping to ensure it never exceeds a maximum of 1.0.
+- **Subcategory Mapping Fixes**: Corrected subcategory mappings for several detectors to ensure consistent category → subcategory → detector alignment during runtime normalization.
+- **UI/Prompt/Docs Alignment**: All current-state documentation and runtime prompt text now reflect the 612-detector baseline.
+
 ## [1.10.0] - 2026-03-31
 
 ### Added

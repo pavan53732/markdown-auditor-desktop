@@ -1,539 +1,678 @@
 export const LAYER_SUBCATEGORIES = {
-  contradiction: ['direct conflicts', 'version drift', 'diagram-text mismatch', 'terminology drift', 'configuration precedence conflicts'],
-  logical: ['causality gaps', 'circular reasoning', 'invalid assumptions', 'scope leaps', 'logic-state mismatch'],
-  structural: ['broken hierarchy', 'orphan sections', 'duplicate sections', 'missing prerequisites', 'execution-path gaps'],
-  semantic: ['undefined terms', 'vague quantifiers', 'overloaded terms', 'ambiguous references', 'semantic ambiguity', 'terminology registry gaps', 'canonical vocabulary drift', 'forbidden-term violations', 'symbol ambiguity', 'interpretation leakage'],
-  factual: ['unsupported claims', 'stale facts', 'citation gaps', 'norm-vs-description confusion', 'stale-vs-citation distinction'],
-  functional: ['impossible workflows', 'missing outcomes', 'hidden prerequisites', 'incomplete procedures', 'structural missing-prerequisite cases'],
-  temporal: ['sequence conflicts', 'stale timelines', 'invalid timing windows', 'lifecycle drift', 'async race conditions'],
-  architectural: ['missing components', 'boundary leaks', 'responsibility overlap', 'topology inconsistency', 'cross-system boundary gaps', 'control-plane/data-plane separation', 'data-plane isolation', 'subsystem-to-UI mapping gaps', 'internal-visible boundary leakage', 'hidden execution authority'],
-  completeness: ['missing branches', 'missing rollback', 'missing edge cases', 'missing postconditions', 'execution-path gaps'],
-  intent: ['audience mismatch', 'goal drift', 'scope creep', 'business-vs-implementation mismatch', 'implicit requirement gaps'],
-  metacognition: ['overconfidence', 'unjustified certainty', 'shallow tradeoff analysis', 'unverifiable conclusions', 'ambiguous certainty'],
-  adversarial: ['abuse paths', 'bypass scenarios', 'risky defaults', 'misuse opportunities', 'threat-model gaps'],
-  knowledge_graph: ['orphan entities', 'relationship gaps', 'alias drift', 'role confusion', 'circular references'],
-  quantitative: ['unit mismatch', 'impossible thresholds', 'numeric inconsistency', 'vague measurements', 'scaling boundary ambiguity'],
-  requirement: ['ambiguous acceptance criteria', 'RFC2119 misuse', 'priority ambiguity', 'traceability gaps', 'implicit dependencies', 'spec completeness', 'contract incompleteness', 'closed-world violations', 'acceptance-proof gaps', 'undefined obligations'],
-  state_machine: ['impossible transitions', 'missing terminal states', 'retry loops', 'concurrency conflicts', 'dead-end states', 'lifecycle-state gaps', 'transition illegality', 'fatal-state exposure', 'no-exit loops', 'progression-order violations'],
-  api_contract: ['schema mismatch', 'auth ambiguity', 'idempotency gaps', 'error-contract omissions', 'backward-compatibility breaks'],
-  dependency_graph: ['circular dependencies', 'undeclared dependencies', 'version conflicts', 'ownership ambiguity', 'transitive mismatches'],
-  data_flow: ['source-sink mismatch', 'missing transformations', 'retention ambiguity', 'PII flow gaps', 'data-lifecycle gaps'],
-  execution_path: ['unreachable paths', 'dead ends', 'branch omissions', 'rollback path gaps', 'execution-path gaps'],
-  configuration: ['default ambiguity', 'precedence conflicts', 'env drift', 'secret-handling errors', 'configuration precedence conflicts'],
-  error_handling: ['missing recovery', 'partial-failure gaps', 'retry storms', 'unclear operator actions', 'error-handling recovery ambiguity'],
-  security: ['secret exposure', 'trust-boundary gaps', 'authz ambiguity', 'unsafe input handling', 'crypto-lifecycle gaps'],
-  performance: ['scale assumptions', 'unbounded work', 'expensive retries', 'large-document cost blowups', 'resource-leak ambiguity'],
-  testability: ['unverifiable claims', 'missing examples', 'weak expected outputs', 'validation blind spots', 'test-environment drift'],
-  maintainability: ['duplication', 'brittle coupling', 'hidden ownership', 'missing conventions', 'technical-debt ambiguity'],
-  usability: ['confusing task order', 'jargon overload', 'poor examples', 'accessibility/readability issues', 'cognitive-load gaps', 'UI state machine correctness', 'UI-state mapping', 'mandatory UI surface gaps', 'UI interactivity gaps', 'exposed fatal-state UX violations'],
-  interoperability: ['protocol mismatch', 'format assumptions', 'backward-compatibility gaps', 'integration ambiguity', 'interoperability compatibility mismatches'],
-  governance: ['policy traceability', 'approval gates', 'auditability', 'retention/compliance gaps', 'compliance-scope ambiguity', 'policy-priority conflicts', 'checkpoint omissions', 'override ambiguity', 'enforcement-path gaps', 'fail-safe condition ambiguity'],
-  resilience: ['single points of failure', 'degraded-mode gaps', 'outage handling', 'backup/restore gaps', 'failover-ambiguity', 'rollback infeasibility', 'non-idempotent retries', 'fail-safe absence', 'recovery journal gaps', 'emergency recovery ambiguity'],
-  observability: ['missing logs', 'metrics gaps', 'tracing gaps', 'correlation IDs and alert-threshold gaps', 'blind-spot gaps'],
-  evolution: ['migration gaps', 'versioning gaps', 'deprecation policy gaps', 'compatibility promises', 'evolution/versioning migration scenarios'],
-  specification_formalism: ['spec completeness', 'terminology registry', 'symbol consistency', 'type/entity rigor', 'state-space definition', 'input domain closure', 'output contract determinism', 'canonical vocabulary enforcement'],
-  simulation_verification: ['mandatory simulation', 'risk classification', 'light-vs-heavy simulation correctness', 'simulation non-mutation', 'pre-simulation governance', 'post-simulation governance', 'formal verification boundary', 'verification completeness'],
-  memory_world_model: ['memory taxonomy', 'read/write authority', 'temporal consistency', 'snapshot/version invariants', 'memory conflict resolution', 'garbage collection determinism', 'PSG snapshot isolation', 'PSG mutation gateway exclusivity', 'PSG commit binding', 'PSG read consistency', 'PSG write atomicity'],
-  agent_orchestration: ['role non-overlap', 'agent I/O contracts', 'communication protocol', 'arbitration strategy', 'failure isolation', 'composability', 'authority boundaries', 'agent mutation prohibitions'],
-  tool_execution_safety: ['tool invocation contract', 'sandbox isolation', 'side-effect validation', 'idempotency', 'rollback rules', 'unsafe execution paths', 'forbidden direct write paths', 'execution authority violations'],
-  deployment_contract: ['local export enforcement', 'remote deployment prohibition', 'export path determinism', 'executable validation', 'export atomicity', 'offline-run capability', 'export structure completeness', 'deployment-term misuse'],
-  platform_abstraction: ['platform-neutral architecture', 'compiler mapping correctness', 'cross-platform consistency', 'target lock invariants', 'platform exclusion enforcement', 'output-target mismatch', 'abstraction leakage', 'implementation divergence'],
-  context_orchestration: ['deterministic context assembly', 'token budget enforcement', 'decision lock hierarchy', 'conflict detection', 'drift correction', 'context truncation', 'retrieval validation', 'context contamination / leakage'],
-  reasoning_integrity: ['evidence binding', 'uncertainty propagation', 'reasoning trace enforceability', 'multi-step reasoning validation', 'global contradiction detection', 'self-correction loop boundedness', 'reasoning trace completeness', 'uncertainty propagation failure'],
-  ui_surface_contract: ['mandatory UI component existence', 'UI interactivity enforcement', 'UI-to-system-state mapping', 'no fatal state exposure', 'component state-machine correctness', 'UI accessibility contract', 'UI layout contract'],
-  deterministic_execution: ['transition determinism', 'concurrency model definition', 'deadlock / livelock prevention', 'scheduling determinism', 'retry and backoff policy', 'deterministic replay capability', 'timing dependency', 'resource ordering'],
-  control_plane_authority: ['control-plane separation', 'authority delegation rules', 'override conditions', 'execution owner boundary', 'policy enforcement points', 'escalation path', 'audit trail requirements'],
-  world_state_governance: ['state mutation invariants', 'mutation gateway exclusivity', 'commit_hash binding', 'read/write atomicity', 'graph consistency / acyclicity', 'state isolation', 'temporal state consistency']
+  contradiction: ['direct conflicts', 'configuration precedence conflicts', 'version drift', 'terminology drift', 'state-logic contradiction', 'diagram-text mismatch'],
+  logical: ['invalid assumptions', 'causality gaps', 'circular reasoning', 'scope leaps', 'invariant violation logic', 'logic-state mismatch'],
+  structural: ['broken hierarchy', 'orphan sections', 'duplicate sections', 'missing prerequisites', 'execution-path gaps', 'undocumented flow'],
+  semantic: ['semantic ambiguity', 'vague quantifiers', 'undefined terms', 'overloaded terms', 'ambiguous references', 'terminology registry gaps', 'forbidden-term violations', 'interpretation leakage', 'canonical vocabulary drift', 'symbol ambiguity', 'type ambiguity', 'semantic drift detection', 'interpretation consistency'],
+  factual: ['unsupported claims', 'citation gaps', 'stale-vs-citation distinction', 'norm-vs-description confusion', 'stale facts', 'misinterpreted data'],
+  functional: ['impossible workflows', 'incomplete procedures', 'hidden prerequisites', 'structural missing-prerequisite cases', 'missing outcomes', 'workflow dead-end'],
+  temporal: ['sequence conflicts', 'lifecycle drift', 'stale timelines', 'invalid timing windows', 'async race conditions', 'temporal causality violation'],
+  architectural: ['responsibility overlap', 'missing components', 'boundary leaks', 'topology inconsistency', 'cross-system boundary gaps', 'control-plane/data-plane separation', 'data-plane isolation', 'subsystem-to-UI mapping gaps', 'internal-visible boundary leakage', 'hidden execution authority', 'control-plane/runtime authority confusion', 'cross-system interface mismatch', 'arbitration ambiguity', 'agent role overlap'],
+  completeness: ['missing edge cases', 'missing branches', 'missing postconditions', 'missing rollback', 'outcome omission', 'execution-path gaps'],
+  intent: ['scope creep', 'business-vs-implementation mismatch', 'goal drift', 'audience mismatch', 'objective ambiguity', 'implicit requirement gaps'],
+  metacognition: ['unverifiable conclusions', 'shallow tradeoff analysis', 'overconfidence', 'unjustified certainty', 'ambiguous certainty', 'reasoning chain gap', 'unverifiable claims'],
+  adversarial: ['risky defaults', 'bypass scenarios', 'abuse paths', 'misuse opportunities', 'threat-model gaps', 'collusion risk'],
+  knowledge_graph: ['orphan entities', 'relationship gaps', 'circular references', 'alias drift', 'role confusion', 'entity attribute drift'],
+  quantitative: ['numeric inconsistency', 'unit mismatch', 'vague measurements', 'impossible thresholds', 'scaling boundary ambiguity', 'precision mismatch'],
+  requirement: ['ambiguous acceptance criteria', 'traceability gaps', 'closed-world violations', 'undefined obligations', 'RFC2119 misuse', 'priority ambiguity', 'implicit dependencies', 'spec completeness', 'contract incompleteness', 'acceptance-proof gaps', 'acceptance criteria omission', 'requirement stability', 'requirement evolution tracking', 'requirement conflict resolution'],
+  state_machine: ['impossible transitions', 'missing terminal states', 'retry loops', 'fatal-state exposure', 'no-exit loops', 'concurrency conflicts', 'dead-end states', 'lifecycle-state gaps', 'transition illegality', 'progression-order violations', 'non-deterministic transition', 'deadlock/livelock risks', 'fatal UI state exposure'],
+  api_contract: ['schema mismatch', 'error-contract omissions', 'auth ambiguity', 'idempotency gaps', 'backward-compatibility breaks', 'rate-limit ambiguity'],
+  dependency_graph: ['circular dependencies', 'undeclared dependencies', 'version conflicts', 'ownership ambiguity', 'transitive mismatches', 'dependency lifecycle gap'],
+  data_flow: ['source-sink mismatch', 'missing transformations', 'retention ambiguity', 'PII flow gaps', 'data-lifecycle gaps', 'data provenance gap'],
+  execution_path: ['unreachable paths', 'branch omissions', 'dead ends', 'rollback path gaps', 'execution-path gaps', 'non-deterministic execution', 'path dependency cycles', 'rollback path absence', 'idempotency gaps', 'execution order determinism', 'path state preservation', 'conditional execution determinism', 'execution branching logic'],
+  configuration: ['default ambiguity', 'precedence conflicts', 'env drift', 'secret-handling errors', 'config schema gap', 'configuration precedence conflicts'],
+  error_handling: ['missing recovery', 'unclear operator actions', 'retry storms', 'error state contamination', 'partial-failure gaps', 'error-handling recovery ambiguity'],
+  security: ['secret exposure', 'authz ambiguity', 'trust-boundary gaps', 'unsafe input handling', 'crypto-lifecycle gaps', 'privilege escalation path'],
+  performance: ['unbounded work', 'large-document cost blowups', 'expensive retries', 'resource-leak ambiguity', 'concurrency bottleneck', 'scale assumptions'],
+  testability: ['unverifiable conclusions', 'test-environment drift', 'weak expected outputs', 'validation blind spots', 'missing examples', 'test isolation failure', 'unverifiable claims'],
+  maintainability: ['duplication', 'missing conventions', 'brittle coupling', 'technical-debt ambiguity', 'refactoring risk', 'hidden ownership', 'hidden ownership detail'],
+  usability: ['jargon overload', 'poor examples', 'confusing task order', 'accessibility/readability issues', 'cognitive-load gaps', 'missing mandatory UI components', 'fatal UI state exposure', 'UI feedback gap', 'UI state machine correctness', 'UI-state mapping', 'mandatory UI surface gaps', 'UI interactivity gaps', 'exposed fatal-state UX violations'],
+  interoperability: ['format assumptions', 'protocol mismatch', 'backward-compatibility gaps', 'integration ambiguity', 'interoperability compatibility mismatches', 'schema version mismatch', 'integration ambiguity detail'],
+  governance: ['policy traceability', 'approval gates', 'auditability', 'retention/compliance gaps', 'compliance-scope ambiguity', 'fail-safe condition ambiguity', 'override ambiguity', 'policy-priority conflicts', 'checkpoint omissions', 'governance bypass path', 'enforcement-path gaps', 'governance checkpoint gaps', 'PSG mutation bypass', 'missing commit-hash binding', 'unauthorized agent writes'],
+  resilience: ['single points of failure', 'backup/restore gaps', 'degraded-mode gaps', 'failover-ambiguity', 'rollback infeasibility', 'fail-safe absence', 'non-idempotent retries', 'state recovery indeterminism', 'emergency recovery ambiguity', 'outage handling', 'recovery journal gaps', 'simulation gate omissions', 'simulation mutation risk', 'outage handling detail'],
+  observability: ['missing logs', 'metrics gaps', 'tracing gaps', 'correlation IDs and alert-threshold gaps', 'blind-spot gaps', 'observability blind spot'],
+  evolution: ['versioning gaps', 'evolution/versioning migration scenarios', 'deprecation policy gaps', 'compatibility promises', 'migration gaps', 'migration gap detail'],
+  specification_formalism: ['input domain closure', 'canonical vocabulary enforcement', 'state-space definition', 'output contract determinism', 'spec completeness', 'terminology registry', 'type/entity rigor', 'symbol consistency', 'symbol consistency violation'],
+  simulation_verification: ['mandatory simulation', 'simulation non-mutation', 'pre-simulation governance', 'verification completeness', 'risk classification', 'light-vs-heavy simulation correctness', 'formal verification boundary', 'verification completeness', 'simulation gate omission', 'post-simulation governance'],
+  memory_world_model: ['temporal consistency', 'PSG mutation gateway exclusivity', 'PSG snapshot isolation', 'PSG commit binding', 'memory conflict resolution', 'read/write authority', 'snapshot/version invariants', 'PSG write atomicity', 'memory taxonomy', 'garbage collection determinism', 'PSG read consistency', 'memory temporal inconsistency'],
+  agent_orchestration: ['role non-overlap', 'agent I/O contracts', 'communication protocol', 'arbitration strategy', 'failure isolation', 'composability', 'authority boundaries', 'agent mutation prohibitions', 'unauthorized agent writes', 'arbitration ambiguity', 'agent_orchestration'],
+  tool_execution_safety: ['tool invocation contract', 'sandbox isolation', 'side-effect validation', 'idempotency', 'rollback rules', 'unsafe execution paths', 'forbidden direct write paths', 'execution authority violations', 'sandbox isolation breach', 'side-effect validation', 'tool_execution_safety'],
+  deployment_contract: ['remote deployment prohibition', 'export structure completeness', 'export atomicity', 'offline-run capability', 'export path determinism', 'executable validation', 'deployment-term misuse', 'local export enforcement', 'remote deployment violation'],
+  platform_abstraction: ['platform-exclusion enforcement', 'abstraction leakage', 'target lock invariants', 'implementation divergence', 'platform-neutral architecture', 'cross-platform consistency', 'output-target mismatch', 'compiler mapping correctness', 'compiler mapping mismatch'],
+  context_orchestration: ['token budget enforcement', 'context contamination / leakage', 'decision lock hierarchy', 'drift correction', 'deterministic context assembly', 'retrieval validation', 'conflict detection', 'context truncation', 'retrieval validation', 'context contamination'],
+  reasoning_integrity: ['evidence binding', 'uncertainty propagation', 'reasoning trace enforceability', 'multi-step reasoning validation', 'global contradiction detection', 'self-correction loop boundedness', 'reasoning trace completeness', 'uncertainty propagation failure', 'evidence binding gap'],
+  ui_surface_contract: ['mandatory UI component existence', 'UI interactivity enforcement', 'UI-to-system-state mapping', 'no fatal state exposure', 'component state-machine correctness', 'UI accessibility contract', 'UI layout contract', 'mandatory UI component missing'],
+  deterministic_execution: ['transition determinism', 'concurrency model definition', 'deadlock / livelock prevention', 'scheduling determinism', 'retry and backoff policy', 'deterministic replay capability', 'timing dependency', 'resource ordering', 'scheduling non-determinism'],
+  control_plane_authority: ['control-plane separation', 'authority delegation rules', 'override conditions', 'execution owner boundary', 'policy enforcement points', 'escalation path', 'audit trail requirements', 'control plane separation violation'],
+  world_state_governance: ['state mutation invariants', 'mutation gateway exclusivity', 'commit_hash binding', 'read/write atomicity', 'graph consistency / acyclicity', 'state isolation', 'temporal state consistency', 'state mutation invariant gap']
 };
 
-/**
- * Full Detector Metadata Catalog (383 detectors)
- */
 const rawMetadata = {
-  // LAYER 1: Contradiction
-  'L1-01': { name: 'direct contradictions', sub: 'direct conflicts', trigger: 'Two statements explicitly negate each other in the same scope.', evidence: 'Conflicting statements.', fp: 'Contextual alternatives.', floor: 'high', ceiling: 'critical' },
-  'L1-02': { name: 'indirect contradictions', sub: 'configuration precedence conflicts', trigger: 'Inferred conclusions from two sections conflict, such as overriding defaults.', evidence: 'Supporting premises and overrides.', fp: 'Explicit exception rules.', floor: 'medium', ceiling: 'high', related_layers: ['L21'] },
-  'L1-03': { name: 'cross-section contradictions', sub: 'version drift', trigger: 'Section A says X, Section B says Y for the same entity.', evidence: 'Section references.', fp: 'Intentional overrides.', floor: 'medium' },
-  'L1-04': { name: 'terminology inconsistency', sub: 'terminology drift', trigger: 'Same concept described with different terms without aliases.', evidence: 'Term variations.', fp: 'Industry synonyms.', floor: 'low' },
-  'L1-05': { name: 'numerical inconsistency', sub: 'version drift', trigger: 'Different values given for the same constant or limit.', evidence: 'Conflicting numbers.', fp: 'Unit variations.', floor: 'high' },
-  'L1-06': { name: 'definition drift', sub: 'terminology drift', trigger: 'Definition of a term changes through the document.', evidence: 'Shifting definitions.', fp: 'Refined context.', floor: 'medium' },
-  'L1-07': { name: 'circular contradictions', sub: 'direct conflicts', trigger: 'Chain of statements leads back to an impossible state.', evidence: 'The inference chain.', fp: 'Recursive workflows.', floor: 'high' },
-  'L1-08': { name: 'hidden implied contradictions', sub: 'direct conflicts', trigger: 'Implementation details contradict stated high-level goals.', evidence: 'Goal vs implementation.', fp: 'Temporary workarounds.', floor: 'medium' },
-
-  // LAYER 2: Logical
-  'L2-01': { name: 'invalid premises', sub: 'invalid assumptions', trigger: 'Argument relies on a fact stated elsewhere as false.', evidence: 'The premise.', fp: 'Hypotheticals.', floor: 'high' },
-  'L2-02': { name: 'missing premises', sub: 'causality gaps', trigger: 'Conclusion reached without supporting logical steps.', evidence: 'Jump in logic.', fp: 'Implicit knowledge.', floor: 'medium' },
-  'L2-03': { name: 'non-sequitur reasoning', sub: 'causality gaps', trigger: 'Statement does not follow from the previous one.', evidence: 'Unrelated transition.', fp: 'Stylistic brevity.', floor: 'medium' },
-  'L2-04': { name: 'circular reasoning', sub: 'circular reasoning', trigger: 'X is true because Y, Y is true because X.', evidence: 'The loop.', fp: 'Self-referential systems.', floor: 'medium' },
-  'L2-05': { name: 'false causality', sub: 'causality gaps', trigger: 'Assuming A causes B just because they happen together.', evidence: 'Correlation as causation.', fp: 'Direct triggers.', floor: 'medium' },
-  'L2-06': { name: 'overgeneralization', sub: 'scope leaps', trigger: 'Small sample size used to claim universal truth.', evidence: 'Broad claim.', fp: 'Architecture defaults.', floor: 'low' },
-  'L2-07': { name: 'logical gaps', sub: 'causality gaps', trigger: 'Workflow skips a necessary state change.', evidence: 'Missing state.', fp: 'Automated transitions.', floor: 'high' },
-  'L2-08': { name: 'contradictory inference chains', sub: 'invalid assumptions', trigger: 'Two logical paths lead to opposite results.', evidence: 'Both paths.', fp: 'Branching logic.', floor: 'high' },
-
-  // LAYER 3: Structural
-  'L3-01': { name: 'broken heading hierarchy', sub: 'broken hierarchy', trigger: 'H3 follows H1, or missing level.', evidence: 'Header levels.', fp: 'Flat structures.', floor: 'low' },
-  'L3-02': { name: 'orphan sections', sub: 'orphan sections', trigger: 'Section not linked or referenced anywhere.', evidence: 'Isolated content.', fp: 'Appendices.', floor: 'low' },
-  'L3-03': { name: 'redundant sections', sub: 'duplicate sections', trigger: 'Multiple sections cover identical content.', evidence: 'Duplicate content.', fp: 'Reference summaries.', floor: 'medium' },
-  'L3-04': { name: 'improper ordering', sub: 'missing prerequisites', trigger: 'Prerequisite steps appear after actions, leading to failure.', evidence: 'Step sequence.', fp: 'Clearly marked appendices.', floor: 'high', ceiling: 'critical', related_layers: ['L6'] },
-  'L3-05': { name: 'content fragmentation', sub: 'broken hierarchy', trigger: 'Topic split across too many small sections.', evidence: 'Scattered info.', fp: 'Modular design.', floor: 'low' },
-  'L3-06': { name: 'overloaded sections', sub: 'broken hierarchy', trigger: 'Single section covers too many distinct topics.', evidence: 'Topic density.', fp: 'Overviews.', floor: 'medium' },
-  'L3-07': { name: 'misplaced content', sub: 'broken hierarchy', trigger: 'API details in an onboarding guide (out of place).', evidence: 'Context mismatch.', fp: 'Deep links.', floor: 'medium' },
-  'L3-08': { name: 'structural asymmetry', sub: 'broken hierarchy', trigger: 'Parallel features described with inconsistent structures.', evidence: 'Pattern break.', fp: 'Feature complexity.', floor: 'low' },
-
-  // LAYER 4: Semantic
-  'L4-01': { name: 'ambiguous wording', sub: 'semantic ambiguity', trigger: 'Sentences with multiple conflicting technical interpretations.', evidence: 'Vague sentence context.', fp: 'Overview summaries.', floor: 'medium', related_layers: ['L1'] },
-  'L4-02': { name: 'vague language', sub: 'vague quantifiers', trigger: 'Use of "some", "often", "fast" without metrics.', evidence: 'Vague term.', fp: 'Marketing text.', floor: 'low' },
-  'L4-03': { name: 'undefined terms', sub: 'undefined terms', trigger: 'Technical jargon used without definition or link.', evidence: 'The term.', fp: 'Industry standard.', floor: 'medium' },
-  'L4-04': { name: 'polysemy conflicts', sub: 'overloaded terms', trigger: 'Same word used for two different technical meanings.', evidence: 'Conflicting usage.', fp: 'Common words.', floor: 'medium' },
-  'L4-05': { name: 'misleading phrasing', sub: 'ambiguous references', trigger: 'Grammar suggests a relationship that doesn\'t exist.', evidence: 'The phrase.', fp: 'Stylistic choice.', floor: 'medium' },
-  'L4-06': { name: 'incomplete explanation', sub: 'undefined terms', trigger: 'Concept introduced but never fully explained.', evidence: 'The concept.', fp: 'External refs.', floor: 'medium' },
-  'L4-07': { name: 'unstated assumptions', sub: 'ambiguous references', trigger: 'Requires knowledge not mentioned or linked.', evidence: 'The gap.', fp: 'Expert level docs.', floor: 'medium' },
-  'L4-08': { name: 'context drift', sub: 'ambiguous references', trigger: 'Subject of "it" or "this" becomes unclear.', evidence: 'The pronoun.', fp: 'Clear proximity.', floor: 'low' },
-  'L4-09': { name: 'terminology registry gap', sub: 'terminology registry gaps', trigger: 'Term used without formal definition in a terminology registry.', evidence: 'Unregistered term.', fp: 'Common language.', floor: 'low' },
-  'L4-10': { name: 'forbidden term violation', sub: 'forbidden-term violations', trigger: 'Document uses terms explicitly banned by the project vocabulary.', evidence: 'Banned term.', fp: 'Quoted sources.', floor: 'medium' },
-  'L4-11': { name: 'interpretation leakage', sub: 'interpretation leakage', trigger: 'Specification leaks implementation details through interpretation language.', evidence: 'Implementation leak.', fp: 'Reference implementations.', floor: 'medium' },
-
-  // LAYER 5: Factual
-  'L5-01': { name: 'unsupported claims', sub: 'unsupported claims', trigger: 'Claim made without evidence or citation.', evidence: 'The claim.', fp: 'Obvious truths.', floor: 'medium' },
-  'L5-02': { name: 'missing citations', sub: 'citation gaps', trigger: 'Data or quote provided without source.', evidence: 'Data point.', fp: 'Internal data.', floor: 'low' },
-  'L5-03': { name: 'outdated info risk', sub: 'stale-vs-citation distinction', trigger: 'Reference to deprecated systems or old dates without modern context.', evidence: 'Date/Version mismatch.', fp: 'Historical context blocks.', floor: 'high', related_layers: ['L32'] },
-  'L5-04': { name: 'hallucination risk', sub: 'unsupported claims', trigger: 'Claims about features that don\'t exist in current context.', evidence: 'False feature.', fp: 'Future roadmap.', floor: 'critical' },
-  'L5-05': { name: 'misinterpreted facts', sub: 'norm-vs-description confusion', trigger: 'Incorrect application of a factual rule.', evidence: 'Misinterpretation.', fp: 'Nuanced cases.', floor: 'medium' },
-  'L5-06': { name: 'inconsistent references', sub: 'citation gaps', trigger: 'Citation links to wrong or dead resource.', evidence: 'Dead link.', fp: 'Internal only.', floor: 'medium' },
-  'L5-07': { name: 'evidence mismatch', sub: 'unsupported claims', trigger: 'Provided evidence doesn\'t support the claim.', evidence: 'Claim vs evidence.', fp: 'Partial support.', floor: 'medium' },
-  'L5-08': { name: 'unverifiable claims', sub: 'unsupported claims', trigger: 'Claim cannot be tested or verified by users.', evidence: 'Untestable claim.', fp: 'Subjective UX.', floor: 'low' },
-
-  // LAYER 6: Functional
-  'L6-01': { name: 'impossible workflows', sub: 'impossible workflows', trigger: 'Steps require access or state that is blocked.', evidence: 'Blocker step.', fp: 'Admin overrides.', floor: 'critical' },
-  'L6-02': { name: 'missing execution step', sub: 'incomplete procedures', trigger: 'Process fails if followed exactly as written.', evidence: 'The gap.', fp: 'Implicit defaults.', floor: 'high' },
-  'L6-03': { name: 'dependency gaps', sub: 'hidden prerequisites', trigger: 'Tool or library needed but not mentioned.', evidence: 'Missing dependency.', fp: 'Standard env.', floor: 'medium' },
-  'L6-04': { name: 'resource conflicts', sub: 'impossible workflows', trigger: 'Steps require same resource in incompatible ways.', evidence: 'The conflict.', fp: 'Multi-threading.', floor: 'high' },
-  'L6-05': { name: 'operational impossibility', sub: 'impossible workflows', trigger: 'Logic requires 100% uptime or zero latency.', evidence: 'Impossible SLA.', fp: 'Idealized models.', floor: 'medium' },
-  'L6-06': { name: 'invalid sequence', sub: 'incomplete procedures', trigger: 'Order of operations leads to data loss.', evidence: 'Wrong order.', fp: 'Commutative ops.', floor: 'high' },
-  'L6-07': { name: 'untriggerable state', sub: 'impossible workflows', trigger: 'Conditional logic that can never be met.', evidence: 'Dead logic.', fp: 'Debug modes.', floor: 'medium' },
-  'L6-08': { name: 'missing preconditions', sub: 'structural missing-prerequisite cases', trigger: 'Action taken without required setup or initialization.', evidence: 'Missing setup block.', fp: 'Standard environment assumptions.', floor: 'high', ceiling: 'critical', related_layers: ['L3'] },
-
-  // LAYER 7: Temporal
-  'L7-01': { name: 'timeline contradictions', sub: 'sequence conflicts', trigger: 'Event A said to happen before and after B.', evidence: 'Conflict.', fp: 'Cyclic events.', floor: 'high' },
-  'L7-02': { name: 'event ordering errors', sub: 'sequence conflicts', trigger: 'Logical time flow is broken.', evidence: 'Order error.', fp: 'Concurrent events.', floor: 'medium' },
-  'L7-03': { name: 'state transition breaks', sub: 'lifecycle drift', trigger: 'Object moves between states without valid path.', evidence: 'Invalid jump.', fp: 'Eventual consistency.', floor: 'high' },
-  'L7-04': { name: 'version inconsistencies', sub: 'stale timelines', trigger: 'References to incompatible time-bound versions.', evidence: 'Version mix.', fp: 'Migration docs.', floor: 'medium' },
-  'L7-05': { name: 'causality violations', sub: 'sequence conflicts', trigger: 'Effect happens before its cause.', evidence: 'Violation.', fp: 'Retroactive logic.', floor: 'critical' },
-  'L7-06': { name: 'missing state definition', sub: 'lifecycle drift', trigger: 'Time-bound state mentioned but not defined.', evidence: 'The state.', fp: 'Ephemeral states.', floor: 'medium' },
-  'L7-07': { name: 'temporal ambiguity', sub: 'invalid timing windows', trigger: 'Terms like "soon" or "later" without windows.', evidence: 'Vague time.', fp: 'Rough estimates.', floor: 'low' },
-  'L7-08': { name: 'lifecycle gaps', sub: 'lifecycle drift', trigger: 'Beginning or end of an entity life is undefined.', evidence: 'Lifecycle gap.', fp: 'Infinite entities.', floor: 'medium' },
-
-  // LAYER 8: Architectural
-  'L8-01': { name: 'component overlap', sub: 'responsibility overlap', trigger: 'Two components claim same primary role.', evidence: 'Shared role.', fp: 'Redundancy.', floor: 'medium' },
-  'L8-02': { name: 'missing component', sub: 'missing components', trigger: 'System relies on part not defined in architecture.', evidence: 'The gap.', fp: 'External infra.', floor: 'high' },
-  'L8-03': { name: 'responsibility conflict', sub: 'responsibility overlap', trigger: 'Component forced to manage unrelated concerns.', evidence: 'Mixed concerns.', fp: 'Small systems.', floor: 'medium' },
-  'L8-04': { name: 'tight coupling', sub: 'boundary leaks', trigger: 'Change in A requires lock-step change in B.', evidence: 'Coupling.', fp: 'Performance optims.', floor: 'medium' },
-  'L8-05': { name: 'interface mismatch', sub: 'boundary leaks', trigger: 'Producer output doesn\'t match consumer input.', evidence: 'Mismatch.', fp: 'Adapters.', floor: 'high' },
-  'L8-06': { name: 'circular dependency', sub: 'topology inconsistency', trigger: 'A->B->A architecture loop.', evidence: 'The circle.', fp: 'Event loops.', floor: 'high' },
-  'L8-07': { name: 'ownership ambiguity', sub: 'responsibility overlap', trigger: 'Unclear which component owns a data set.', evidence: 'Ownership gap.', fp: 'Shared caches.', floor: 'medium' },
-  'L8-08': { name: 'boundary violation', sub: 'boundary leaks', trigger: 'Internal state exposed to unrelated layers.', evidence: 'Leaky abstraction.', fp: 'Internal tools.', floor: 'medium' },
-
-  // LAYER 9: Completeness
-  'L9-01': { name: 'missing edge cases', sub: 'missing edge cases', trigger: 'Only happy path is documented.', evidence: 'Omitted cases.', fp: 'Intro docs.', floor: 'medium' },
-  'L9-02': { name: 'missing error handling', sub: 'missing edge cases', trigger: 'No guidance for failure states.', evidence: 'Error gap.', fp: 'Simple scripts.', floor: 'high' },
-  'L9-03': { name: 'incomplete workflow', sub: 'missing branches', trigger: 'Workflow stops before reaching goal.', evidence: 'Truncated process.', fp: 'To-be-continued.', floor: 'high' },
-  'L9-04': { name: 'missing constraints', sub: 'missing postconditions', trigger: 'Limits or boundaries not defined.', evidence: 'The gap.', fp: 'Unbounded systems.', floor: 'medium' },
-  'L9-05': { name: 'uncovered requirement', sub: 'missing edge cases', trigger: 'Stated requirement has no implementation steps.', evidence: 'Requirement gap.', fp: 'Non-functional reqs.', floor: 'medium' },
-  'L9-06': { name: 'reasoning gap', sub: 'missing edge cases', trigger: 'Jump from data to conclusion is missing context.', evidence: 'Logic gap.', fp: 'Expert brevity.', floor: 'low' },
-  'L9-07': { name: 'missing validation', sub: 'missing postconditions', trigger: 'Input accepted without sanity checks.', evidence: 'Validation gap.', fp: 'Trusted sources.', floor: 'medium' },
-  'L9-08': { name: 'undefined behavior', sub: 'missing postconditions', trigger: 'Action result is "undefined" or "random".', evidence: 'The term.', fp: 'Expected entropy.', floor: 'medium' },
-
-  // LAYER 10: Intent
-  'L10-01': { name: 'scope creep', sub: 'scope creep', trigger: 'Document wanders into unrelated domains.', evidence: 'Unrelated content.', fp: 'Integrated systems.', floor: 'low' },
-  'L10-02': { name: 'goal mismatch', sub: 'business-vs-implementation mismatch', trigger: 'Implementation hinders the stated goal.', evidence: 'Mismatch.', fp: 'Iterative dev.', floor: 'high' },
-  'L10-03': { name: 'conflicting goals', sub: 'goal drift', trigger: 'Goal A requires NOT B, but Goal B is required.', evidence: 'Conflict.', fp: 'Tradeoff balance.', floor: 'high' },
-  'L10-04': { name: 'irrelevant content', sub: 'scope creep', trigger: 'Significant portions add no value to target audience.', evidence: 'Irrelevant text.', fp: 'Background info.', floor: 'low' },
-  'L10-05': { name: 'solution misalignment', sub: 'business-vs-implementation mismatch', trigger: 'Right answer to the wrong problem.', evidence: 'Misalignment.', fp: 'Pivot docs.', floor: 'medium' },
-  'L10-06': { name: 'requirement drift', sub: 'goal drift', trigger: 'Initial requirements ignored in final design.', evidence: 'Requirement gap.', fp: 'Requirement updates.', floor: 'medium' },
-  'L10-07': { name: 'priority inversion', sub: 'goal drift', trigger: 'Minor details given more space than core features.', evidence: 'Focus imbalance.', fp: 'Appendix density.', floor: 'low' },
-  'L10-08': { name: 'ambiguous objective', sub: 'business-vs-implementation mismatch', trigger: 'Unclear what the document is trying to achieve.', evidence: 'Vague intent.', fp: 'Exploratory docs.', floor: 'medium' },
-
-  // LAYER 11: Metacognition
-  'L11-01': { name: 'unjustified claims', sub: 'unverifiable conclusions', trigger: 'Claims of "best" or "unique" without data.', evidence: 'Adjectives.', fp: 'Marketing context.', floor: 'low' },
-  'L11-02': { name: 'shallow reasoning', sub: 'shallow tradeoff analysis', trigger: 'Complex choices described as "simple".', evidence: 'Oversimplification.', fp: 'Beginner guides.', floor: 'medium' },
-  'L11-03': { name: 'overconfidence', sub: 'overconfidence', trigger: 'Dismissing risks without analysis.', evidence: 'Certainty markers.', fp: 'Proven systems.', floor: 'medium' },
-  'L11-04': { name: 'missing rationale', sub: 'unverifiable conclusions', trigger: 'Choice made without explaining why.', evidence: 'The "why" gap.', fp: 'Standard patterns.', floor: 'medium' },
-  'L11-05': { name: 'assumption stacking', sub: 'unjustified certainty', trigger: 'If A then B, if B then C... without verifying A.', evidence: 'Chain of ifs.', fp: 'Future planning.', floor: 'high' },
-  'L11-06': { name: 'weak justification', sub: 'unverifiable conclusions', trigger: 'Evidence provided is irrelevant or weak.', evidence: 'The evidence.', fp: 'Heuristic choices.', floor: 'medium' },
-  'L11-07': { name: 'incomplete evaluation', sub: 'shallow tradeoff analysis', trigger: 'Pros mentioned but no cons.', evidence: 'One-sided analysis.', fp: 'Selling a solution.', floor: 'medium' },
-  'L11-08': { name: 'reasoning inconsistency', sub: 'unverifiable conclusions', trigger: 'Logic changes between similar sections.', evidence: 'Shifting logic.', fp: 'Different tradeoffs.', floor: 'medium' },
-
-  // LAYER 12: Adversarial
-  'L12-01': { name: 'fragile assumptions', sub: 'risky defaults', trigger: 'Logic breaks if a single non-guaranteed condition fails.', evidence: 'Assumed truth.', fp: 'Critical path.', floor: 'high' },
-  'L12-02': { name: 'missing failure mode', sub: 'bypass scenarios', trigger: 'No description of what happens when X fails.', evidence: 'Missing "if fail".', fp: 'High availability.', floor: 'high' },
-  'L12-03': { name: 'counterexample vulnerability', sub: 'abuse paths', trigger: 'A single valid case disproves the main rule.', evidence: 'Counterexample.', fp: '99% rules.', floor: 'medium' },
-  'L12-04': { name: 'stress breakage', sub: 'misuse opportunities', trigger: 'Workflow fails under high volume or load.', evidence: 'Stress gap.', fp: 'Single user tools.', floor: 'high' },
-  'L12-05': { name: 'boundary condition failure', sub: 'bypass scenarios', trigger: 'Logic fails exactly at the limit (e.g. N vs N+1).', evidence: 'Off-by-one.', fp: 'Flexible limits.', floor: 'high' },
-  'L12-06': { name: 'unhandled edge collapse', sub: 'bypass scenarios', trigger: 'Multiple minor errors lead to total failure.', evidence: 'Cascading risk.', fp: 'Isolation layers.', floor: 'medium' },
-  'L12-07': { name: 'robustness gap', sub: 'misuse opportunities', trigger: 'System expects perfectly formatted input.', evidence: 'Input assumption.', fp: 'Internal APIs.', floor: 'medium' },
-  'L12-08': { name: 'exploitability', sub: 'misuse opportunities', trigger: 'Instructions show a path to bypass security.', evidence: 'Risk path.', fp: 'Security testing.', floor: 'critical' },
-
-  // LAYER 13: Knowledge Graph
-  'L13-01': { name: 'orphan entities', sub: 'orphan entities', trigger: 'Entity mentioned once and never referenced.', evidence: 'Isolated term.', fp: 'Self-contained refs.', floor: 'low' },
-  'L13-02': { name: 'missing relationships', sub: 'relationship gaps', trigger: 'Two related entities have no defined link.', evidence: 'Implicit link.', fp: 'Weak coupling.', floor: 'medium' },
-  'L13-03': { name: 'circular references', sub: 'circular references', trigger: 'A references B, B references A (no data).', evidence: 'The loop.', fp: 'Bi-directional links.', floor: 'medium' },
-  'L13-04': { name: 'entity duplication', sub: 'alias drift', trigger: 'Same real-world object has two entity names.', evidence: 'Duplicates.', fp: 'Domain aliases.', floor: 'medium' },
-  'L13-05': { name: 'broken linkage', sub: 'relationship gaps', trigger: 'Reference to an entity that doesn\'t exist.', evidence: 'Dead ref.', fp: 'Planned features.', floor: 'high' },
-  'L13-06': { name: 'hierarchy conflict', sub: 'role confusion', trigger: 'Child entity claims to be parent of its parent.', evidence: 'Inverted tree.', fp: 'Mesh networks.', floor: 'medium' },
-  'L13-07': { name: 'dependency ambiguity', sub: 'relationship gaps', trigger: 'Unclear if relationship is "has-a" or "is-a".', evidence: 'Vague link.', fp: 'Natural language.', floor: 'medium' },
-  'L13-08': { name: 'concept drift', sub: 'alias drift', trigger: 'Attributes of an entity change across sections.', evidence: 'Shifting attributes.', fp: 'Entity evolution.', floor: 'medium' },
-
-  // LAYER 14: Quantitative
-  'L14-01': { name: 'calculation error', sub: 'numeric inconsistency', trigger: 'Math provided in text is incorrect.', evidence: 'Wrong math.', fp: 'Approximate numbers.', floor: 'high' },
-  'L14-02': { name: 'unit mismatch', sub: 'unit mismatch', trigger: 'Mixing ms/s, MB/GB without conversion.', evidence: 'Conflicting units.', fp: 'Common shorthand.', floor: 'high' },
-  'L14-03': { name: 'scale inconsistency', sub: 'numeric inconsistency', trigger: 'Performance claims don\'t scale linearly as implied.', evidence: 'Scale gap.', fp: 'Non-linear systems.', floor: 'medium' },
-  'L14-04': { name: 'unsupported statistics', sub: 'vague measurements', trigger: 'Claims like "99.9%" without base data.', evidence: 'The stat.', fp: 'SLA targets.', floor: 'low' },
-  'L14-05': { name: 'numeric contradiction', sub: 'numeric inconsistency', trigger: 'Min > Max in a range definition.', evidence: 'Impossible range.', fp: 'Dynamic bounds.', floor: 'critical' },
-  'L14-06': { name: 'rounding ambiguity', sub: 'numeric inconsistency', trigger: 'Unclear if values are rounded up or down.', evidence: 'Precision gap.', fp: 'Estimated values.', floor: 'low' },
-  'L14-07': { name: 'range inconsistency', sub: 'numeric inconsistency', trigger: 'Overlapping or gapped numeric ranges.', evidence: 'Broken range.', fp: 'Intentional gaps.', floor: 'medium' },
-  'L14-08': { name: 'metric misinterpretation', sub: 'vague measurements', trigger: 'Using average when median is required.', evidence: 'Metric choice.', fp: 'General summaries.', floor: 'medium' },
-
-  // LAYER 15: Requirement
-  'L15-01': { name: 'requirement ambiguity', sub: 'ambiguous acceptance criteria', trigger: 'Requirement uses "should" vs "must" weakly.', evidence: 'Vague requirement.', fp: 'Guideline docs.', floor: 'medium' },
-  'L15-02': { name: 'requirement contradiction', sub: 'ambiguous acceptance criteria', trigger: 'Requirement A forbids what B requires.', evidence: 'Conflict.', fp: 'Priority tiers.', floor: 'high' },
-  'L15-03': { name: 'missing acceptance criteria', sub: 'ambiguous acceptance criteria', trigger: 'Requirement has no way to prove it is met.', evidence: 'Untestable req.', fp: 'High-level goals.', floor: 'high' },
-  'L15-04': { name: 'unverifiable requirement', sub: 'ambiguous acceptance criteria', trigger: 'Requires external human subjective judgment.', evidence: 'Subjective req.', fp: 'UI/UX guidelines.', floor: 'medium' },
-  'L15-05': { name: 'implicit requirement', sub: 'ambiguous acceptance criteria', trigger: 'Necessary action not stated as a requirement.', evidence: 'The gap.', fp: 'Implicit standards.', floor: 'medium' },
-  'L15-06': { name: 'duplicated requirement', sub: 'ambiguous acceptance criteria', trigger: 'Requirement stated twice with slight drift.', evidence: 'Redundancy.', fp: 'Reference lists.', floor: 'low' },
-  'L15-07': { name: 'requirement dependency missing', sub: 'traceability gaps', trigger: 'Req A needs B, but B is not defined.', evidence: 'Traceability gap.', fp: 'Standard reqs.', floor: 'medium' },
-  'L15-08': { name: 'requirement scope leakage', sub: 'ambiguous acceptance criteria', trigger: 'Requirement covers items outside document scope.', evidence: 'Scope leak.', fp: 'Contextual reqs.', floor: 'low' },
-  'L15-09': { name: 'closed-world violation', sub: 'closed-world violations', trigger: 'Spec assumes all possible inputs are enumerated when they are not.', evidence: 'Open input set.', fp: 'Closed enums.', floor: 'high' },
-  'L15-10': { name: 'undefined obligation', sub: 'undefined obligations', trigger: 'System has responsibilities that no requirement explicitly assigns.', evidence: 'Orphaned duty.', fp: 'Implicit contracts.', floor: 'medium' },
-
-  // LAYER 16: State Machine
-  'L16-01': { name: 'undefined states', sub: 'impossible transitions', trigger: 'Machine moves to state X which has no definition.', evidence: 'The state.', fp: 'External states.', floor: 'high' },
-  'L16-02': { name: 'invalid transitions', sub: 'impossible transitions', trigger: 'Path from A to B is logically forbidden.', evidence: 'The path.', fp: 'Bypass modes.', floor: 'high' },
-  'L16-03': { name: 'unreachable states', sub: 'impossible transitions', trigger: 'State exists but no path leads to it.', evidence: 'Isolated state.', fp: 'Error-only states.', floor: 'medium' },
-  'L16-04': { name: 'terminal state missing', sub: 'missing terminal states', trigger: 'Machine can loop forever without exit.', evidence: 'The loop.', fp: 'Long-running tasks.', floor: 'medium' },
-  'L16-05': { name: 'multiple initial states', sub: 'impossible transitions', trigger: 'Ambiguity on where the machine starts.', evidence: 'Start points.', fp: 'Context-dependent.', floor: 'medium' },
-  'L16-06': { name: 'transition ambiguity', sub: 'impossible transitions', trigger: 'Same trigger leads to two different states.', evidence: 'Ambiguity.', fp: 'Non-deterministic.', floor: 'medium' },
-  'L16-07': { name: 'state condition conflict', sub: 'impossible transitions', trigger: 'Entry conditions for state X are impossible.', evidence: 'Conditions.', fp: 'Complex flags.', floor: 'high' },
-  'L16-08': { name: 'state lifecycle gap', sub: 'retry loops', trigger: 'Resource cleanup not defined for terminal states.', evidence: 'Cleanup gap.', fp: 'Auto-GC systems.', floor: 'medium' },
-  'L16-09': { name: 'fatal-state exposure', sub: 'fatal-state exposure', trigger: 'System can reach a state from which no recovery is possible.', evidence: 'Fatal state.', fp: 'Planned shutdown.', floor: 'critical' },
-  'L16-10': { name: 'no-exit loop', sub: 'no-exit loops', trigger: 'State machine enters a cycle with no exit condition.', evidence: 'Inescapable loop.', fp: 'Intentional loops.', floor: 'high' },
-
-  // LAYER 17: API Contract
-  'L17-01': { name: 'undefined parameters', sub: 'schema mismatch', trigger: 'Code example uses parameter not in schema.', evidence: 'Missing param.', fp: 'Optional params.', floor: 'high' },
-  'L17-02': { name: 'inconsistent parameter types', sub: 'schema mismatch', trigger: 'Schema says Int, Example shows String.', evidence: 'Type mismatch.', fp: 'Weak typing.', floor: 'critical' },
-  'L17-03': { name: 'missing return schema', sub: 'schema mismatch', trigger: 'Success response defined but shape is missing.', evidence: 'Return gap.', fp: 'Empty 200 OK.', floor: 'high' },
-  'L17-04': { name: 'undocumented error response', sub: 'error-contract omissions', trigger: 'System can return 4xx/5xx not in docs.', evidence: 'Hidden error.', fp: 'Standard HTTP.', floor: 'medium' },
-  'L17-05': { name: 'inconsistent naming', sub: 'schema mismatch', trigger: 'CamelCase vs snake_case in same API.', evidence: 'Case mismatch.', fp: 'Legacy wrappers.', floor: 'low' },
-  'L17-06': { name: 'breaking contract change', sub: 'schema mismatch', trigger: 'Instruction to remove field without deprecation.', evidence: 'Breaking change.', fp: 'Major versions.', floor: 'critical' },
-  'L17-07': { name: 'request-response mismatch', sub: 'schema mismatch', trigger: 'Response implies data not requested.', evidence: 'The mismatch.', fp: 'Standard metadata.', floor: 'medium' },
-  'L17-08': { name: 'versioning conflict', sub: 'auth ambiguity', trigger: 'V1 auth used with V2 endpoints.', evidence: 'Version mix.', fp: 'Backward compat.', floor: 'high' },
-
-  // LAYER 18: Dependency Graph
-  'L18-01': { name: 'circular dependency', sub: 'circular dependencies', trigger: 'A requires B, B requires A at same level.', evidence: 'The circle.', fp: 'Peer-to-peer.', floor: 'high' },
-  'L18-02': { name: 'hidden dependency', sub: 'undeclared dependencies', trigger: 'Workflow requires tool not in "Setup".', evidence: 'The tool.', fp: 'Standard OS tools.', floor: 'medium' },
-  'L18-03': { name: 'missing dependency', sub: 'undeclared dependencies', trigger: 'Component won\'t run without missing piece.', evidence: 'The gap.', fp: 'Built-in modules.', floor: 'high' },
-  'L18-04': { name: 'dependency ordering violation', sub: 'undeclared dependencies', trigger: 'Installing B before A fails.', evidence: 'Order error.', fp: 'Parallel installs.', floor: 'medium' },
-  'L18-05': { name: 'optional vs required confusion', sub: 'undeclared dependencies', trigger: 'Unclear if dep is needed for core or extra.', evidence: 'Ambiguity.', fp: 'Feature sets.', floor: 'low' },
-  'L18-06': { name: 'transitive dependency conflict', sub: 'version conflicts', trigger: 'A needs Xv1, B needs Xv2.', evidence: 'Conflict.', fp: 'Multi-version OS.', floor: 'high' },
-  'L18-07': { name: 'redundant dependency', sub: 'undeclared dependencies', trigger: 'Dependency included but never used.', evidence: 'Extra dep.', fp: 'Pre-caching.', floor: 'low' },
-  'L18-08': { name: 'dependency version ambiguity', sub: 'version conflicts', trigger: '"Latest" used instead of semver.', evidence: '"latest" tag.', fp: 'Simple scripts.', floor: 'medium' },
-
-  // LAYER 19: Data Flow
-  'L19-01': { name: 'missing data producer', sub: 'source-sink mismatch', trigger: 'Consumer expects data that is never created.', evidence: 'Data gap.', fp: 'External input.', floor: 'high' },
-  'L19-02': { name: 'missing data consumer', sub: 'source-sink mismatch', trigger: 'Data created but never used or stored.', evidence: 'Orphan data.', fp: 'Logging only.', floor: 'medium' },
-  'L19-03': { name: 'data transformation ambiguity', sub: 'missing transformations', trigger: 'Unclear how A becomes B.', evidence: 'Black box.', fp: 'Standard encodings.', floor: 'low' },
-  'L19-04': { name: 'inconsistent data shape', sub: 'source-sink mismatch', trigger: 'Shape changes between producer and consumer.', evidence: 'Shape mismatch.', fp: 'Schema-less.', floor: 'high' },
-  'L19-05': { name: 'data lifecycle gap', sub: 'retention ambiguity', trigger: 'Unclear when data is deleted or expired.', evidence: 'Retention gap.', fp: 'Infinite storage.', floor: 'medium' },
-  'L19-06': { name: 'data duplication', sub: 'source-sink mismatch', trigger: 'Same state stored in two sources of truth.', evidence: 'Duplication.', fp: 'Read replicas.', floor: 'medium' },
-  'L19-07': { name: 'invalid data propagation', sub: 'source-sink mismatch', trigger: 'Data moved to component that cannot process it.', evidence: 'Wrong path.', fp: 'Passthrough.', floor: 'medium' },
-  'L19-08': { name: 'stale data risk', sub: 'retention ambiguity', trigger: 'Cache used without invalidation rules.', evidence: 'Staleness gap.', fp: 'Static data.', floor: 'high' },
-
-  // LAYER 20: Execution Path
-  'L20-01': { name: 'unreachable execution path', sub: 'unreachable paths', trigger: 'Code block or branch that can never run.', evidence: 'Dead code.', fp: 'Safety fallbacks.', floor: 'medium' },
-  'L20-02': { name: 'missing trigger', sub: 'branch omissions', trigger: 'Path exists but no event starts it.', evidence: 'Trigger gap.', fp: 'Manual start.', floor: 'high' },
-  'L20-03': { name: 'conflicting triggers', sub: 'branch omissions', trigger: 'Two triggers starts same path with different params.', evidence: 'Conflict.', fp: 'Overloading.', floor: 'medium' },
-  'L20-04': { name: 'incomplete execution branch', sub: 'branch omissions', trigger: 'Path starts but doesn\'t handle "else" or "fail".', evidence: 'Missing branch.', fp: 'Happy-path only.', floor: 'high' },
-  'L20-05': { name: 'dead-end workflow', sub: 'dead ends', trigger: 'User reaches state with no forward or back path.', evidence: 'Dead end.', fp: 'Completion state.', floor: 'critical' },
-  'L20-06': { name: 'infinite loop risk', sub: 'rollback path gaps', trigger: 'A calls B, B calls A without exit.', evidence: 'The loop.', fp: 'Recursion.', floor: 'high' },
-  'L20-07': { name: 'conditional ambiguity', sub: 'unreachable paths', trigger: 'Logic like "If X and not X".', evidence: 'Ambiguity.', fp: 'Dynamic vars.', floor: 'critical' },
-  'L20-08': { name: 'execution ordering violation', sub: 'unreachable paths', trigger: 'Step 3 depends on result of Step 4.', evidence: 'Order error.', fp: 'Async flows.', floor: 'high' },
-
-  // LAYER 21: Configuration
-  'L21-01': { name: 'missing config key', sub: 'default ambiguity', trigger: 'Required key not listed in defaults or example.', evidence: 'Missing key.', fp: 'Optional keys.', floor: 'high' },
-  'L21-02': { name: 'conflicting config', sub: 'precedence conflicts', trigger: 'CLI flag conflicts with Env var rules.', evidence: 'Conflict.', fp: 'Standard override.', floor: 'medium' },
-  'L21-03': { name: 'undocumented config', sub: 'default ambiguity', trigger: 'Hidden flags mentioned in tips but not list.', evidence: 'Secret config.', fp: 'Developer-only.', floor: 'low' },
-  'L21-04': { name: 'default ambiguity', sub: 'default ambiguity', trigger: 'Unclear what happens if key is omitted.', evidence: 'Default gap.', fp: 'System defaults.', floor: 'medium' },
-  'L21-05': { name: 'config dependency missing', sub: 'precedence conflicts', trigger: 'Key A requires Key B to be set.', evidence: 'Dependency.', fp: 'Independent keys.', floor: 'medium' },
-  'L21-06': { name: 'invalid fallback logic', sub: 'precedence conflicts', trigger: 'Fallback leads to insecure or broken state.', evidence: 'Bad fallback.', fp: 'Safe defaults.', floor: 'high' },
-  'L21-07': { name: 'environment mismatch', sub: 'env drift', trigger: 'Prod config used in Dev example.', evidence: 'Env mismatch.', fp: 'Hybrid envs.', floor: 'medium' },
-  'L21-08': { name: 'config mutation risk', sub: 'env drift', trigger: 'Config changed at runtime without reload rules.', evidence: 'Mutation risk.', fp: 'Dynamic config.', floor: 'medium' },
-
-  // LAYER 22: Error Handling
-  'L22-01': { name: 'missing error path', sub: 'missing recovery', trigger: 'What to do if API returns 500 is not defined.', evidence: 'Path gap.', fp: 'Fail-fast.', floor: 'high' },
-  'L22-02': { name: 'silent failure risk', sub: 'partial-failure gaps', trigger: 'Errors caught but not logged or returned.', evidence: 'Silence risk.', fp: 'Expected NOPs.', floor: 'critical' },
-  'L22-03': { name: 'unhandled exception', sub: 'missing recovery', trigger: 'Known exceptions not covered in try/catch docs.', evidence: 'Exception gap.', fp: 'Global handlers.', floor: 'high' },
-  'L22-04': { name: 'recovery path missing', sub: 'error-handling recovery ambiguity', trigger: 'Error identified but ambiguous or missing recovery path.', evidence: 'Recovery gap or vague instructions.', fp: 'Fatal unrecoverable errors.', floor: 'high', related_layers: ['L6'] },
-  'L22-05': { name: 'retry logic missing', sub: 'retry storms', trigger: 'Network errors fail immediately without retry.', evidence: 'Retry gap.', fp: 'Non-idempotent.', floor: 'medium' },
-  'L22-06': { name: 'user feedback missing', sub: 'unclear operator actions', trigger: 'Internal error happens with no UI update.', evidence: 'Feedback gap.', fp: 'Background tasks.', floor: 'low' },
-  'L22-07': { name: 'partial failure undefined', sub: 'partial-failure gaps', trigger: '3 of 5 steps succeed; state is unknown.', evidence: 'Partial gap.', fp: 'Atomic transactions.', floor: 'high' },
-  'L22-08': { name: 'cascading failure risk', sub: 'retry storms', trigger: 'One error triggers a storm of retries.', evidence: 'Cascade risk.', fp: 'Circuit breakers.', floor: 'high' },
-
-  // LAYER 23: Security
-  'L23-01': { name: 'secret exposure risk', sub: 'secret exposure', trigger: 'Raw keys orSk-... in examples.', evidence: 'Exposed secret.', fp: 'Dummy keys.', floor: 'critical' },
-  'L23-02': { name: 'unsafe storage', sub: 'secret exposure', trigger: 'Storing PII in plain text or local storage.', evidence: 'Storage choice.', fp: 'Non-sensitive.', floor: 'high' },
-  'L23-03': { name: 'privilege escalation path', sub: 'authz ambiguity', trigger: 'User A can perform User B actions.', evidence: 'Escalation path.', fp: 'Admin roles.', floor: 'critical' },
-  'L23-04': { name: 'injection risk', sub: 'unsafe input handling', trigger: 'Passing raw user input to DB/Shell.', evidence: 'Injection gap.', fp: 'Sanitized input.', floor: 'critical' },
-  'L23-05': { name: 'trust boundary violation', sub: 'trust-boundary gaps', trigger: 'Internal data passed to external without check.', evidence: 'Boundary leak.', fp: 'Public data.', floor: 'high' },
-  'L23-06': { name: 'data leakage risk', sub: 'secret exposure', trigger: 'Error messages reveal internal stack/paths.', evidence: 'Leakage risk.', fp: 'Debug builds.', floor: 'medium' },
-  'L23-07': { name: 'unsafe IPC usage', sub: 'trust-boundary gaps', trigger: 'Electron IPC without context isolation.', evidence: 'IPC risk.', fp: 'Main-only.', floor: 'high' },
-  'L23-08': { name: 'sandbox bypass risk', sub: 'trust-boundary gaps', trigger: 'Feature allows escaping limited environment.', evidence: 'Bypass path.', fp: 'Internal tools.', floor: 'critical' },
-
-  // LAYER 24: Performance
-  'L24-01': { name: 'O(N²) workflow risk', sub: 'scale assumptions', trigger: 'Looping over large datasets in a single call.', evidence: 'Complexity risk.', fp: 'Small N.', floor: 'medium' },
-  'L24-02': { name: 'memory growth risk', sub: 'unbounded work', trigger: 'Loading full files into memory without stream.', evidence: 'Memory risk.', fp: 'Small files.', floor: 'high' },
-  'L24-03': { name: 'token overflow risk', sub: 'unbounded work', trigger: 'Sending unbounded text to LLM.', evidence: 'Token risk.', fp: 'Chunked input.', floor: 'high' },
-  'L24-04': { name: 'blocking operation', sub: 'expensive retries', trigger: 'Sync operations on the main thread.', evidence: 'Blocking risk.', fp: 'Brief tasks.', floor: 'medium' },
-  'L24-05': { name: 'concurrency conflict', sub: 'scale assumptions', trigger: 'Two threads writing to same file without lock.', evidence: 'Race risk.', fp: 'Read-only.', floor: 'high' },
-  'L24-06': { name: 'scaling assumption invalid', sub: 'scale assumptions', trigger: '"Scales to millions" without infra details.', evidence: 'Scale claim.', fp: 'Proven tech.', floor: 'low' },
-  'L24-07': { name: 'batching missing', sub: 'scale assumptions', trigger: '1000 API calls instead of 1 batched call.', evidence: 'Batching gap.', fp: 'Real-time reqs.', floor: 'medium' },
-  'L24-08': { name: 'timeout handling missing', sub: 'expensive retries', trigger: 'No max-time for external requests.', evidence: 'Timeout gap.', fp: 'Instant responses.', floor: 'medium' },
-
-  // LAYER 25: Testability
-  'L25-01': { name: 'untestable claim', sub: 'unverifiable claims', trigger: 'Statements like "it works perfectly".', evidence: 'The claim.', fp: 'Subjective docs.', floor: 'low' },
-  'L25-02': { name: 'missing test case', sub: 'missing examples', trigger: 'Feature has no example test or validation step.', evidence: 'Test gap.', fp: 'Internal only.', floor: 'medium' },
-  'L25-03': { name: 'verification gap', sub: 'validation blind spots', trigger: 'No way to confirm a step succeeded.', evidence: 'Verification gap.', fp: 'Visual feedback.', floor: 'medium' },
-  'L25-04': { name: 'assertion ambiguity', sub: 'weak expected outputs', trigger: '"Check if result is correct" without "correct" shape.', evidence: 'Ambiguity.', fp: 'Standard output.', floor: 'medium' },
-  'L25-05': { name: 'missing coverage criteria', sub: 'validation blind spots', trigger: 'Unclear what level of testing is required.', evidence: 'Coverage gap.', fp: 'Exploratory.', floor: 'low' },
-  'L25-06': { name: 'flaky test risk', sub: 'validation blind spots', trigger: 'Tests depend on external network or time.', evidence: 'Flakiness.', fp: 'Integration tests.', floor: 'medium' },
-  'L25-07': { name: 'test isolation failure', sub: 'validation blind spots', trigger: 'Test A requires Test B state.', evidence: 'Isolation gap.', fp: 'End-to-end.', floor: 'medium' },
-  'L25-08': { name: 'regression risk', sub: 'validation blind spots', trigger: 'Manual steps required for every release.', evidence: 'Manual risk.', fp: 'Final QA.', floor: 'medium' },
-
-  // LAYER 26: Maintainability
-  'L26-01': { name: 'code duplication risk', sub: 'duplication', trigger: 'Identical logic repeated in three places.', evidence: 'Duplication.', fp: 'Boilerplate.', floor: 'medium' },
-  'L26-02': { name: 'tight coupling risk', sub: 'brittle coupling', trigger: 'Changes to UI break the DB layer.', evidence: 'Coupling.', fp: 'Small apps.', floor: 'high' },
-  'L26-03': { name: 'missing abstraction', sub: 'brittle coupling', trigger: 'Low-level details in high-level logic.', evidence: 'Leaky logic.', fp: 'Performance code.', floor: 'low' },
-  'L26-04': { name: 'technical debt indicator', sub: 'brittle coupling', trigger: '"TODO", "Fixme", or legacy hacks.', evidence: 'Debt marker.', fp: 'Roadmap items.', floor: 'medium' },
-  'L26-05': { name: 'refactoring needed', sub: 'brittle coupling', trigger: 'Functions too long or complex to follow.', evidence: 'Complexity.', fp: 'Core algorithms.', floor: 'low' },
-  'L26-06': { name: 'legacy pattern usage', sub: 'brittle coupling', trigger: 'Using callbacks in a Promise system.', evidence: 'Legacy pattern.', fp: 'Legacy compat.', floor: 'medium' },
-  'L26-07': { name: 'missing documentation', sub: 'hidden ownership', trigger: 'Internal helper functions have no comments.', evidence: 'Doc gap.', fp: 'Self-doc code.', floor: 'low' },
-  'L26-08': { name: 'complexity overload', sub: 'brittle coupling', trigger: 'Too many indirection layers.', evidence: 'Over-engineering.', fp: 'Large frameworks.', floor: 'low' },
-
-  // LAYER 27: Usability
-  'L27-01': { name: 'confusing workflow', sub: 'confusing task order', trigger: 'User jumps between unrelated screens.', evidence: 'Workflow jump.', fp: 'Expert tools.', floor: 'medium' },
-  'L27-02': { name: 'missing user guidance', sub: 'poor examples', trigger: 'Screen has no labels or help text.', evidence: 'Guidance gap.', fp: 'Self-evident.', floor: 'medium' },
-  'L27-03': { name: 'inconsistent UI pattern', sub: 'poor examples', trigger: 'Save button changes position or color.', evidence: 'Inconsistency.', fp: 'A/B testing.', floor: 'low' },
-  'L27-04': { name: 'accessibility gap', sub: 'accessibility/readability issues', trigger: 'Color-only indicators, missing Alt text.', evidence: 'A11y gap.', fp: 'Internal prototypes.', floor: 'high' },
-  'L27-05': { name: 'cognitive overload', sub: 'jargon overload', trigger: 'Presenting 50 options on one screen.', evidence: 'Density.', fp: 'Dashboard views.', floor: 'medium' },
-  'L27-06': { name: 'missing feedback', sub: 'poor examples', trigger: 'Long action starts with no loading state.', evidence: 'Feedback gap.', fp: 'Fast actions.', floor: 'medium' },
-  'L27-07': { name: 'error message quality', sub: 'accessibility/readability issues', trigger: '"An error occurred" (Error 0x01).', evidence: 'Vague error.', fp: 'System errors.', floor: 'medium' },
-  'L27-08': { name: 'onboarding gap', sub: 'poor examples', trigger: 'No "Getting Started" or sample data.', evidence: 'onboarding gap', fp: 'Advanced tools.', floor: 'low' },
-  'L27-09': { name: 'mandatory UI component gap', sub: 'mandatory UI surface gaps', trigger: 'Required interactive element not present in the documented UI surface.', evidence: 'Missing UI element.', fp: 'CLI-only systems.', floor: 'high' },
-  'L27-10': { name: 'exposed fatal state UX', sub: 'exposed fatal-state UX violations', trigger: 'UI exposes raw fatal error state without user-friendly recovery path.', evidence: 'Raw error display.', fp: 'Developer tools.', floor: 'high' },
-
-  // LAYER 28: Interoperability
-  'L28-01': { name: 'protocol mismatch', sub: 'protocol mismatch', trigger: 'A uses REST, B expects GraphQL.', evidence: 'Mismatch.', fp: 'Gateways.', floor: 'high' },
-  'L28-02': { name: 'format incompatibility', sub: 'format assumptions', trigger: 'JSON sent to XML consumer.', evidence: 'Format mismatch.', fp: 'Auto-converters.', floor: 'high' },
-  'L28-03': { name: 'version conflict', sub: 'interoperability compatibility mismatches', trigger: 'API or protocol version mismatches leading to breaks.', evidence: 'Version gap details.', fp: 'Explicit backward compatibility layers.', floor: 'critical', related_layers: ['L32'] },
-  'L28-04': { name: 'missing adapter', sub: 'integration ambiguity', trigger: 'Two systems cannot talk without a bridge.', evidence: 'Missing link.', fp: 'Direct coupling.', floor: 'medium' },
-  'L28-05': { name: 'coupling to implementation', sub: 'integration ambiguity', trigger: 'Client depends on internal DB structure.', evidence: 'Leaky coupling.', fp: 'Shared libraries.', floor: 'high' },
-  'L28-06': { name: 'missing abstraction layer', sub: 'integration ambiguity', trigger: 'Directly calling hardware/low-level.', evidence: 'Abstraction gap.', fp: 'Drivers.', floor: 'medium' },
-  'L28-07': { name: 'integration test gap', sub: 'integration ambiguity', trigger: 'Systems never tested together.', evidence: 'Test gap.', fp: 'Mocked envs.', floor: 'medium' },
-  'L28-08': { name: 'deployment mismatch', sub: 'integration ambiguity', trigger: 'Linux client for Windows service.', evidence: 'Env mismatch.', fp: 'Cross-platform.', floor: 'medium' },
-
-  // LAYER 29: Governance
-  'L29-01': { name: 'policy violation', sub: 'policy traceability', trigger: 'Steps violate documented security rules.', evidence: 'Violation.', fp: 'Emergency paths.', floor: 'high' },
-  'L29-02': { name: 'regulatory gap', sub: 'retention/compliance gaps', trigger: 'No mention of GDPR/HIPAA where required.', evidence: 'Compliance gap.', fp: 'Non-regulated.', floor: 'critical' },
-  'L29-03': { name: 'audit trail missing', sub: 'auditability', trigger: 'Critical actions not logged.', evidence: 'Audit gap.', fp: 'Ephemeral actions.', floor: 'high' },
-  'L29-04': { name: 'access control gap', sub: 'approval gates', trigger: 'Unclear who approves resource access.', evidence: 'Access gap.', fp: 'Sole owner.', floor: 'medium' },
-  'L29-05': { name: 'data retention issue', sub: 'retention/compliance gaps', trigger: 'Storing logs forever without policy.', evidence: 'Retention gap.', fp: 'Infinite storage.', floor: 'medium' },
-  'L29-06': { name: 'consent management gap', sub: 'retention/compliance gaps', trigger: 'Collecting data without opt-in docs.', evidence: 'Consent gap.', fp: 'Internal only.', floor: 'high' },
-  'L29-07': { name: 'transparency issue', sub: 'auditability', trigger: 'Hidden data collection or sharing.', evidence: 'Transparency gap.', fp: 'Standard telemetry.', floor: 'medium' },
-  'L29-08': { name: 'accountability gap', sub: 'approval gates', trigger: 'Unclear who is responsible if system fails.', evidence: 'Ownership gap.', fp: 'Shared team.', floor: 'medium' },
-  'L29-09': { name: 'override condition ambiguity', sub: 'override ambiguity', trigger: 'Override conditions described without clear triggers or revocation rules.', evidence: 'Vague override.', fp: 'Emergency protocols.', floor: 'high' },
-  'L29-10': { name: 'enforcement path gap', sub: 'enforcement-path gaps', trigger: 'Policy exists but no mechanism enforces compliance.', evidence: 'Unenforced rule.', fp: 'Self-enforcing policies.', floor: 'high' },
-
-  // LAYER 30: Resilience
-  'L30-01': { name: 'single point of failure', sub: 'single points of failure', trigger: 'System fails if Component X is down.', evidence: 'SPOF.', fp: 'Redundant setup.', floor: 'critical' },
-  'L30-02': { name: 'missing circuit breaker', sub: 'degraded-mode gaps', trigger: 'Failing service brings down caller.', evidence: 'Cascade risk.', fp: 'Low load.', floor: 'high' },
-  'L30-03': { name: 'missing fallback', sub: 'degraded-mode gaps', trigger: 'No "Offline" or "Lite" mode.', evidence: 'Fallback gap.', fp: 'Online-only.', floor: 'medium' },
-  'L30-04': { name: 'missing health check', sub: 'outage handling', trigger: 'Load balancer can\'t see if service is dead.', evidence: 'Health gap.', fp: 'Static routing.', floor: 'medium' },
-  'L30-05': { name: 'graceful degradation gap', sub: 'degraded-mode gaps', trigger: 'System crashes instead of slowing down.', evidence: 'Crash risk.', fp: 'Fail-fast.', floor: 'medium' },
-  'L30-06': { name: 'missing retry strategy', sub: 'outage handling', trigger: 'Retrying too fast or too slow.', evidence: 'Retry gap.', fp: 'Standard backoff.', floor: 'medium' },
-  'L30-07': { name: 'missing backoff logic', sub: 'outage handling', trigger: 'Fixed retry interval without jitter.', evidence: 'Backoff gap.', fp: 'Small clusters.', floor: 'medium' },
-  'L30-08': { name: 'missing dead letter queue', sub: 'outage handling', trigger: 'Failing messages are lost forever.', evidence: 'DLQ gap.', fp: 'Disposable data.', floor: 'high' },
-  'L30-09': { name: 'rollback infeasibility', sub: 'rollback infeasibility', trigger: 'State change cannot be reversed after execution.', evidence: 'Irreversible action.', fp: 'Append-only logs.', floor: 'high' },
-  'L30-10': { name: 'fail-safe absence', sub: 'fail-safe absence', trigger: 'System lacks a defined safe state for critical failures.', evidence: 'No safe state.', fp: 'Fail-open systems.', floor: 'high' },
-
-  // LAYER 31: Observability
-  'L31-01': { name: 'missing logging', sub: 'missing logs', trigger: 'Important events happen silently.', evidence: 'Logging gap.', fp: 'Noisy logs.', floor: 'medium' },
-  'L31-02': { name: 'missing metrics', sub: 'metrics gaps', trigger: 'No counters for success/failure.', evidence: 'Metrics gap.', fp: 'External monitoring.', floor: 'medium' },
-  'L31-03': { name: 'missing tracing', sub: 'tracing gaps', trigger: 'Request path through services is hidden.', evidence: 'Trace gap.', fp: 'Monoliths.', floor: 'low' },
-  'L31-04': { name: 'missing alerting', sub: 'correlation IDs and alert-threshold gaps', trigger: 'System fails but no one is notified.', evidence: 'Alert gap.', fp: 'Manual monitor.', floor: 'high' },
-  'L31-05': { name: 'missing dashboard', sub: 'metrics gaps', trigger: 'Metrics exist but are hard to visualize.', evidence: 'Viz gap.', fp: 'CLI only.', floor: 'low' },
-  'L31-06': { name: 'missing SLI/SLO', sub: 'correlation IDs and alert-threshold gaps', trigger: 'No targets for "up" or "fast".', evidence: 'SLO gap.', fp: 'Best effort.', floor: 'medium' },
-  'L31-07': { name: 'missing incident response', sub: 'correlation IDs and alert-threshold gaps', trigger: 'No plan for when alerts fire.', evidence: 'IR gap.', fp: 'Small teams.', floor: 'medium' },
-  'L31-08': { name: 'missing runbook', sub: 'missing logs', trigger: 'Alert tells you X is broken, but not how to fix.', evidence: 'Runbook gap.', fp: 'Self-healing.', floor: 'high' },
-
-  // LAYER 32: Evolution
-  'L32-01': { name: 'missing versioning strategy', sub: 'versioning gaps', trigger: 'No path for v1 to v2.', evidence: 'Version gap.', fp: 'Single release.', floor: 'medium' },
-  'L32-02': { name: 'missing migration path', sub: 'evolution/versioning migration scenarios', trigger: 'Missing migration steps for deprecated or older versions.', evidence: 'Migration gap details.', fp: 'Greenfield deployments.', floor: 'critical', related_layers: ['L28'] },
-  'L32-03': { name: 'missing deprecation policy', sub: 'deprecation policy gaps', trigger: 'Features removed without warning.', evidence: 'Deprecation gap.', fp: 'Internal beta.', floor: 'medium' },
-  'L32-04': { name: 'missing backward compatibility', sub: 'compatibility promises', trigger: 'Update breaks all existing clients.', evidence: 'Compat break.', fp: 'Major breaks.', floor: 'high' },
-  'L32-05': { name: 'missing extensibility', sub: 'migration gaps', trigger: 'Hard-coded logic prevents plugins.', evidence: 'Extensibility gap.', fp: 'Proprietary.', floor: 'low' },
-  'L32-06': { name: 'missing plugin architecture', sub: 'migration gaps', trigger: 'No hooks for external code.', evidence: 'Hook gap.', fp: 'Monolithic.', floor: 'low' },
-  'L32-07': { name: 'missing feature flags', sub: 'migration gaps', trigger: 'Release is "all or nothing".', evidence: 'Flag gap.', fp: 'Small features.', floor: 'medium' },
-  'L32-08': { name: 'missing rollout strategy', sub: 'migration gaps', trigger: 'No canary or staged release plan.', evidence: 'Rollout gap.', fp: 'Internal apps.', floor: 'medium' },
-
-  // LAYER 33: Specification Formalism
-  'L33-01': { name: 'missing input domain closure', sub: 'input domain closure', trigger: 'Inputs lack bounds or exhaustive enum constraints.', evidence: 'Open-ended input.', fp: 'String fields.', floor: 'medium' },
-  'L33-02': { name: 'canonical vocabulary gap', sub: 'canonical vocabulary enforcement', trigger: 'Terms used without defining in terminology registry.', evidence: 'Undefined term.', fp: 'Common words.', floor: 'low' },
-  'L33-03': { name: 'state-space undefined', sub: 'state-space definition', trigger: 'System state dimensions not fully mapped.', evidence: 'Implicit state.', fp: 'Stateless logic.', floor: 'high' },
-  'L33-04': { name: 'output contract non-determinism', sub: 'output contract determinism', trigger: 'Outputs vaguely defined without exact shapes.', evidence: 'Vague output.', fp: 'Logs.', floor: 'high' },
-  'L33-05': { name: 'spec completeness violation', sub: 'spec completeness', trigger: 'Spec leaves behavior undefined for valid input ranges.', evidence: 'Undefined behavior zone.', fp: 'Default behavior.', floor: 'medium' },
-  'L33-06': { name: 'terminology registry gap', sub: 'terminology registry', trigger: 'Core terms used without formal definition in a registry.', evidence: 'Unregistered term.', fp: 'Industry standards.', floor: 'medium' },
-  'L33-07': { name: 'type entity rigor gap', sub: 'type/entity rigor', trigger: 'Types or entities described in prose without formal constraints.', evidence: 'Informal type.', fp: 'Simple types.', floor: 'medium' },
-  'L33-08': { name: 'symbol consistency violation', sub: 'symbol consistency', trigger: 'Same symbol used for different concepts without resolution.', evidence: 'Symbol reuse.', fp: 'Renamed symbols.', floor: 'medium' },
-  
-  // LAYER 34: Simulation & Verification
-  'L34-01': { name: 'mandatory simulation gap', sub: 'mandatory simulation', trigger: 'Execution specs lack pre-run simulation steps.', evidence: 'Direct execution.', fp: 'Read-only queries.', floor: 'high' },
-  'L34-02': { name: 'simulation mutation risk', sub: 'simulation non-mutation', trigger: 'Simulation path allows side-effects.', evidence: 'Mutation in sim.', fp: 'Local sandbox.', floor: 'critical' },
-  'L34-03': { name: 'pre-simulation governance gap', sub: 'pre-simulation governance', trigger: 'Simulation can run without policy checks.', evidence: 'Missing policy.', fp: 'Open tools.', floor: 'medium' },
-  'L34-04': { name: 'verification completeness gap', sub: 'verification completeness', trigger: 'Post-simulation output lacks validation assertions.', evidence: 'Unchecked results.', fp: 'Ad-hoc runs.', floor: 'high' },
-  'L34-05': { name: 'risk classification missing', sub: 'risk classification', trigger: 'High-risk operations lack simulation risk tier.', evidence: 'Missing risk tier.', fp: 'Low-risk ops.', floor: 'high' },
-  'L34-06': { name: 'simulation gate bypass', sub: 'light-vs-heavy simulation correctness', trigger: 'Execution proceeds without passing correct simulation tier for its risk level.', evidence: 'Wrong sim tier.', fp: 'Read-only ops.', floor: 'high' },
-  'L34-07': { name: 'formal verification boundary undefined', sub: 'formal verification boundary', trigger: 'No boundary between simulated and formally verified behavior.', evidence: 'Undefined boundary.', fp: 'Informal systems.', floor: 'medium' },
-  'L34-08': { name: 'post-simulation validation absence', sub: 'post-simulation governance', trigger: 'Simulation results consumed without post-validation assertions.', evidence: 'No post-check.', fp: 'Visual inspection.', floor: 'high' },
-  'L34-09': { name: 'pre-simulation check absence', sub: 'pre-simulation governance', trigger: 'No pre-simulation policy or resource check before running.', evidence: 'No pre-check.', fp: 'Open environments.', floor: 'medium' },
-
-  // LAYER 35: Memory & World Model
-  'L35-01': { name: 'memory temporal inconsistency', sub: 'temporal consistency', trigger: 'State reads span multiple epochs without locking.', evidence: 'Epoch mismatch.', fp: 'Eventual consistency.', floor: 'high' },
-  'L35-02': { name: 'PSG mutation exclusivity violation', sub: 'PSG mutation gateway exclusivity', trigger: 'Direct writes to state bypass the gateway.', evidence: 'Direct write.', fp: 'Cache updates.', floor: 'critical' },
-  'L35-03': { name: 'snapshot isolation gap', sub: 'PSG snapshot isolation', trigger: 'Agent reads state while another writes.', evidence: 'Dirty read.', fp: 'Analytics.', floor: 'high' },
-  'L35-04': { name: 'commit binding gap', sub: 'PSG commit binding', trigger: 'State change not bound to a transaction hash.', evidence: 'Unbound write.', fp: 'Ephemeral state.', floor: 'medium' },
-  'L35-05': { name: 'memory conflict resolution undefined', sub: 'memory conflict resolution', trigger: 'Concurrent memory updates lack conflict resolution strategy.', evidence: 'No resolution.', fp: 'Single-writer.', floor: 'high' },
-  'L35-06': { name: 'read write authority gap', sub: 'read/write authority', trigger: 'No defined rules for who can read or write specific state.', evidence: 'Unrestricted access.', fp: 'Public state.', floor: 'high' },
-  'L35-07': { name: 'snapshot version drift', sub: 'snapshot/version invariants', trigger: 'Snapshot and live state diverge without reconciliation.', evidence: 'Version mismatch.', fp: 'Async replication.', floor: 'high' },
-  'L35-08': { name: 'PSG write atomicity gap', sub: 'PSG write atomicity', trigger: 'PSG write operations not atomic, allowing partial state updates.', evidence: 'Partial write.', fp: 'Single-field updates.', floor: 'high' },
-  'L35-09': { name: 'memory taxonomy undefined', sub: 'memory taxonomy', trigger: 'No classification of memory types (working, long-term, episodic).', evidence: 'Flat memory model.', fp: 'Simple stores.', floor: 'medium' },
-  'L35-10': { name: 'garbage collection indeterminism', sub: 'garbage collection determinism', trigger: 'State cleanup happens at unpredictable times or with unpredictable results.', evidence: 'Non-deterministic GC.', fp: 'Manual cleanup.', floor: 'medium' },
-  'L35-11': { name: 'PSG read consistency gap', sub: 'PSG read consistency', trigger: 'Reads from PSG may return stale or inconsistent state.', evidence: 'Inconsistent read.', fp: 'Eventually consistent.', floor: 'high' },
-
-  // LAYER 36: Agent Orchestration
-  'L36-01': { name: 'agent role overlap', sub: 'role non-overlap', trigger: 'Two agents claim authority over same domain.', evidence: 'Role conflict.', fp: 'Backup agents.', floor: 'high' },
-  'L36-02': { name: 'arbitration ambiguity', sub: 'arbitration strategy', trigger: 'Agent conflict lacks resolution protocol.', evidence: 'Missing arbiter.', fp: 'Independent agents.', floor: 'high' },
-  'L36-03': { name: 'agent authority violation', sub: 'authority boundaries', trigger: 'Agent granted rights outside its I/O contract.', evidence: 'Over-permission.', fp: 'Super-agents.', floor: 'critical' },
-  'L36-04': { name: 'composability constraints missing', sub: 'composability', trigger: 'Agent pipeline lacks failure propagation rules.', evidence: 'Silent failure.', fp: 'Simple chains.', floor: 'medium' },
-  'L36-05': { name: 'agent role boundary violation', sub: 'role non-overlap', trigger: 'Agent acts outside its declared capability scope.', evidence: 'Scope violation.', fp: 'Super-agents.', floor: 'high' },
-  'L36-06': { name: 'failure isolation missing', sub: 'failure isolation', trigger: 'One agent failure propagates uncontained to the full system.', evidence: 'Uncontained failure.', fp: 'Monolithic agents.', floor: 'high' },
-  'L36-07': { name: 'agent I/O contract gap', sub: 'agent I/O contracts', trigger: 'Agent lacks defined input/output contract specification.', evidence: 'Missing I/O spec.', fp: 'Simple agents.', floor: 'medium' },
-  'L36-08': { name: 'agent mutation prohibition gap', sub: 'agent mutation prohibitions', trigger: 'Agent allowed to mutate state it should only read.', evidence: 'Mutation violation.', fp: 'Write-agents.', floor: 'critical' },
-  'L36-09': { name: 'communication protocol undefined', sub: 'communication protocol', trigger: 'Agents exchange data without defined message format or serialization.', evidence: 'Ad-hoc messaging.', fp: 'Direct calls.', floor: 'medium' },
-  'L36-10': { name: 'authority boundary overlap', sub: 'authority boundaries', trigger: 'Two agents share overlapping authority domains without resolution rules.', evidence: 'Overlapping domains.', fp: 'Single agent.', floor: 'high' },
-
-  // LAYER 37: Tool & Execution Safety
-  'L37-01': { name: 'sandbox isolation breach', sub: 'sandbox isolation', trigger: 'Tool accesses host network or disk directly.', evidence: 'Unsafe API.', fp: 'Approved core tools.', floor: 'critical' },
-  'L37-02': { name: 'idempotency guarantee missing', sub: 'idempotency', trigger: 'Execution tool lacks state-check before running.', evidence: 'Blind execution.', fp: 'Read-only tools.', floor: 'high' },
-  'L37-03': { name: 'rollback path missing', sub: 'rollback rules', trigger: 'State-changing tool has no revert step.', evidence: 'One-way tool.', fp: 'Irreversible actions.', floor: 'high' },
-  'L37-04': { name: 'forbidden direct write', sub: 'forbidden direct write paths', trigger: 'Tool modifies DB instead of using PSG gateway.', evidence: 'Direct DB access.', fp: 'DB admin tools.', floor: 'critical' },
-  'L37-05': { name: 'execution authority violation', sub: 'execution authority violations', trigger: 'Tool executes with broader permissions than its contract allows.', evidence: 'Over-privileged execution.', fp: 'Admin tools.', floor: 'critical' },
-  'L37-06': { name: 'unsafe execution path', sub: 'unsafe execution paths', trigger: 'Tool execution path allows state corruption without guard rails.', evidence: 'Unguarded path.', fp: 'Atomic operations.', floor: 'high' },
-  'L37-07': { name: 'tool invocation contract gap', sub: 'tool invocation contract', trigger: 'Tool called without required preconditions or parameter validation.', evidence: 'Contract gap.', fp: 'Validated calls.', floor: 'high' },
-  'L37-08': { name: 'side effect validation absence', sub: 'side-effect validation', trigger: 'Tool produces side effects that are not validated or logged.', evidence: 'Unchecked side effect.', fp: 'Read-only tools.', floor: 'high' },
-
-  // LAYER 38: Deployment Contract
-  'L38-01': { name: 'remote deployment prohibition violation', sub: 'remote deployment prohibition', trigger: 'Spec requires cloud deployment for local system.', evidence: 'Cloud requirement.', fp: 'Local network.', floor: 'critical' },
-  'L38-02': { name: 'local export structure gap', sub: 'export structure completeness', trigger: 'Export lacks required metadata or assets.', evidence: 'Incomplete bundle.', fp: 'Partial exports.', floor: 'high' },
-  'L38-03': { name: 'export atomicity gap', sub: 'export atomicity', trigger: 'Export fails midway leaving corrupted state.', evidence: 'Partial write.', fp: 'Streamed exports.', floor: 'medium' },
-  'L38-04': { name: 'offline-run inability', sub: 'offline-run capability', trigger: 'Local export requires active internet connection.', evidence: 'Network call.', fp: 'License checks.', floor: 'high' },
-  'L38-05': { name: 'export path non-determinism', sub: 'export path determinism', trigger: 'Export output path varies between runs without configuration.', evidence: 'Variable path.', fp: 'Timestamped paths.', floor: 'medium' },
-  'L38-06': { name: 'executable validation absence', sub: 'executable validation', trigger: 'Export lacks post-build validation or integrity check.', evidence: 'No validation step.', fp: 'Signed builds.', floor: 'high' },
-  'L38-07': { name: 'deployment term misuse', sub: 'deployment-term misuse', trigger: 'Document uses deployment language interchangeably with export or build.', evidence: 'Term confusion.', fp: 'Clear definitions.', floor: 'medium' },
-  'L38-08': { name: 'local export enforcement gap', sub: 'local export enforcement', trigger: 'System does not enforce local-only export when required by deployment contract.', evidence: 'Export leakage.', fp: 'Cloud systems.', floor: 'critical' },
-  'L38-09': { name: 'export structure incomplete', sub: 'export structure completeness', trigger: 'Exported package missing required metadata, assets, or manifests.', evidence: 'Missing export parts.', fp: 'Partial exports.', floor: 'high' },
-
-  // LAYER 39: Platform Abstraction
-  'L39-01': { name: 'platform exclusion violation', sub: 'platform exclusion enforcement', trigger: 'Code references iOS when target is Android-only.', evidence: 'Platform mismatch.', fp: 'Shared libraries.', floor: 'high' },
-  'L39-02': { name: 'abstraction leakage', sub: 'abstraction leakage', trigger: 'Platform-specific types exposed in neutral API.', evidence: 'Leaky type.', fp: 'Platform extensions.', floor: 'medium' },
-  'L39-03': { name: 'target lock invariants missing', sub: 'target lock invariants', trigger: 'No mechanism to prevent running on wrong OS.', evidence: 'Missing guard.', fp: 'Universal code.', floor: 'medium' },
-  'L39-04': { name: 'implementation divergence', sub: 'implementation divergence', trigger: 'Windows/Mac behavior fundamentally differs.', evidence: 'Behavior gap.', fp: 'Native UI parity.', floor: 'high' },
-  'L39-05': { name: 'platform-neutral architecture violation', sub: 'platform-neutral architecture', trigger: 'Architecture assumes platform-specific behavior without abstraction layer.', evidence: 'Platform assumption.', fp: 'Platform-specific features.', floor: 'high' },
-  'L39-06': { name: 'cross-platform consistency gap', sub: 'cross-platform consistency', trigger: 'Feature documented on one platform with no equivalent on others.', evidence: 'Platform gap.', fp: 'Platform-specific features.', floor: 'high' },
-  'L39-07': { name: 'output target mismatch', sub: 'output-target mismatch', trigger: 'Build output targets a platform different from stated deployment target.', evidence: 'Target mismatch.', fp: 'Multi-target builds.', floor: 'high' },
-  'L39-08': { name: 'target lock bypass', sub: 'target lock invariants', trigger: 'No enforcement preventing running the build on an unintended platform.', evidence: 'Missing lock.', fp: 'Portable code.', floor: 'medium' },
-  'L39-09': { name: 'compiler mapping mismatch', sub: 'compiler mapping correctness', trigger: 'Build target or compiler config does not match stated platform.', evidence: 'Config mismatch.', fp: 'Cross-compilers.', floor: 'high' },
-
-  // LAYER 40: Context Orchestration
-  'L40-01': { name: 'token budget violation', sub: 'token budget enforcement', trigger: 'Context assembly lacks hard length limits.', evidence: 'Unbounded context.', fp: 'Local models.', floor: 'high' },
-  'L40-02': { name: 'context contamination', sub: 'context contamination / leakage', trigger: 'Stale or irrelevant data injected into context.', evidence: 'Bad injection.', fp: 'Historical logs.', floor: 'critical' },
-  'L40-03': { name: 'decision lock hierarchy gap', sub: 'decision lock hierarchy', trigger: 'Context updates conflict without precedence rules.', evidence: 'Race condition.', fp: 'Append-only logs.', floor: 'high' },
-  'L40-04': { name: 'drift correction missing', sub: 'drift correction', trigger: 'Context goes stale without refresh triggers.', evidence: 'Stale context.', fp: 'Static analysis.', floor: 'medium' },
-  'L40-05': { name: 'deterministic context assembly gap', sub: 'deterministic context assembly', trigger: 'Context assembly order or content varies between identical runs.', evidence: 'Non-deterministic assembly.', fp: 'Static contexts.', floor: 'high' },
-  'L40-06': { name: 'retrieval validation missing', sub: 'retrieval validation', trigger: 'Retrieved context fragments not validated for relevance or freshness.', evidence: 'Unvalidated retrieval.', fp: 'Curated sources.', floor: 'medium' },
-  'L40-07': { name: 'token budget absence', sub: 'token budget enforcement', trigger: 'Context assembly lacks defined token budget or length limit.', evidence: 'Unbounded assembly.', fp: 'Local models.', floor: 'high' },
-  'L40-08': { name: 'context conflict undetected', sub: 'conflict detection', trigger: 'Conflicting context fragments injected without detection or resolution.', evidence: 'Undetected conflict.', fp: 'Consistent sources.', floor: 'high' },
-  'L40-09': { name: 'context truncation strategy missing', sub: 'context truncation', trigger: 'No strategy for truncating context when limits are reached.', evidence: 'Hard cut-off.', fp: 'Small contexts.', floor: 'high' },
-  'L40-10': { name: 'decision lock hierarchy missing', sub: 'decision lock hierarchy', trigger: 'No precedence rules for conflicting context updates.', evidence: 'Unresolved conflict.', fp: 'Append-only logs.', floor: 'high' },
-
-  // LAYER 41: Reasoning Integrity
-  'L41-01': { name: 'evidence binding gap', sub: 'evidence binding', trigger: 'Reasoning conclusion not linked to supporting evidence.', evidence: 'Unbound conclusion.', fp: 'Obvious inferences.', floor: 'high' },
-  'L41-02': { name: 'uncertainty propagation failure', sub: 'uncertainty propagation', trigger: 'Uncertainty not propagated through multi-step reasoning chain.', evidence: 'False certainty.', fp: 'Deterministic steps.', floor: 'high' },
-  'L41-03': { name: 'reasoning trace unenforceable', sub: 'reasoning trace enforceability', trigger: 'Reasoning trace refers to unverifiable or private sources.', evidence: 'Private source.', fp: 'Public references.', floor: 'medium' },
-  'L41-04': { name: 'multi-step reasoning gap', sub: 'multi-step reasoning validation', trigger: 'Multi-step reasoning chain has a missing or unvalidated link.', evidence: 'Broken chain.', fp: 'Single-step logic.', floor: 'high' },
-  'L41-05': { name: 'global contradiction undetected', sub: 'global contradiction detection', trigger: 'Two conclusions across sections contradict without detection.', evidence: 'Hidden contradiction.', fp: 'Independent sections.', floor: 'high' },
-  'L41-06': { name: 'self-correction loop unbounded', sub: 'self-correction loop boundedness', trigger: 'Self-correction retries have no max iteration limit.', evidence: 'Infinite retries.', fp: 'Bounded loops.', floor: 'high' },
-  'L41-07': { name: 'reasoning trace incomplete', sub: 'reasoning trace completeness', trigger: 'Key reasoning steps omitted from the trace.', evidence: 'Incomplete trace.', fp: 'Summary traces.', floor: 'medium' },
-  'L41-08': { name: 'uncertainty not quantified', sub: 'uncertainty propagation failure', trigger: 'Uncertainty acknowledged but not quantified or bounded.', evidence: 'Vague uncertainty.', fp: 'Binary outcomes.', floor: 'medium' },
-
-  // LAYER 42: UI Surface Contract
-  'L42-01': { name: 'mandatory UI component missing', sub: 'mandatory UI component existence', trigger: 'Required UI component for a system function not specified.', evidence: 'Missing component.', fp: 'CLI-only systems.', floor: 'high' },
-  'L42-02': { name: 'UI interactivity gap', sub: 'UI interactivity enforcement', trigger: 'Interactive element lacks defined behavior or response contract.', evidence: 'Undefined interaction.', fp: 'Display-only elements.', floor: 'medium' },
-  'L42-03': { name: 'UI system state mismatch', sub: 'UI-to-system-state mapping', trigger: 'UI state does not reflect the actual system state.', evidence: 'State mismatch.', fp: 'Async state sync.', floor: 'high' },
-  'L42-04': { name: 'fatal state exposed in UI', sub: 'no fatal state exposure', trigger: 'UI displays or allows interaction with a fatal error state.', evidence: 'Fatal exposure.', fp: 'Error dialogs.', floor: 'critical' },
-  'L42-05': { name: 'component state machine invalid', sub: 'component state-machine correctness', trigger: 'UI component can reach impossible or undefined visual states.', evidence: 'Invalid state.', fp: 'Loading states.', floor: 'medium' },
-  'L42-06': { name: 'UI accessibility contract violation', sub: 'UI accessibility contract', trigger: 'UI surface lacks required accessibility attributes or alternatives.', evidence: 'A11y gap.', fp: 'Internal tools.', floor: 'medium' },
-  'L42-07': { name: 'UI layout contract violation', sub: 'UI layout contract', trigger: 'Layout breaks or hides critical information at standard viewport sizes.', evidence: 'Layout failure.', fp: 'Responsive design.', floor: 'medium' },
-  'L42-08': { name: 'UI feedback contract missing', sub: 'mandatory UI component existence', trigger: 'Action completes without user-visible confirmation or error feedback.', evidence: 'Silent action.', fp: 'Instant operations.', floor: 'medium' },
-
-  // LAYER 43: Deterministic Execution
-  'L43-01': { name: 'transition determinism violation', sub: 'transition determinism', trigger: 'State transition outcome varies between identical runs.', evidence: 'Non-deterministic outcome.', fp: 'Random-seeded systems.', floor: 'critical' },
-  'L43-02': { name: 'concurrency model undefined', sub: 'concurrency model definition', trigger: 'System handles concurrent operations without defined model.', evidence: 'Implicit concurrency.', fp: 'Single-threaded.', floor: 'high' },
-  'L43-03': { name: 'deadlock risk', sub: 'deadlock / livelock prevention', trigger: 'Two operations wait on each other indefinitely.', evidence: 'Circular wait.', fp: 'Lock-free design.', floor: 'critical' },
-  'L43-04': { name: 'scheduling non-determinism', sub: 'scheduling determinism', trigger: 'Task execution order varies without explicit scheduling rules.', evidence: 'Variable order.', fp: 'FIFO queues.', floor: 'high' },
-  'L43-05': { name: 'retry backoff indeterminism', sub: 'retry and backoff policy', trigger: 'Retry intervals are random without defined backoff strategy.', evidence: 'Random backoff.', fp: 'Fixed intervals.', floor: 'medium' },
-  'L43-06': { name: 'deterministic replay impossible', sub: 'deterministic replay capability', trigger: 'System state cannot be replayed from a recorded sequence.', evidence: 'No replay path.', fp: 'Stateless systems.', floor: 'high' },
-  'L43-07': { name: 'timing dependency risk', sub: 'timing dependency', trigger: 'Correctness depends on specific timing or ordering without guarantees.', evidence: 'Race condition.', fp: 'Synchronous ops.', floor: 'high' },
-  'L43-08': { name: 'resource ordering gap', sub: 'resource ordering', trigger: 'Multiple resources acquired without defined ordering, risking deadlock.', evidence: 'Unordered locks.', fp: 'Single resource.', floor: 'high' },
-
-  // LAYER 44: Control Plane Authority
-  'L44-01': { name: 'control plane separation violation', sub: 'control-plane separation', trigger: 'UI or data-plane directly modifies control-plane configuration.', evidence: 'Direct modification.', fp: 'Admin interfaces.', floor: 'critical' },
-  'L44-02': { name: 'authority delegation gap', sub: 'authority delegation rules', trigger: 'Authority delegated without defined scope or revocation rules.', evidence: 'Vague delegation.', fp: 'Fixed roles.', floor: 'high' },
-  'L44-03': { name: 'override condition ambiguity', sub: 'override conditions', trigger: 'Override conditions described without clear triggers or limits.', evidence: 'Vague override.', fp: 'Emergency-only overrides.', floor: 'high' },
-  'L44-04': { name: 'execution owner undefined', sub: 'execution owner boundary', trigger: 'No clear owner defined for execution decisions.', evidence: 'Ownership gap.', fp: 'Single-owner system.', floor: 'high' },
-  'L44-05': { name: 'policy enforcement gap', sub: 'policy enforcement points', trigger: 'Policy stated but no enforcement mechanism defined.', evidence: 'Unenforced policy.', fp: 'Self-enforcing policies.', floor: 'high' },
-  'L44-06': { name: 'control data plane mixing', sub: 'control-plane separation', trigger: 'Control and data plane logic interleaved without isolation.', evidence: 'Mixed concerns.', fp: 'Simple systems.', floor: 'high' },
-  'L44-07': { name: 'escalation path undefined', sub: 'escalation path', trigger: 'No defined escalation path for authority conflicts.', evidence: 'Missing escalation.', fp: 'Flat hierarchy.', floor: 'medium' },
-  'L44-08': { name: 'audit trail requirement missing', sub: 'audit trail requirements', trigger: 'Control plane changes not logged with actor, reason, and timestamp.', evidence: 'No audit log.', fp: 'Immutable configs.', floor: 'high' },
-
-  // LAYER 45: World State Governance
-  'L45-01': { name: 'state mutation invariant gap', sub: 'state mutation invariants', trigger: 'State mutations lack defined invariants that must hold.', evidence: 'Missing invariant.', fp: 'Immutable state.', floor: 'high' },
-  'L45-02': { name: 'mutation gateway bypass', sub: 'mutation gateway exclusivity', trigger: 'State modified without going through the defined mutation gateway.', evidence: 'Direct mutation.', fp: 'Internal state.', floor: 'critical' },
-  'L45-03': { name: 'commit hash binding missing', sub: 'commit_hash binding', trigger: 'State changes not bound to verifiable commit hashes.', evidence: 'Unbound change.', fp: 'Ephemeral state.', floor: 'high' },
-  'L45-04': { name: 'read write atomicity gap', sub: 'read/write atomicity', trigger: 'State reads and writes not atomic, allowing partial reads.', evidence: 'Partial read.', fp: 'Single-writer.', floor: 'high' },
-  'L45-05': { name: 'graph consistency violation', sub: 'graph consistency / acyclicity', trigger: 'State graph develops cycles or inconsistencies.', evidence: 'Graph cycle.', fp: 'Tree structures.', floor: 'high' },
-  'L45-06': { name: 'direct state write bypass', sub: 'state isolation', trigger: 'State written directly without isolation from other subsystems.', evidence: 'Unisolated write.', fp: 'Sandboxed state.', floor: 'critical' },
-  'L45-07': { name: 'state read write race', sub: 'temporal state consistency', trigger: 'Concurrent read and write operations on shared state without synchronization.', evidence: 'Race condition.', fp: 'Serialized access.', floor: 'high' },
-  'L45-08': { name: 'state isolation breach', sub: 'state isolation', trigger: 'One subsystem can read or write another subsystem private state.', evidence: 'Cross-subsystem leak.', fp: 'Public state only.', floor: 'critical' }
+  'L1-01': { name: 'direct contradictions', sub: 'direct conflicts', trigger: 'Two statements explicitly negate each other.', evidence: 'Conflict.', fp: 'Context.', floor: 'high' },
+  'L1-02': { name: 'indirect contradictions', sub: 'configuration precedence conflicts', trigger: 'Inferred conclusions conflict.', evidence: 'Conflict.', fp: 'Context.', floor: 'medium', ceiling: 'high' },
+  'L1-03': { name: 'cross-section contradictions', sub: 'version drift', trigger: 'Section A vs B drift.', evidence: 'Drift.', fp: 'Context.', floor: 'medium' },
+  'L1-04': { name: 'terminology inconsistency', sub: 'terminology drift', trigger: 'Different terms same concept.', evidence: 'Drift.', fp: 'Context.', floor: 'low' },
+  'L1-05': { name: 'numerical inconsistency', sub: 'version drift', trigger: 'Different values same constant.', evidence: 'Conflict.', fp: 'Context.', floor: 'high' },
+  'L1-06': { name: 'definition drift', sub: 'terminology drift', trigger: 'Definition shifts.', evidence: 'Drift.', fp: 'Context.', floor: 'medium' },
+  'L1-07': { name: 'circular contradictions', sub: 'direct conflicts', trigger: 'Cycle to impossible state.', evidence: 'Cycle.', fp: 'Context.', floor: 'high' },
+  'L1-08': { name: 'hidden implied contradictions', sub: 'direct conflicts', trigger: 'Goal vs impl conflict.', evidence: 'Conflict.', fp: 'Context.', floor: 'medium' },
+  'L1-09': { name: 'diagram-text mismatch', sub: 'diagram-text mismatch', trigger: 'Diagram vs text.', evidence: 'Mismatch.', fp: 'Context.', floor: 'medium' },
+  'L1-10': { name: 'state-logic contradiction', sub: 'state-logic contradiction', trigger: 'Impossible state logic.', evidence: 'Conflict.', fp: 'Context.', floor: 'high' },
+  'L1-11': { name: 'cross-epoch contradiction', sub: 'direct conflicts', trigger: 'Rules across epochs clash.', evidence: 'Conflict.', fp: 'Context.', floor: 'high' },
+  'L1-12': { name: 'cross-domain definition clash', sub: 'direct conflicts', trigger: 'Domain A vs B term clash.', evidence: 'Clash.', fp: 'Context.', floor: 'medium' },
+  'L1-13': { name: 'indirect contradiction detail', sub: 'configuration precedence conflicts', trigger: 'Deep precedence conflict.', evidence: 'Clash.', fp: 'Context.', floor: 'medium' },
+  'L2-01': { name: 'invalid premises', sub: 'invalid assumptions', trigger: 'False fact relies.', evidence: 'Premise.', fp: 'Context.', floor: 'high' },
+  'L2-02': { name: 'missing premises', sub: 'causality gaps', trigger: 'Jump in logic.', evidence: 'Gap.', fp: 'Context.', floor: 'medium' },
+  'L2-03': { name: 'non-sequitur reasoning', sub: 'causality gaps', trigger: 'Unrelated transition.', evidence: 'Gap.', fp: 'Context.', floor: 'medium' },
+  'L2-04': { name: 'circular reasoning', sub: 'circular reasoning', trigger: 'Logic loop.', evidence: 'Loop.', fp: 'Context.', floor: 'medium' },
+  'L2-05': { name: 'false causality', sub: 'causality gaps', trigger: 'Correlation vs causation.', evidence: 'Gap.', fp: 'Context.', floor: 'medium' },
+  'L2-06': { name: 'overgeneralization', sub: 'scope leaps', trigger: 'Broad claim small sample.', evidence: 'Leap.', fp: 'Context.', floor: 'low' },
+  'L2-07': { name: 'logical gaps', sub: 'causality gaps', trigger: 'Skip state change.', evidence: 'Gap.', fp: 'Context.', floor: 'high' },
+  'L2-08': { name: 'contradictory inference chains', sub: 'invalid assumptions', trigger: 'Paths to opposite results.', evidence: 'Conflict.', fp: 'Context.', floor: 'high' },
+  'L2-09': { name: 'logic-state mismatch', sub: 'logic-state mismatch', trigger: 'Logic vs behavior drift.', evidence: 'Drift.', fp: 'Context.', floor: 'high' },
+  'L2-10': { name: 'invariant violation logic', sub: 'invariant violation logic', trigger: 'Breach invariant.', evidence: 'Violation.', fp: 'Context.', floor: 'critical' },
+  'L2-11': { name: 'logic loop deadlock', sub: 'circular reasoning', trigger: 'Deadlock logic chain.', evidence: 'Cycle.', fp: 'Context.', floor: 'high' },
+  'L2-12': { name: 'invalid assumption detail', sub: 'invalid assumptions', trigger: 'Deep assumption flaw.', evidence: 'Premise.', fp: 'Context.', floor: 'high' },
+  'L3-01': { name: 'broken heading hierarchy', sub: 'broken hierarchy', trigger: 'Bad H level.', evidence: 'Hierarchy.', fp: 'Context.', floor: 'low' },
+  'L3-02': { name: 'orphan sections', sub: 'orphan sections', trigger: 'No refs.', evidence: 'Orphan.', fp: 'Context.', floor: 'low' },
+  'L3-03': { name: 'redundant sections', sub: 'duplicate sections', trigger: 'Identical content.', evidence: 'Redundant.', fp: 'Context.', floor: 'medium' },
+  'L3-04': { name: 'improper ordering', sub: 'missing prerequisites', trigger: 'Prereq after action.', evidence: 'Order.', fp: 'Context.', floor: 'high' },
+  'L3-05': { name: 'content fragmentation', sub: 'broken hierarchy', trigger: 'Scattered info.', evidence: 'Hierarchy.', fp: 'Context.', floor: 'low' },
+  'L3-06': { name: 'overloaded sections', sub: 'broken hierarchy', trigger: 'Too many topics.', evidence: 'Hierarchy.', fp: 'Context.', floor: 'medium' },
+  'L3-07': { name: 'misplaced content', sub: 'broken hierarchy', trigger: 'Context mismatch.', evidence: 'Hierarchy.', fp: 'Context.', floor: 'medium' },
+  'L3-08': { name: 'structural asymmetry', sub: 'broken hierarchy', trigger: 'Pattern break.', evidence: 'Hierarchy.', fp: 'Context.', floor: 'low' },
+  'L3-09': { name: 'undocumented execution path', sub: 'execution-path gaps', trigger: 'Referenced but missing path.', evidence: 'Gap.', fp: 'Context.', floor: 'high' },
+  'L3-10': { name: 'undocumented flow', sub: 'undocumented flow', trigger: 'Mentioned existing flow no steps.', evidence: 'Gap.', fp: 'Context.', floor: 'high' },
+  'L3-11': { name: 'broken hierarchy detail', sub: 'broken hierarchy', trigger: 'Structural compromise.', evidence: 'Hierarchy.', fp: 'Context.', floor: 'low' },
+  'L3-12': { name: 'missing prerequisites detail', sub: 'missing prerequisites', trigger: 'Task omitted prereqs.', evidence: 'Order.', fp: 'Context.', floor: 'medium' },
+  'L4-01': { name: 'ambiguous wording', sub: 'semantic ambiguity', trigger: 'Vague context.', evidence: 'Ambiguity.', fp: 'Context.', floor: 'medium' },
+  'L4-02': { name: 'vague language', sub: 'vague quantifiers', trigger: 'No metrics.', evidence: 'Vague.', fp: 'Context.', floor: 'low' },
+  'L4-03': { name: 'undefined terms', sub: 'undefined terms', trigger: 'No definition.', evidence: 'Term.', fp: 'Context.', floor: 'medium' },
+  'L4-04': { name: 'polysemy conflicts', sub: 'overloaded terms', trigger: 'Conflicting usage.', evidence: 'Clash.', fp: 'Context.', floor: 'medium' },
+  'L4-05': { name: 'misleading phrasing', sub: 'ambiguous references', trigger: 'Grammar relationship.', evidence: 'Vague.', fp: 'Context.', floor: 'medium' },
+  'L4-06': { name: 'incomplete explanation', sub: 'undefined terms', trigger: 'Concept not explained.', evidence: 'Term.', fp: 'Context.', floor: 'medium' },
+  'L4-07': { name: 'unstated assumptions', sub: 'ambiguous references', trigger: 'Hidden knowledge.', evidence: 'Vague.', fp: 'Context.', floor: 'medium' },
+  'L4-08': { name: 'context drift', sub: 'ambiguous references', trigger: 'Subject unclear.', evidence: 'Vague.', fp: 'Context.', floor: 'low' },
+  'L4-09': { name: 'terminology registry gap', sub: 'terminology registry gaps', trigger: 'Unregistered term.', evidence: 'Term.', fp: 'Context.', floor: 'low' },
+  'L4-10': { name: 'forbidden term violation', sub: 'forbidden-term violations', trigger: 'Banned term used.', evidence: 'Violation.', fp: 'Context.', floor: 'medium' },
+  'L4-11': { name: 'interpretation leakage', sub: 'interpretation leakage', trigger: 'Impl leak.', evidence: 'Leak.', fp: 'Context.', floor: 'medium' },
+  'L4-12': { name: 'canonical vocabulary drift', sub: 'canonical vocabulary drift', trigger: 'Glossary vs usage mismatch.', evidence: 'Drift.', fp: 'Context.', floor: 'medium' },
+  'L4-13': { name: 'symbol ambiguity', sub: 'symbol ambiguity', trigger: 'Overloaded symbol.', evidence: 'Ambiguity.', fp: 'Context.', floor: 'medium' },
+  'L4-14': { name: 'type ambiguity', sub: 'type ambiguity', trigger: 'Ambiguous type.', evidence: 'Ambiguity.', fp: 'Context.', floor: 'medium' },
+  'L4-15': { name: 'semantic drift detection', sub: 'semantic drift detection', trigger: 'Meaning shifts.', evidence: 'Drift.', fp: 'Context.', floor: 'low' },
+  'L4-16': { name: 'interpretation consistency violation', sub: 'interpretation consistency', trigger: 'Rule interpreted incompatibly.', evidence: 'Violation.', fp: 'Context.', floor: 'medium' },
+  'L4-17': { name: 'semantic boundary leakage', sub: 'semantic ambiguity', trigger: 'Domain language mix.', evidence: 'Ambiguity.', fp: 'Context.', floor: 'medium' },
+  'L5-01': { name: 'unsupported claims', sub: 'unsupported claims', trigger: 'No evidence.', evidence: 'Claim.', fp: 'Context.', floor: 'medium' },
+  'L5-02': { name: 'missing citations', sub: 'citation gaps', trigger: 'No source.', evidence: 'Citation.', fp: 'Context.', floor: 'low' },
+  'L5-03': { name: 'outdated info risk', sub: 'stale-vs-citation distinction', trigger: 'Deprecated reference.', evidence: 'Date.', fp: 'Context.', floor: 'high' },
+  'L5-04': { name: 'hallucination risk', sub: 'unsupported claims', trigger: 'False feature.', evidence: 'Violation.', fp: 'Context.', floor: 'critical' },
+  'L5-05': { name: 'misinterpreted facts', sub: 'norm-vs-description confusion', trigger: 'Wrong rule application.', evidence: 'Fact.', fp: 'Context.', floor: 'medium' },
+  'L5-06': { name: 'inconsistent references', sub: 'citation gaps', trigger: 'Dead resource link.', evidence: 'Citation.', fp: 'Context.', floor: 'medium' },
+  'L5-07': { name: 'evidence mismatch', sub: 'unsupported claims', trigger: 'Evidence not supporting.', evidence: 'Claim.', fp: 'Context.', floor: 'medium' },
+  'L5-08': { name: 'unverifiable claims', sub: 'unsupported claims', trigger: 'Untestable.', evidence: 'Claim.', fp: 'Context.', floor: 'low' },
+  'L5-09': { name: 'stale fact risk', sub: 'stale facts', trigger: 'Likely changed state.', evidence: 'Fact.', fp: 'Context.', floor: 'medium' },
+  'L5-10': { name: 'misinterpreted data', sub: 'misinterpreted data', trigger: 'Stats misuse.', evidence: 'Data.', fp: 'Context.', floor: 'medium' },
+  'L5-11': { name: 'unsupported claim detail', sub: 'unsupported claims', trigger: 'No empirical support.', evidence: 'Claim.', fp: 'Context.', floor: 'medium' },
+  'L5-12': { name: 'citation gap detail', sub: 'citation gaps', trigger: 'Missing referenced source.', evidence: 'Citation.', fp: 'Context.', floor: 'low' },
+  'L6-01': { name: 'impossible workflows', sub: 'impossible workflows', trigger: 'Access blocked.', evidence: 'Workflow.', fp: 'Context.', floor: 'critical' },
+  'L6-02': { name: 'missing execution step', sub: 'incomplete procedures', trigger: 'Followed fail.', evidence: 'Gap.', fp: 'Context.', floor: 'high' },
+  'L6-03': { name: 'dependency gaps', sub: 'hidden prerequisites', trigger: 'Missing library.', evidence: 'Gap.', fp: 'Context.', floor: 'medium' },
+  'L6-04': { name: 'resource conflicts', sub: 'impossible workflows', trigger: 'Shared resource incompatibility.', evidence: 'Workflow.', fp: 'Context.', floor: 'high' },
+  'L6-05': { name: 'operational impossibility', sub: 'impossible workflows', trigger: '100% uptime assumption.', evidence: 'Workflow.', fp: 'Context.', floor: 'medium' },
+  'L6-06': { name: 'invalid sequence', sub: 'incomplete procedures', trigger: 'Data loss order.', evidence: 'Gap.', fp: 'Context.', floor: 'high' },
+  'L6-07': { name: 'untriggerable state', sub: 'impossible workflows', trigger: 'Impossible condition.', evidence: 'Workflow.', fp: 'Context.', floor: 'medium' },
+  'L6-08': { name: 'missing preconditions', sub: 'structural missing-prerequisite cases', trigger: 'Action no setup.', evidence: 'Gap.', fp: 'Context.', floor: 'high' },
+  'L6-09': { name: 'missing workflow outcome', sub: 'missing outcomes', trigger: 'No exit state.', evidence: 'Gap.', fp: 'Context.', floor: 'high' },
+  'L6-10': { name: 'workflow dead-end', sub: 'workflow dead-end', trigger: 'No exit point.', evidence: 'Gap.', fp: 'Context.', floor: 'medium' },
+  'L6-11': { name: 'hidden prerequisites detail', sub: 'hidden prerequisites', trigger: 'Tool not listed.', evidence: 'Gap.', fp: 'Context.', floor: 'medium' },
+  'L6-12': { name: 'incomplete procedures detail', sub: 'incomplete procedures', trigger: 'Steps gap core task.', evidence: 'Gap.', fp: 'Context.', floor: 'high' },
+  'L7-01': { name: 'timeline contradictions', sub: 'sequence conflicts', trigger: 'A before and after B.', evidence: 'Conflict.', fp: 'Context.', floor: 'high' },
+  'L7-02': { name: 'event ordering errors', sub: 'sequence conflicts', trigger: 'Broken flow.', evidence: 'Conflict.', fp: 'Context.', floor: 'medium' },
+  'L7-03': { name: 'state transition breaks', sub: 'lifecycle drift', trigger: 'No valid path jump.', evidence: 'Drift.', fp: 'Context.', floor: 'high' },
+  'L7-04': { name: 'version inconsistencies', sub: 'stale timelines', trigger: 'Incompatible version refs.', evidence: 'Date.', fp: 'Context.', floor: 'medium' },
+  'L7-05': { name: 'causality violations', sub: 'sequence conflicts', trigger: 'Effect before cause.', evidence: 'Conflict.', fp: 'Context.', floor: 'critical' },
+  'L7-06': { name: 'missing state definition', sub: 'lifecycle drift', trigger: 'Undefined state.', evidence: 'Drift.', fp: 'Context.', floor: 'medium' },
+  'L7-07': { name: 'temporal ambiguity', sub: 'invalid timing windows', trigger: 'Vague windows.', evidence: 'Vague.', fp: 'Context.', floor: 'low' },
+  'L7-08': { name: 'lifecycle gaps', sub: 'lifecycle drift', trigger: 'Beginning/end undefined.', evidence: 'Drift.', fp: 'Context.', floor: 'medium' },
+  'L7-09': { name: 'async race condition risk', sub: 'async race conditions', trigger: 'Unsynchronized access.', evidence: 'Conflict.', fp: 'Context.', floor: 'high' },
+  'L7-10': { name: 'temporal causality violation', sub: 'temporal causality violation', trigger: 'Action causes previous event.', evidence: 'Conflict.', fp: 'Context.', floor: 'critical' },
+  'L7-11': { name: 'sequence conflict detail', sub: 'sequence conflicts', trigger: 'Logical order clash.', evidence: 'Conflict.', fp: 'Context.', floor: 'high' },
+  'L7-12': { name: 'lifecycle drift detail', sub: 'lifecycle drift', trigger: 'Divergent transitions.', evidence: 'Drift.', fp: 'Context.', floor: 'medium' },
+  'L8-01': { name: 'component overlap', sub: 'responsibility overlap', trigger: 'Same role claim.', evidence: 'Clash.', fp: 'Context.', floor: 'medium' },
+  'L8-02': { name: 'missing component', sub: 'missing components', trigger: 'Not in architecture.', evidence: 'Gap.', fp: 'Context.', floor: 'high' },
+  'L8-03': { name: 'responsibility conflict', sub: 'responsibility overlap', trigger: 'Mixed concerns.', evidence: 'Clash.', fp: 'Context.', floor: 'medium' },
+  'L8-04': { name: 'tight coupling', sub: 'boundary leaks', trigger: 'Lock-step change.', evidence: 'Leak.', fp: 'Context.', floor: 'medium' },
+  'L8-05': { name: 'interface mismatch', sub: 'boundary leaks', trigger: 'Producer Consumer mismatch.', evidence: 'Leak.', fp: 'Context.', floor: 'high' },
+  'L8-06': { name: 'circular dependency', sub: 'topology inconsistency', trigger: 'A B A loop.', evidence: 'Cycle.', fp: 'Context.', floor: 'high' },
+  'L8-07': { name: 'ownership ambiguity', sub: 'responsibility overlap', trigger: 'Unclear data owner.', evidence: 'Clash.', fp: 'Context.', floor: 'medium' },
+  'L8-08': { name: 'boundary violation', sub: 'boundary leaks', trigger: 'Exposed internal state.', evidence: 'Leak.', fp: 'Context.', floor: 'medium' },
+  'L8-09': { name: 'cross-system boundary gap', sub: 'cross-system boundary gaps', trigger: 'No interface spec.', evidence: 'Gap.', fp: 'Context.', floor: 'high' },
+  'L8-10': { name: 'plane separation breach', sub: 'control-plane/data-plane separation', trigger: 'Intermixed logic.', evidence: 'Clash.', fp: 'Context.', floor: 'critical' },
+  'L8-11': { name: 'data-plane isolation gap', sub: 'data-plane isolation', trigger: 'Shared mutable state.', evidence: 'Gap.', fp: 'Context.', floor: 'high' },
+  'L8-12': { name: 'subsystem-to-UI mapping gap', sub: 'subsystem-to-UI mapping gaps', trigger: 'No UI mapping.', evidence: 'Gap.', fp: 'Context.', floor: 'medium' },
+  'L8-13': { name: 'internal boundary leakage', sub: 'internal-visible boundary leakage', trigger: 'Leaked API.', evidence: 'Leak.', fp: 'Context.', floor: 'high' },
+  'L8-14': { name: 'hidden execution authority', sub: 'hidden execution authority', trigger: 'Undocumented capability.', evidence: 'Clash.', fp: 'Context.', floor: 'critical' },
+  'L8-15': { name: 'control-plane/runtime authority confusion', sub: 'control-plane/runtime authority confusion', trigger: 'Authority leak.', evidence: 'Clash.', fp: 'Context.', floor: 'critical' },
+  'L8-16': { name: 'cross-system interface mismatch', sub: 'cross-system interface mismatch', trigger: 'Incompatible protocols.', evidence: 'Mismatch.', fp: 'Context.', floor: 'high' },
+  'L8-17': { name: 'arbitration ambiguity', sub: 'arbitration ambiguity', trigger: 'No arbiter.', evidence: 'Ambiguity.', fp: 'Context.', floor: 'high' },
+  'L8-18': { name: 'internal boundary leakage detail', sub: 'internal-visible boundary leakage', trigger: 'Public leaky abstraction.', evidence: 'Leak.', fp: 'Context.', floor: 'medium' },
+  'L8-19': { name: 'agent role overlap', sub: 'agent role overlap', trigger: 'Redundant agent roles.', evidence: 'Clash.', fp: 'Context.', floor: 'high' },
+  'L9-01': { name: 'missing edge cases', sub: 'missing edge cases', trigger: 'Happy-path only.', evidence: 'Gap.', fp: 'Context.', floor: 'medium' },
+  'L9-02': { name: 'missing error handling', sub: 'missing edge cases', trigger: 'No guidance failure.', evidence: 'Gap.', fp: 'Context.', floor: 'high' },
+  'L9-03': { name: 'incomplete workflow', sub: 'missing branches', trigger: 'Truncated process.', evidence: 'Branch.', fp: 'Context.', floor: 'high' },
+  'L9-04': { name: 'missing constraints', sub: 'missing postconditions', trigger: 'Unbounded limits.', evidence: 'Post.', fp: 'Context.', floor: 'medium' },
+  'L9-05': { name: 'uncovered requirement', sub: 'missing edge cases', trigger: 'No steps spec.', evidence: 'Gap.', fp: 'Context.', floor: 'medium' },
+  'L9-06': { name: 'reasoning gap', sub: 'missing edge cases', trigger: 'Context leap.', evidence: 'Gap.', fp: 'Context.', floor: 'low' },
+  'L9-07': { name: 'missing validation', sub: 'missing postconditions', trigger: 'No sanity checks.', evidence: 'Post.', fp: 'Context.', floor: 'medium' },
+  'L9-08': { name: 'undefined behavior', sub: 'missing postconditions', trigger: 'Action result unknown.', evidence: 'Post.', fp: 'Context.', floor: 'medium' },
+  'L9-09': { name: 'missing rollback plan', sub: 'missing rollback', trigger: 'Irreversible steps.', evidence: 'Rollback.', fp: 'Context.', floor: 'high' },
+  'L9-10': { name: 'outcome omission', sub: 'outcome omission', trigger: 'Undefined completion state.', evidence: 'Outcome.', fp: 'Context.', floor: 'medium' },
+  'L9-11': { name: 'execution-path gaps', sub: 'execution-path gaps', trigger: 'Skipped flow step.', evidence: 'Gap.', fp: 'Context.', floor: 'high' },
+  'L9-12': { name: 'missing branch detail', sub: 'missing branches', trigger: 'Omitted path.', evidence: 'Branch.', fp: 'Context.', floor: 'high' },
+  'L10-01': { name: 'scope creep', sub: 'scope creep', trigger: 'Unrelated content.', evidence: 'Intent.', fp: 'Context.', floor: 'low' },
+  'L10-02': { name: 'goal mismatch', sub: 'business-vs-implementation mismatch', trigger: 'Hinders goal.', evidence: 'Mismatch.', fp: 'Context.', floor: 'high' },
+  'L10-03': { name: 'conflicting goals', sub: 'goal drift', trigger: 'Goal clash.', evidence: 'Conflict.', fp: 'Context.', floor: 'high' },
+  'L10-04': { name: 'irrelevant content', sub: 'scope creep', trigger: 'No audience value.', evidence: 'Intent.', fp: 'Context.', floor: 'low' },
+  'L10-05': { name: 'solution misalignment', sub: 'business-vs-implementation mismatch', trigger: 'Wrong problem answer.', evidence: 'Mismatch.', fp: 'Context.', floor: 'medium' },
+  'L10-06': { name: 'requirement drift', sub: 'goal drift', trigger: 'Requirement ignored.', evidence: 'Conflict.', fp: 'Context.', floor: 'medium' },
+  'L10-07': { name: 'priority inversion', sub: 'goal drift', trigger: 'Focus imbalance.', evidence: 'Conflict.', fp: 'Context.', floor: 'low' },
+  'L10-08': { name: 'ambiguous objective', sub: 'business-vs-implementation mismatch', trigger: 'Vague achievement.', evidence: 'Mismatch.', fp: 'Context.', floor: 'medium' },
+  'L10-09': { name: 'audience mismatch', sub: 'audience mismatch', trigger: 'Wrong expertise.', evidence: 'Mismatch.', fp: 'Context.', floor: 'medium' },
+  'L10-10': { name: 'objective ambiguity', sub: 'objective ambiguity', trigger: 'Vague goal section.', evidence: 'Objective.', fp: 'Context.', floor: 'medium' },
+  'L10-11': { name: 'implicit requirement gaps', sub: 'implicit requirement gaps', trigger: 'Core logic dependency.', evidence: 'Gap.', fp: 'Context.', floor: 'medium' },
+  'L10-12': { name: 'goal drift detail', sub: 'goal drift', trigger: 'Shift in topic focus.', evidence: 'Conflict.', fp: 'Context.', floor: 'low' },
+  'L11-01': { name: 'unjustified claims', sub: 'unverifiable claims', trigger: 'Best unique no data.', evidence: 'Conclusion.', fp: 'Context.', floor: 'low' },
+  'L11-02': { name: 'shallow reasoning', sub: 'shallow tradeoff analysis', trigger: 'Oversimplification.', evidence: 'Tradeoff.', fp: 'Context.', floor: 'medium' },
+  'L11-03': { name: 'overconfidence', sub: 'overconfidence', trigger: 'Risk dismissal.', evidence: 'Certainty.', fp: 'Context.', floor: 'medium' },
+  'L11-04': { name: 'missing rationale', sub: 'unverifiable conclusions', trigger: 'No explain why.', evidence: 'Conclusion.', fp: 'Context.', floor: 'medium' },
+  'L11-05': { name: 'assumption stacking', sub: 'unjustified certainty', trigger: 'Chain of if no verification.', evidence: 'Certainty.', fp: 'Context.', floor: 'high' },
+  'L11-06': { name: 'weak justification', sub: 'unverifiable conclusions', trigger: 'Irrelevant evidence.', evidence: 'Conclusion.', fp: 'Context.', floor: 'medium' },
+  'L11-07': { name: 'circular logic in reasoning', sub: 'unverifiable conclusions', trigger: 'Logic loop.', evidence: 'Conclusion.', fp: 'Context.', floor: 'high' },
+  'L11-08': { name: 'reasoning inconsistency', sub: 'unverifiable conclusions', trigger: 'Logic shift.', evidence: 'Conclusion.', fp: 'Context.', floor: 'medium' },
+  'L11-09': { name: 'ambiguous certainty marker', sub: 'ambiguous certainty', trigger: 'Hedging terms critical path.', evidence: 'Certainty.', fp: 'Context.', floor: 'low' },
+  'L11-10': { name: 'reasoning chain gap', sub: 'reasoning chain gap', trigger: 'Missing middle link.', evidence: 'Gap.', fp: 'Context.', floor: 'medium' },
+  'L11-11': { name: 'unverifiable claim detail', sub: 'unverifiable claims', trigger: 'Untestable premise.', evidence: 'Conclusion.', fp: 'Context.', floor: 'medium' },
+  'L11-12': { name: 'overconfidence detail', sub: 'overconfidence', trigger: 'Dismiss edge cases.', evidence: 'Certainty.', fp: 'Context.', floor: 'medium' },
+  'L12-01': { name: 'fragile assumptions', sub: 'risky defaults', trigger: 'Assumed truth break.', evidence: 'Defaults.', fp: 'Context.', floor: 'high' },
+  'L12-02': { name: 'missing failure mode', sub: 'bypass scenarios', trigger: 'Missing fail handle.', evidence: 'Bypass.', fp: 'Context.', floor: 'high' },
+  'L12-03': { name: 'counterexample vulnerability', sub: 'abuse paths', trigger: 'Single case disproves rule.', evidence: 'Abuse.', fp: 'Context.', floor: 'medium' },
+  'L12-04': { name: 'stress breakage', sub: 'misuse opportunities', trigger: 'Load volume fail.', evidence: 'Misuse.', fp: 'Context.', floor: 'high' },
+  'L12-05': { name: 'boundary condition failure', sub: 'bypass scenarios', trigger: 'Off-by-one limit.', evidence: 'Bypass.', fp: 'Context.', floor: 'high' },
+  'L12-06': { name: 'unhandled edge collapse', sub: 'bypass scenarios', trigger: 'Multiple minor fail cascade.', evidence: 'Bypass.', fp: 'Context.', floor: 'medium' },
+  'L12-07': { name: 'robustness gap', sub: 'misuse opportunities', trigger: 'Perfect format assumption.', evidence: 'Misuse.', fp: 'Context.', floor: 'medium' },
+  'L12-08': { name: 'exploitability', sub: 'misuse opportunities', trigger: 'Instruction bypass security.', evidence: 'Misuse.', fp: 'Context.', floor: 'critical' },
+  'L12-09': { name: 'threat-model gap', sub: 'threat-model gaps', trigger: 'No threat model.', evidence: 'Model.', fp: 'Context.', floor: 'high' },
+  'L12-10': { name: 'collusion risk', sub: 'collusion risk', trigger: 'Multi-agent bypass.', evidence: 'Collusion.', fp: 'Context.', floor: 'high' },
+  'L12-11': { name: 'input saturation vulnerability', sub: 'bypass scenarios', trigger: 'Overflow risk buffers.', evidence: 'Bypass.', fp: 'Context.', floor: 'medium' },
+  'L12-12': { name: 'timing side-channel', sub: 'threat-model gaps', trigger: 'Response time leak.', evidence: 'Model.', fp: 'Context.', floor: 'medium' },
+  'L13-01': { name: 'orphan entities', sub: 'orphan entities', trigger: 'No refs isolated term.', evidence: 'Entity.', fp: 'Context.', floor: 'low' },
+  'L13-02': { name: 'missing relationships', sub: 'relationship gaps', trigger: 'Implicit link gap.', evidence: 'Gap.', fp: 'Context.', floor: 'medium' },
+  'L13-03': { name: 'circular references', sub: 'circular references', trigger: 'A B A loop.', evidence: 'Cycle.', fp: 'Context.', floor: 'medium' },
+  'L13-04': { name: 'entity duplication', sub: 'alias drift', trigger: 'Duplicates domain aliases.', evidence: 'Drift.', fp: 'Context.', floor: 'medium' },
+  'L13-05': { name: 'broken linkage', sub: 'relationship gaps', trigger: 'Dead ref entity.', evidence: 'Gap.', fp: 'Context.', floor: 'high' },
+  'L13-06': { name: 'hierarchy conflict', sub: 'role confusion', trigger: 'Inverted tree roles.', evidence: 'Confusion.', fp: 'Context.', floor: 'medium' },
+  'L13-07': { name: 'dependency ambiguity', sub: 'relationship gaps', trigger: 'Vague link nature.', evidence: 'Gap.', fp: 'Context.', floor: 'medium' },
+  'L13-08': { name: 'concept drift', sub: 'alias drift', trigger: 'Attribute shift sections.', evidence: 'Drift.', fp: 'Context.', floor: 'medium' },
+  'L13-09': { name: 'alias collision risk', sub: 'alias drift', trigger: 'Name clash entities.', evidence: 'Drift.', fp: 'Context.', floor: 'low' },
+  'L13-10': { name: 'entity attribute drift', sub: 'entity attribute drift', trigger: 'Attribute conflict redefine.', evidence: 'Drift.', fp: 'Context.', floor: 'medium' },
+  'L13-11': { name: 'relationship gap detail', sub: 'relationship gaps', trigger: 'Missing link system relationships.', evidence: 'Gap.', fp: 'Context.', floor: 'medium' },
+  'L13-12': { name: 'relationship direction mismatch', sub: 'relationship gaps', trigger: 'Inverted direction owner-of.', evidence: 'Gap.', fp: 'Context.', floor: 'medium' },
+  'L14-01': { name: 'calculation error', sub: 'numeric inconsistency', trigger: 'Wrong math text.', evidence: 'Conflict.', fp: 'Context.', floor: 'high' },
+  'L14-02': { name: 'unit mismatch', sub: 'unit mismatch', trigger: 'Conflicting units MB GB.', evidence: 'Mismatch.', fp: 'Context.', floor: 'high' },
+  'L14-03': { name: 'scale inconsistency', sub: 'numeric inconsistency', trigger: 'Non-linear claim gap.', evidence: 'Conflict.', fp: 'Context.', floor: 'medium' },
+  'L14-04': { name: 'unsupported statistics', sub: 'vague measurements', trigger: 'Stat base data missing.', evidence: 'Vague.', fp: 'Context.', floor: 'low' },
+  'L14-05': { name: 'numeric contradiction', sub: 'numeric inconsistency', trigger: 'Impossible range Min Max.', evidence: 'Conflict.', fp: 'Context.', floor: 'critical' },
+  'L14-06': { name: 'rounding ambiguity', sub: 'numeric inconsistency', trigger: 'Precision gap estimates.', evidence: 'Conflict.', fp: 'Context.', floor: 'low' },
+  'L14-07': { name: 'range inconsistency', sub: 'numeric inconsistency', trigger: 'Intentional gaps ranges.', evidence: 'Conflict.', fp: 'Context.', floor: 'medium' },
+  'L14-08': { name: 'metric misinterpretation', sub: 'vague measurements', trigger: 'Metric choice choice summaries.', evidence: 'Vague.', fp: 'Context.', floor: 'medium' },
+  'L14-09': { name: 'impossible threshold', sub: 'impossible thresholds', trigger: 'Breach theoretical maximum.', evidence: 'Threshold.', fp: 'Context.', floor: 'high' },
+  'L14-10': { name: 'scaling boundary ambiguity', sub: 'scaling boundary ambiguity', trigger: 'Missing breakpoint asymptotic.', evidence: 'Scale.', fp: 'Context.', floor: 'medium' },
+  'L14-11': { name: 'precision mismatch', sub: 'precision mismatch', trigger: 'Precision drift display.', evidence: 'Mismatch.', fp: 'Context.', floor: 'low' },
+  'L14-12': { name: 'unit mismatch detail', sub: 'unit mismatch', trigger: 'Unit clash industry shorthand.', evidence: 'Mismatch.', fp: 'Context.', floor: 'high' },
+  'L15-01': { name: 'requirement ambiguity', sub: 'ambiguous acceptance criteria', trigger: 'Vague requirement should must.', evidence: 'Acceptance.', fp: 'Context.', floor: 'medium' },
+  'L15-02': { name: 'requirement contradiction', sub: 'ambiguous acceptance criteria', trigger: 'Requirement A vs B clash.', evidence: 'Acceptance.', fp: 'Context.', floor: 'high' },
+  'L15-03': { name: 'missing acceptance criteria', sub: 'ambiguous acceptance criteria', trigger: 'Untestable requirement goal.', evidence: 'Acceptance.', fp: 'Context.', floor: 'high' },
+  'L15-04': { name: 'unverifiable requirement', sub: 'ambiguous acceptance criteria', trigger: 'Subjective UI UX req.', evidence: 'Acceptance.', fp: 'Context.', floor: 'medium' },
+  'L15-05': { name: 'implicit requirement', sub: 'ambiguous acceptance criteria', trigger: 'Implicit standard gap.', evidence: 'Acceptance.', fp: 'Context.', floor: 'medium' },
+  'L15-06': { name: 'duplicated requirement', sub: 'ambiguous acceptance criteria', trigger: 'Redundancy drift list.', evidence: 'Acceptance.', fp: 'Context.', floor: 'low' },
+  'L15-07': { name: 'requirement dependency missing', sub: 'traceability gaps', trigger: 'Traceability gap standard.', evidence: 'Traceability.', fp: 'Context.', floor: 'medium' },
+  'L15-08': { name: 'requirement scope leakage', sub: 'ambiguous acceptance criteria', trigger: 'Scope leak context req.', evidence: 'Acceptance.', fp: 'Context.', floor: 'low' },
+  'L15-09': { name: 'closed-world violation', sub: 'closed-world violations', trigger: 'Open input set enums.', evidence: 'Violation.', fp: 'Context.', floor: 'high' },
+  'L15-10': { name: 'undefined obligation', sub: 'undefined obligations', trigger: 'Orphaned duty implicit.', evidence: 'Obligation.', fp: 'Context.', floor: 'medium' },
+  'L15-11': { name: 'RFC2119 misuse', sub: 'RFC2119 misuse', trigger: 'Misused keyword informal.', evidence: 'RFC2119.', fp: 'Context.', floor: 'medium' },
+  'L15-12': { name: 'priority ambiguity', sub: 'priority ambiguity', trigger: 'Missing priority labels clash.', evidence: 'Priority.', fp: 'Context.', floor: 'medium' },
+  'L15-13': { name: 'implicit dependency detail', sub: 'implicit dependencies', trigger: 'Unreferenced dependency self-contained.', evidence: 'Dependencies.', fp: 'Context.', floor: 'high' },
+  'L15-14': { name: 'spec incompleteness', sub: 'spec completeness', trigger: 'Missing domain narrowly scoped.', evidence: 'Spec.', fp: 'Context.', floor: 'high' },
+  'L15-15': { name: 'contract incompleteness', sub: 'contract incompleteness', trigger: 'Incomplete contract draft.', evidence: 'Contract.', fp: 'Context.', floor: 'high' },
+  'L15-16': { name: 'acceptance-proof gap', sub: 'acceptance-proof gaps', trigger: 'Unverifiable requirement goal.', evidence: 'Proof.', fp: 'Context.', floor: 'high' },
+  'L15-17': { name: 'acceptance criteria omission', sub: 'acceptance criteria omission', trigger: 'Missing verification criteria.', evidence: 'Acceptance.', fp: 'Context.', floor: 'high' },
+  'L15-18': { name: 'spec completeness gap', sub: 'spec completeness', trigger: 'Reference null spec roadmap.', evidence: 'Spec.', fp: 'Context.', floor: 'critical' },
+  'L15-19': { name: 'requirement stability risk', sub: 'requirement stability', trigger: 'Volatile requirement beta.', evidence: 'Stability.', fp: 'Context.', floor: 'low' },
+  'L15-20': { name: 'requirement evolution tracking gap', sub: 'requirement evolution tracking', trigger: 'Untraced req change draft.', evidence: 'Tracking.', fp: 'Context.', floor: 'low' },
+  'L15-21': { name: 'requirement conflict resolution omission', sub: 'requirement conflict resolution', trigger: 'Unresolved req conflict draft.', evidence: 'Conflict.', fp: 'Context.', floor: 'high' },
+  'L16-01': { name: 'undefined states', sub: 'impossible transitions', trigger: 'State X definition gap.', evidence: 'Transition.', fp: 'Context.', floor: 'high' },
+  'L16-02': { name: 'invalid transitions', sub: 'impossible transitions', trigger: 'Forbidden path bypass.', evidence: 'Transition.', fp: 'Context.', floor: 'high' },
+  'L16-03': { name: 'unreachable states', sub: 'impossible transitions', trigger: 'Isolated error-only state.', evidence: 'Transition.', fp: 'Context.', floor: 'medium' },
+  'L16-04': { name: 'terminal state missing', sub: 'missing terminal states', trigger: 'Loop no exit machine.', evidence: 'Terminal.', fp: 'Context.', floor: 'medium' },
+  'L16-05': { name: 'multiple initial states', sub: 'impossible transitions', trigger: 'Machine start point ambiguity.', evidence: 'Transition.', fp: 'Context.', floor: 'medium' },
+  'L16-06': { name: 'transition ambiguity', sub: 'impossible transitions', trigger: 'Same trigger multiple states.', evidence: 'Transition.', fp: 'Context.', floor: 'medium' },
+  'L16-07': { name: 'state condition conflict', sub: 'impossible transitions', trigger: 'State entry impossible.', evidence: 'Transition.', fp: 'Context.', floor: 'high' },
+  'L16-08': { name: 'state lifecycle gap', sub: 'retry loops', trigger: 'Resource cleanup gap machine.', evidence: 'Retry.', fp: 'Context.', floor: 'medium' },
+  'L16-09': { name: 'fatal-state exposure', sub: 'fatal-state exposure', trigger: 'No recovery state reachable.', evidence: 'Fatal.', fp: 'Context.', floor: 'critical' },
+  'L16-10': { name: 'no-exit loop', sub: 'no-exit loops', trigger: 'Inescapable cycle intentional.', evidence: 'Loop.', fp: 'Context.', floor: 'high' },
+  'L16-11': { name: 'concurrency conflict risk', sub: 'concurrency conflicts', trigger: 'Unsynchronized combined state.', evidence: 'Conflict.', fp: 'Context.', floor: 'critical' },
+  'L16-12': { name: 'unreachable terminal state', sub: 'dead-end states', trigger: 'Isolated terminal node error-only.', evidence: 'Dead-end.', fp: 'Context.', floor: 'high' },
+  'L16-13': { name: 'lifecycle-state gap', sub: 'lifecycle-state gaps', trigger: 'Missing lifecycle state simple.', evidence: 'Lifecycle.', fp: 'Context.', floor: 'high' },
+  'L16-14': { name: 'transition illegality', sub: 'transition illegality', trigger: 'Forbidden transition override.', evidence: 'Transition.', fp: 'Context.', floor: 'critical' },
+  'L16-15': { name: 'progression-order violation', sub: 'progression-order violations', trigger: 'Skipped prerequisite state stages.', evidence: 'Progression.', fp: 'Context.', floor: 'high' },
+  'L16-16': { name: 'non-deterministic transition', sub: 'non-deterministic transition', trigger: 'Unstable logic external seeds.', evidence: 'Transition.', fp: 'Context.', floor: 'high' },
+  'L16-17': { name: 'deadlock risk', sub: 'deadlock/livelock risks', trigger: 'Resource cycle circular wait.', evidence: 'Deadlock.', fp: 'Context.', floor: 'critical' },
+  'L16-18': { name: 'livelock risk', sub: 'deadlock/livelock risks', trigger: 'State oscillation active waiting.', evidence: 'Deadlock.', fp: 'Context.', floor: 'high' },
+  'L16-19': { name: 'fatal UI state exposure risk', sub: 'fatal UI state exposure', trigger: 'Locked UI state error modals.', evidence: 'UI State.', fp: 'Context.', floor: 'high' },
+  'L17-01': { name: 'undefined parameters', sub: 'schema mismatch', trigger: 'Example uses missing param.', evidence: 'Mismatch.', fp: 'Context.', floor: 'high' },
+  'L17-02': { name: 'inconsistent parameter types', sub: 'schema mismatch', trigger: 'Schema says example mismatch.', evidence: 'Mismatch.', fp: 'Context.', floor: 'critical' },
+  'L17-03': { name: 'missing return schema', sub: 'schema mismatch', trigger: 'Return gap empty success.', evidence: 'Mismatch.', fp: 'Context.', floor: 'high' },
+  'L17-04': { name: 'undocumented error response', sub: 'error-contract omissions', trigger: 'Hidden error 4xx 5xx.', evidence: 'Errors.', fp: 'Context.', floor: 'medium' },
+  'L17-05': { name: 'inconsistent naming', sub: 'schema mismatch', trigger: 'Case mismatch style drift.', evidence: 'Mismatch.', fp: 'Context.', floor: 'low' },
+  'L17-06': { name: 'breaking contract change', sub: 'schema mismatch', trigger: 'Breaking change major version.', evidence: 'Mismatch.', fp: 'Context.', floor: 'critical' },
+  'L17-07': { name: 'request-response mismatch', sub: 'schema mismatch', trigger: 'Mismatch standard metadata.', evidence: 'Mismatch.', fp: 'Context.', floor: 'medium' },
+  'L17-08': { name: 'versioning conflict', sub: 'auth ambiguity', trigger: 'Version mix backward compat.', evidence: 'Auth.', fp: 'Context.', floor: 'high' },
+  'L17-09': { name: 'idempotency gap', sub: 'idempotency gaps', trigger: 'Missing idempotency spec ops.', evidence: 'Idempotency.', fp: 'Context.', floor: 'high' },
+  'L17-10': { name: 'backward-compatibility break', sub: 'backward-compatibility breaks', trigger: 'Breaking change major bump.', evidence: 'Compatibility.', fp: 'Context.', floor: 'critical' },
+  'L17-11': { name: 'rate-limit ambiguity', sub: 'rate-limit ambiguity', trigger: 'Vague rate limits uncapped.', evidence: 'Rate-limit.', fp: 'Context.', floor: 'medium' },
+  'L17-12': { name: 'auth ambiguity detail', sub: 'auth ambiguity', trigger: 'Missing auth mechanism internal.', evidence: 'Auth.', fp: 'Context.', floor: 'high' },
+  'L18-01': { name: 'circular dependency', sub: 'circular dependencies', trigger: 'Peer-to-peer circle dependency.', evidence: 'Circle.', fp: 'Context.', floor: 'high' },
+  'L18-02': { name: 'hidden dependency', sub: 'undeclared dependencies', trigger: 'Tool gap setup OS tools.', evidence: 'Dependencies.', fp: 'Context.', floor: 'medium' },
+  'L18-03': { name: 'missing dependency', sub: 'undeclared dependencies', trigger: 'Gap piece built-in module.', evidence: 'Dependencies.', fp: 'Context.', floor: 'high' },
+  'L18-04': { name: 'dependency ordering violation', sub: 'undeclared dependencies', trigger: 'Order error parallel installs.', evidence: 'Dependencies.', fp: 'Context.', floor: 'medium' },
+  'L18-05': { name: 'optional vs required confusion', sub: 'undeclared dependencies', trigger: 'Ambiguity feature sets dep.', evidence: 'Dependencies.', fp: 'Context.', floor: 'low' },
+  'L18-06': { name: 'transitive dependency conflict', sub: 'version conflicts', trigger: 'Multi-version OS clash tree.', evidence: 'Conflicts.', fp: 'Context.', floor: 'high' },
+  'L18-07': { name: 'redundant dependency', sub: 'undeclared dependencies', trigger: 'Extra dep pre-caching use.', evidence: 'Dependencies.', fp: 'Context.', floor: 'low' },
+  'L18-08': { name: 'dependency version ambiguity', sub: 'version conflicts', trigger: 'Latest tag simple scripts.', evidence: 'Conflicts.', fp: 'Context.', floor: 'medium' },
+  'L18-09': { name: 'ownership ambiguity', sub: 'ownership ambiguity', trigger: 'Unowned dependency core libs.', evidence: 'Ownership.', fp: 'Context.', floor: 'medium' },
+  'L18-10': { name: 'transitive dependency mismatch', sub: 'transitive mismatches', trigger: 'Pinned transitive version conflict.', evidence: 'Mismatch.', fp: 'Context.', floor: 'high' },
+  'L18-11': { name: 'dependency lifecycle gap', sub: 'dependency lifecycle gap', trigger: 'Missing lifecycle steps setup.', evidence: 'Lifecycle.', fp: 'Context.', floor: 'medium' },
+  'L18-12': { name: 'transitive version conflict detail', sub: 'version conflicts', trigger: 'Diamond dependency clash tree.', evidence: 'Conflicts.', fp: 'Context.', floor: 'high' },
+  'L18-13': { name: 'dependency ownership gap', sub: 'ownership ambiguity', trigger: 'Orphaned dep core module.', evidence: 'Ownership.', fp: 'Context.', floor: 'medium' },
+  'L19-01': { name: 'missing data producer', sub: 'source-sink mismatch', trigger: 'Data gap external input.', evidence: 'Data Flow.', fp: 'Context.', floor: 'high' },
+  'L19-02': { name: 'missing data consumer', sub: 'source-sink mismatch', trigger: 'Orphan data logging only.', evidence: 'Data Flow.', fp: 'Context.', floor: 'medium' },
+  'L19-03': { name: 'data transformation ambiguity', sub: 'missing transformations', trigger: 'Black box standard encoding.', evidence: 'Transform.', fp: 'Context.', floor: 'low' },
+  'L19-04': { name: 'inconsistent data shape', sub: 'source-sink mismatch', trigger: 'Shape mismatch schema-less.', evidence: 'Data Flow.', fp: 'Context.', floor: 'high' },
+  'L19-05': { name: 'data lifecycle gap', sub: 'retention ambiguity', trigger: 'Retention gap infinite storage.', evidence: 'Retention.', fp: 'Context.', floor: 'medium' },
+  'L19-06': { name: 'data duplication', sub: 'source-sink mismatch', trigger: 'Duplication read replica state.', evidence: 'Data Flow.', fp: 'Context.', floor: 'medium' },
+  'L19-07': { name: 'invalid data propagation', sub: 'source-sink mismatch', trigger: 'Wrong path passthrough data.', evidence: 'Data Flow.', fp: 'Context.', floor: 'medium' },
+  'L19-08': { name: 'stale data risk', sub: 'retention ambiguity', trigger: 'Staleness gap cache rules.', evidence: 'Retention.', fp: 'Context.', floor: 'high' },
+  'L19-09': { name: 'PII flow undetected', sub: 'PII flow gaps', trigger: 'Unprotected PII path rules.', evidence: 'PII Flow.', fp: 'Context.', floor: 'critical' },
+  'L19-10': { name: 'data-lifecycle gap', sub: 'data-lifecycle gaps', trigger: 'Missing lifecycle ephemeral data.', evidence: 'Lifecycle.', fp: 'Context.', floor: 'high' },
+  'L19-11': { name: 'data provenance gap', sub: 'data provenance gap', trigger: 'Untraced data source constant.', evidence: 'Provenance.', fp: 'Context.', floor: 'medium' },
+  'L19-12': { name: 'data transformation loss', sub: 'missing transformations', trigger: 'Lossy transform filtering fields.', evidence: 'Transform.', fp: 'Context.', floor: 'high' },
+  'L19-13': { name: 'PII leakage path', sub: 'PII flow gaps', trigger: 'Unsafe PII sink anonymized.', evidence: 'PII Flow.', fp: 'Context.', floor: 'critical' },
+  'L20-01': { name: 'unreachable execution path', sub: 'unreachable paths', trigger: 'Dead code safety fallback.', evidence: 'Execution.', fp: 'Context.', floor: 'medium' },
+  'L20-02': { name: 'missing trigger', sub: 'branch omissions', trigger: 'Trigger gap manual start.', evidence: 'Branch.', fp: 'Context.', floor: 'high' },
+  'L20-03': { name: 'conflicting triggers', sub: 'branch omissions', trigger: 'Conflict overloading starting path.', evidence: 'Branch.', fp: 'Context.', floor: 'medium' },
+  'L20-04': { name: 'incomplete execution branch', sub: 'branch omissions', trigger: 'Missing branch happy-path only.', evidence: 'Branch.', fp: 'Context.', floor: 'high' },
+  'L20-05': { name: 'dead-end workflow', sub: 'dead ends', trigger: 'Dead end completion state.', evidence: 'Path.', fp: 'Context.', floor: 'critical' },
+  'L20-06': { name: 'infinite loop risk', sub: 'rollback path gaps', trigger: 'Recursion loop A B A.', evidence: 'Path.', fp: 'Context.', floor: 'high' },
+  'L20-07': { name: 'conditional ambiguity', sub: 'unreachable paths', trigger: 'Ambiguity dynamic vars logic.', evidence: 'Execution.', fp: 'Context.', floor: 'critical' },
+  'L20-08': { name: 'execution ordering violation', sub: 'unreachable paths', trigger: 'Order error async flows.', evidence: 'Execution.', fp: 'Context.', floor: 'high' },
+  'L20-09': { name: 'missing rollback path', sub: 'rollback path gaps', trigger: 'No rollback spec irreversible.', evidence: 'Rollback.', fp: 'Context.', floor: 'high' },
+  'L20-10': { name: 'execution-path gap', sub: 'execution-path gaps', trigger: 'Skipped step implicit defaults.', evidence: 'Gap.', fp: 'Context.', floor: 'high' },
+  'L20-13': { name: 'non-deterministic execution', sub: 'non-deterministic execution', trigger: 'Variable outcome user input.', evidence: 'Execution.', fp: 'Context.', floor: 'critical' },
+  'L20-14': { name: 'path dependency cycle', sub: 'path dependency cycles', trigger: 'Execution cycle recursive flows.', evidence: 'Path.', fp: 'Context.', floor: 'high' },
+  'L20-15': { name: 'rollback path absence', sub: 'rollback path absence', trigger: 'One-way execution path safe.', evidence: 'Rollback.', fp: 'Context.', floor: 'high' },
+  'L20-16': { name: 'idempotency gap', sub: 'idempotency gaps', trigger: 'Non-idempotent path side effects.', evidence: 'Execution.', fp: 'Context.', floor: 'critical' },
+  'L20-17': { name: 'execution order indeterminism', sub: 'execution order determinism', trigger: 'Unstable step sequence parallel.', evidence: 'Execution.', fp: 'Context.', floor: 'high' },
+  'L20-18': { name: 'path state preservation gap', sub: 'path state preservation', trigger: 'Volatile path state fire-and-forget.', evidence: 'Execution.', fp: 'Context.', floor: 'medium' },
+  'L20-19': { name: 'conditional execution indeterminism', sub: 'conditional execution determinism', trigger: 'Hidden decision branch user.', evidence: 'Execution.', fp: 'Context.', floor: 'high' },
+  'L20-20': { name: 'execution branching logic ambiguity', sub: 'execution branching logic', trigger: 'Vague branch rule exhaustive.', evidence: 'Execution.', fp: 'Context.', floor: 'medium' },
+  'L21-01': { name: 'missing config key', sub: 'default ambiguity', trigger: 'Missing key optional keys.', evidence: 'Config.', fp: 'Context.', floor: 'high' },
+  'L21-02': { name: 'conflicting config', sub: 'precedence conflicts', trigger: 'Conflict standard override CLI.', evidence: 'Conflicts.', fp: 'Context.', floor: 'medium' },
+  'L21-03': { name: 'undocumented config', sub: 'default ambiguity', trigger: 'Secret config developer-only.', evidence: 'Config.', fp: 'Context.', floor: 'low' },
+  'L21-04': { name: 'default ambiguity', sub: 'default ambiguity', trigger: 'Default gap system defaults.', evidence: 'Config.', fp: 'Context.', floor: 'medium' },
+  'L21-05': { name: 'config dependency missing', sub: 'precedence conflicts', trigger: 'Dependency independent keys.', evidence: 'Conflicts.', fp: 'Context.', floor: 'medium' },
+  'L21-06': { name: 'invalid fallback logic', sub: 'precedence conflicts', trigger: 'Bad fallback safe defaults.', evidence: 'Conflicts.', fp: 'Context.', floor: 'high' },
+  'L21-07': { name: 'environment mismatch', sub: 'env drift', trigger: 'Env mismatch hybrid envs.', evidence: 'Drift.', fp: 'Context.', floor: 'medium' },
+  'L21-08': { name: 'config validation gap', sub: 'default ambiguity', trigger: 'Validation gap trusted internals.', evidence: 'Config.', fp: 'Context.', floor: 'medium' },
+  'L21-09': { name: 'secret-handling error', sub: 'secret-handling errors', trigger: 'Exposed secret path env var.', evidence: 'Secrets.', fp: 'Context.', floor: 'critical' },
+  'L21-10': { name: 'env-variable collision', sub: 'env drift', trigger: 'Env var clash shared global.', evidence: 'Drift.', fp: 'Context.', floor: 'medium' },
+  'L21-11': { name: 'config schema gap', sub: 'config schema gap', trigger: 'Missing config schema pairs.', evidence: 'Schema.', fp: 'Context.', floor: 'medium' },
+  'L21-12': { name: 'default configuration bypass', sub: 'default ambiguity', trigger: 'Insecure bypass developer-only.', evidence: 'Config.', fp: 'Context.', floor: 'high' },
+  'L21-13': { name: 'configuration precedence conflict', sub: 'configuration precedence conflicts', trigger: 'Conflicting config rules source.', evidence: 'Conflicts.', fp: 'Context.', floor: 'high' },
+  'L22-01': { name: 'silent failure risk', sub: 'missing recovery', trigger: 'Empty catch intentional ignore.', evidence: 'Recovery.', fp: 'Context.', floor: 'critical' },
+  'L22-02': { name: 'unclear error action', sub: 'unclear operator actions', trigger: 'Vague error technical logs.', evidence: 'Actions.', fp: 'Context.', floor: 'medium' },
+  'L22-03': { name: 'missing retry policy', sub: 'retry storms', trigger: 'Call non-critical network.', evidence: 'Retry.', fp: 'Context.', floor: 'medium' },
+  'L22-04': { name: 'error state leak', sub: 'missing recovery', trigger: 'State leak stateless apps.', evidence: 'Recovery.', fp: 'Context.', floor: 'high' },
+  'L22-05': { name: 'generic error catch', sub: 'missing recovery', trigger: 'Catch all global handlers.', evidence: 'Recovery.', fp: 'Context.', floor: 'low' },
+  'L22-06': { name: 'incomplete cleanup', sub: 'missing recovery', trigger: 'Resource leak auto-release.', evidence: 'Recovery.', fp: 'Context.', floor: 'high' },
+  'L22-07': { name: 'error masking', sub: 'missing recovery', trigger: 'Masked error wrapping original.', evidence: 'Recovery.', fp: 'Context.', floor: 'medium' },
+  'L22-08': { name: 'unlogged failures', sub: 'missing recovery', trigger: 'Silence user-facing only.', evidence: 'Recovery.', fp: 'Context.', floor: 'medium' },
+  'L22-09': { name: 'error-handling recovery ambiguity', sub: 'error-handling recovery ambiguity', trigger: 'Vague recovery automatic retry.', evidence: 'Ambiguity.', fp: 'Context.', floor: 'medium' },
+  'L22-10': { name: 'retry storm risk', sub: 'retry storms', trigger: 'Retry storm low-frequency tasks.', evidence: 'Retry.', fp: 'Context.', floor: 'high' },
+  'L22-11': { name: 'error state contamination', sub: 'error state contamination', trigger: 'Cross-component error leak global.', evidence: 'Contamination.', fp: 'Context.', floor: 'high' },
+  'L22-12': { name: 'partial-failure gap', sub: 'partial-failure gaps', trigger: 'Incomplete failure spec atomic.', evidence: 'Gap.', fp: 'Context.', floor: 'high' },
+  'L22-13': { name: 'error-handling recovery ambiguity detail', sub: 'error-handling recovery ambiguity', trigger: 'Vague recovery path retry fail.', evidence: 'Ambiguity.', fp: 'Context.', floor: 'medium' },
+  'L23-01': { name: 'plaintext secrets', sub: 'secret exposure', trigger: 'Secret placeholders in example.', evidence: 'Security.', fp: 'Context.', floor: 'critical' },
+  'L23-02': { name: 'missing auth check', sub: 'authz ambiguity', trigger: 'Gap public pages sensitive.', evidence: 'Auth.', fp: 'Context.', floor: 'critical' },
+  'L23-03': { name: 'unsafe defaults', sub: 'trust-boundary gaps', trigger: 'Bad default local-only setup.', evidence: 'Trust.', fp: 'Context.', floor: 'high' },
+  'L23-04': { name: 'injection risk', sub: 'unsafe input handling', trigger: 'Direct usage sanitized input.', evidence: 'Input.', fp: 'Context.', floor: 'critical' },
+  'L23-05': { name: 'broken trust boundary', sub: 'trust-boundary gaps', trigger: 'Boundary leak validated data.', evidence: 'Trust.', fp: 'Context.', floor: 'high' },
+  'L23-06': { name: 'weak encryption', sub: 'crypto-lifecycle gaps', trigger: 'Weak algo integrity checks.', evidence: 'Crypto.', fp: 'Context.', floor: 'high' },
+  'L23-07': { name: 'excessive permissions', sub: 'authz ambiguity', trigger: 'Over-privilege system tools tasks.', evidence: 'Auth.', fp: 'Context.', floor: 'medium' },
+  'L23-08': { name: 'missing audit log', sub: 'authz ambiguity', trigger: 'Audit gap local apps record.', evidence: 'Auth.', fp: 'Context.', floor: 'medium' },
+  'L23-09': { name: 'crypto-lifecycle gap', sub: 'crypto-lifecycle gaps', trigger: 'Missing key lifecycle session.', evidence: 'Crypto.', fp: 'Context.', floor: 'high' },
+  'L23-10': { name: 'unsafe input handling detail', sub: 'unsafe input handling', trigger: 'Unsanitized input path trusted.', evidence: 'Input.', fp: 'Context.', floor: 'critical' },
+  'L23-11': { name: 'privilege escalation path', sub: 'privilege escalation path', trigger: 'Escalation sequence intentional delegation.', evidence: 'Security.', fp: 'Context.', floor: 'critical' },
+  'L23-12': { name: 'authz ambiguity detail', sub: 'authz ambiguity', trigger: 'Vague permission spec public.', evidence: 'Auth.', fp: 'Context.', floor: 'high' },
+  'L24-01': { name: 'N+1 query risk', sub: 'unbounded work', trigger: 'Loop small lists fetches.', evidence: 'Performance.', fp: 'Context.', floor: 'high' },
+  'L24-02': { name: 'unbounded memory', sub: 'large-document cost blowups', trigger: 'Full load small files RAM.', evidence: 'Performance.', fp: 'Context.', floor: 'medium' },
+  'L24-03': { name: 'missing timeout', sub: 'expensive retries', trigger: 'No timeout local files wait.', evidence: 'Performance.', fp: 'Context.', floor: 'medium' },
+  'L24-04': { name: 'resource leak', sub: 'resource-leak ambiguity', trigger: 'Leak path managed resources.', evidence: 'Performance.', fp: 'Context.', floor: 'high' },
+  'L24-05': { name: 'expensive loop', sub: 'unbounded work', trigger: 'Big O risk small N.', evidence: 'Performance.', fp: 'Context.', floor: 'low' },
+  'L24-06': { name: 'missing cache', sub: 'expensive retries', trigger: 'No cache fast calcs.', evidence: 'Performance.', fp: 'Context.', floor: 'low' },
+  'L24-07': { name: 'blocking UI', sub: 'unbounded work', trigger: 'UI freeze CLI tools thread.', evidence: 'Performance.', fp: 'Context.', floor: 'medium' },
+  'L24-08': { name: 'redundant work', sub: 'expensive retries', trigger: 'Duplicate work safety checks.', evidence: 'Performance.', fp: 'Context.', floor: 'low' },
+  'L24-09': { name: 'large-document cost blowup', sub: 'large-document cost blowups', trigger: 'Unbounded growth fixed-size input.', evidence: 'Performance.', fp: 'Context.', floor: 'high' },
+  'L24-10': { name: 'concurrency bottleneck detail', sub: 'concurrency bottleneck', trigger: 'Contention point serial tasks.', evidence: 'Concurrency.', fp: 'Context.', floor: 'medium' },
+  'L24-11': { name: 'concurrency bottleneck', sub: 'concurrency bottleneck', trigger: 'Contention point serial locks.', evidence: 'Concurrency.', fp: 'Context.', floor: 'medium' },
+  'L24-12': { name: 'scale assumption violation', sub: 'scale assumptions', trigger: 'Under-scaled architecture experimental.', evidence: 'Scale.', fp: 'Context.', floor: 'high' },
+  'L25-01': { name: 'untestable logic', sub: 'unverifiable conclusions', trigger: 'Test gap simple UI state.', evidence: 'Testability.', fp: 'Context.', floor: 'medium' },
+  'L25-02': { name: 'missing mock strategy', sub: 'test-environment drift', trigger: 'Live dependency integration tests.', evidence: 'Testability.', fp: 'Context.', floor: 'high' },
+  'L25-03': { name: 'weak assertions', sub: 'weak expected outputs', trigger: 'Weak check smoke tests.', evidence: 'Testability.', fp: 'Context.', floor: 'low' },
+  'L25-04': { name: 'unreliable tests', sub: 'test-environment drift', trigger: 'Flake risk external APIs.', evidence: 'Testability.', fp: 'Context.', floor: 'high' },
+  'L25-05': { name: 'missing unit coverage', sub: 'validation blind spots', trigger: 'Coverage gap thin wrappers.', evidence: 'Testability.', fp: 'Context.', floor: 'medium' },
+  'L25-06': { name: 'hardcoded test data', sub: 'test-environment drift', trigger: 'Brittle data fixed constants.', evidence: 'Testability.', fp: 'Context.', floor: 'medium' },
+  'L25-07': { name: 'hidden test requirements', sub: 'missing examples', trigger: 'Gap standard runners tools.', evidence: 'Testability.', fp: 'Context.', floor: 'medium' },
+  'L25-08': { name: 'slow test suite', sub: 'test-environment drift', trigger: 'Duration heavy ML sim.', evidence: 'Testability.', fp: 'Context.', floor: 'low' },
+  'L25-09': { name: 'test-environment drift detail', sub: 'test-environment drift', trigger: 'Env-specific test containerized.', evidence: 'Testability.', fp: 'Context.', floor: 'medium' },
+  'L25-10': { name: 'missing test specification', sub: 'missing examples', trigger: 'No example self-evident features.', evidence: 'Testability.', fp: 'Context.', floor: 'medium' },
+  'L25-11': { name: 'test isolation failure', sub: 'test isolation failure', trigger: 'Cross-test contamination fixtures.', evidence: 'Isolation.', fp: 'Context.', floor: 'high' },
+  'L25-12': { name: 'unverifiable claim', sub: 'unverifiable claims', trigger: 'Untestable proof claim goal.', evidence: 'Claims.', fp: 'Context.', floor: 'medium' },
+  'L26-01': { name: 'logic duplication', sub: 'duplication', trigger: 'Copy decoupled systems rule.', evidence: 'Maintainability.', fp: 'Context.', floor: 'medium' },
+  'L26-02': { name: 'magic numbers', sub: 'missing conventions', trigger: 'Number well known constants.', evidence: 'Maintainability.', fp: 'Context.', floor: 'low' },
+  'L26-03': { name: 'deep nesting', sub: 'brittle coupling', trigger: 'Nesting depth complex logic.', evidence: 'Maintainability.', fp: 'Context.', floor: 'medium' },
+  'L26-04': { name: 'missing comments', sub: 'technical-debt ambiguity', trigger: 'How gap self-doc code.', evidence: 'Debt.', fp: 'Context.', floor: 'low' },
+  'L26-05': { name: 'large components', sub: 'brittle coupling', trigger: 'Size core engines class.', evidence: 'Maintainability.', fp: 'Context.', floor: 'medium' },
+  'L26-06': { name: 'inconsistent naming', sub: 'missing conventions', trigger: 'Style drift legacy glue.', evidence: 'Maintainability.', fp: 'Context.', floor: 'low' },
+  'L26-07': { name: 'dead code', sub: 'duplication', trigger: 'Unused code library exports.', evidence: 'Maintainability.', fp: 'Context.', floor: 'low' },
+  'L26-08': { name: 'hidden dependencies', sub: 'brittle coupling', trigger: 'Global use environment globals.', evidence: 'Maintainability.', fp: 'Context.', floor: 'high' },
+  'L26-09': { name: 'maintainability gap', sub: 'technical-debt ambiguity', trigger: 'Spaghetti path optimized hot-paths.', evidence: 'Debt.', fp: 'Context.', floor: 'medium' },
+  'L26-10': { name: 'hidden ownership detail', sub: 'hidden ownership detail', trigger: 'Orphaned module standard utils.', evidence: 'Ownership.', fp: 'Context.', floor: 'low' },
+  'L26-11': { name: 'refactoring risk', sub: 'refactoring risk', trigger: 'Shotgun surgery cross-cutting.', evidence: 'Refactoring.', fp: 'Context.', floor: 'medium' },
+  'L26-12': { name: 'hidden ownership', sub: 'hidden ownership', trigger: 'Orphaned code core shared.', evidence: 'Ownership.', fp: 'Context.', floor: 'low' },
+  'L27-01': { name: 'jargon without help', sub: 'jargon overload', trigger: 'Term industry standard help.', evidence: 'Usability.', fp: 'Context.', floor: 'medium' },
+  'L27-02': { name: 'missing feedback', sub: 'poor examples', trigger: 'Feedback gap background tasks.', evidence: 'Usability.', fp: 'Context.', floor: 'low' },
+  'L27-03': { name: 'confusing navigation', sub: 'confusing task order', trigger: 'Step sequence wizard flows.', evidence: 'Navigation.', fp: 'Context.', floor: 'medium' },
+  'L27-04': { name: 'poor error recovery', sub: 'accessibility/readability issues', trigger: 'Reset risk security resets.', evidence: 'Recovery.', fp: 'Context.', floor: 'high' },
+  'L27-05': { name: 'accessibility gap', sub: 'accessibility/readability issues', trigger: 'No alt-text msg tools.', evidence: 'A11y.', fp: 'Context.', floor: 'medium' },
+  'L27-06': { name: 'inconsistent terminology', sub: 'jargon overload', trigger: 'Term drift domain synonyms.', evidence: 'Usability.', fp: 'Context.', floor: 'low' },
+  'L27-07': { name: 'overwhelming options', sub: 'cognitive-load gaps', trigger: 'Choice overload expert mode.', evidence: 'Load.', fp: 'Context.', floor: 'medium' },
+  'L27-08': { name: 'slow response time', sub: 'accessibility/readability issues', trigger: 'Delay instant tasks indicator.', evidence: 'UX.', fp: 'Context.', floor: 'medium' },
+  'L27-09': { name: 'mandatory UI component gap', sub: 'missing mandatory UI components', trigger: 'Missing UI element CLI-only.', evidence: 'UI Contract.', fp: 'Context.', floor: 'high' },
+  'L27-10': { name: 'exposed fatal state UX', sub: 'fatal UI state exposure', trigger: 'Raw error display developer.', evidence: 'Fatal UX.', fp: 'Context.', floor: 'high' },
+  'L27-11': { name: 'UI feedback gap', sub: 'UI feedback gap', trigger: 'Missing UI update background.', evidence: 'Feedback.', fp: 'Context.', floor: 'medium' },
+  'L27-12': { name: 'UI state machine correctness gap', sub: 'UI state machine correctness', trigger: 'Broken UI logic simple.', evidence: 'UI Logic.', fp: 'Context.', floor: 'medium' },
+  'L27-13': { name: 'UI-state mapping inconsistency', sub: 'UI-state mapping', trigger: 'UI-backend drift local-only.', evidence: 'Mapping.', fp: 'Context.', floor: 'high' },
+  'L27-14': { name: 'mandatory UI surface gap', sub: 'mandatory UI surface gaps', trigger: 'Hidden feature in UI.', evidence: 'UI Surface.', fp: 'Context.', floor: 'high' },
+  'L27-15': { name: 'UI interactivity gap', sub: 'UI interactivity gaps', trigger: 'Dead UI elements static.', evidence: 'Interactivity.', fp: 'Context.', floor: 'low' },
+  'L27-16': { name: 'exposed fatal-state UX violation', sub: 'exposed fatal-state UX violations', trigger: 'Poor fatal UX technical.', evidence: 'Fatal UX.', fp: 'Context.', floor: 'medium' },
+  'L28-01': { name: 'format mismatch', sub: 'format assumptions', trigger: 'Mismatch transformers JSON XML.', evidence: 'Interop.', fp: 'Context.', floor: 'high' },
+  'L28-02': { name: 'protocol gap', sub: 'protocol mismatch', trigger: 'Protocol gap polling fallback.', evidence: 'Protocol.', fp: 'Context.', floor: 'high' },
+  'L28-03': { name: 'backward compatibility break', sub: 'backward-compatibility gaps', trigger: 'Break major version data.', evidence: 'Compatibility.', fp: 'Context.', floor: 'critical' },
+  'L28-04': { name: 'hardcoded endpoints', sub: 'integration ambiguity', trigger: 'Hardcoded IP local dev.', evidence: 'Integration.', fp: 'Context.', floor: 'medium' },
+  'L28-05': { name: 'encoding mismatch', sub: 'format assumptions', trigger: 'Encoding gap auto-detect UTF.', evidence: 'Format.', fp: 'Context.', floor: 'medium' },
+  'L28-06': { name: 'time zone ambiguity', sub: 'format assumptions', trigger: 'Date local-only apps UTC.', evidence: 'Format.', fp: 'Context.', floor: 'medium' },
+  'L28-07': { name: 'missing schema version', sub: 'format assumptions', trigger: 'Version gap static data.', evidence: 'Format.', fp: 'Context.', floor: 'medium' },
+  'L28-08': { name: 'third-party dependency', sub: 'integration ambiguity', trigger: 'Hidden dep core OS.', evidence: 'Integration.', fp: 'Context.', floor: 'high' },
+  'L28-09': { name: 'compatibility mismatch', sub: 'interoperability compatibility mismatches', trigger: 'Version mismatch negotiated.', evidence: 'Compatibility.', fp: 'Context.', floor: 'high' },
+  'L28-10': { name: 'backward-compatibility gap', sub: 'backward-compatibility gaps', trigger: 'Undocumented breaking change.', evidence: 'Compatibility.', fp: 'Context.', floor: 'high' },
+  'L28-11': { name: 'schema version mismatch', sub: 'schema version mismatch', trigger: 'Cross-version data drift.', evidence: 'Schema.', fp: 'Context.', floor: 'high' },
+  'L28-12': { name: 'integration ambiguity detail', sub: 'integration ambiguity detail', trigger: 'Missing integration spec common.', evidence: 'Integration.', fp: 'Context.', floor: 'medium' },
+  'L29-01': { name: 'policy violation', sub: 'policy traceability', trigger: 'Violation policy updates forbidden.', evidence: 'Governance.', fp: 'Context.', floor: 'critical' },
+  'L29-02': { name: 'missing approval gate', sub: 'approval gates', trigger: 'Gap solo apps high-risk.', evidence: 'Gates.', fp: 'Context.', floor: 'high' },
+  'L29-03': { name: 'untraceable change', sub: 'auditability', trigger: 'Audit gap temp files modified.', evidence: 'Audit.', fp: 'Context.', floor: 'high' },
+  'L29-04': { name: 'retention violation', sub: 'retention/compliance gaps', trigger: 'Over-retention anonymized PII.', evidence: 'Retention.', fp: 'Context.', floor: 'critical' },
+  'L29-05': { name: 'compliance gap', sub: 'compliance-scope ambiguity', trigger: 'Gap non-regulated requirement.', evidence: 'Compliance.', fp: 'Context.', floor: 'critical' },
+  'L29-06': { name: 'unclear ownership', sub: 'policy traceability', trigger: 'Ownership gap shared data.', evidence: 'Ownership.', fp: 'Context.', floor: 'medium' },
+  'L29-07': { name: 'missing fail-safe', sub: 'fail-safe condition ambiguity', trigger: 'No fail-safe manual breach.', evidence: 'Safety.', fp: 'Context.', floor: 'high' },
+  'L29-08': { name: 'override ambiguity', sub: 'override ambiguity', trigger: 'Authority gap root admin.', evidence: 'Override.', fp: 'Context.', floor: 'medium' },
+  'L29-09': { name: 'policy-priority conflict detail', sub: 'policy-priority conflicts', trigger: 'Policy clash implicit ordering.', evidence: 'Priority.', fp: 'Context.', floor: 'high' },
+  'L29-10': { name: 'checkpoint omission detail', sub: 'checkpoint omissions', trigger: 'Gate omission internal-only.', evidence: 'Checkpoint.', fp: 'Context.', floor: 'critical' },
+  'L29-11': { name: 'policy-priority conflict', sub: 'policy-priority conflicts', trigger: 'Unresolved policy clash priority.', evidence: 'Priority.', fp: 'Context.', floor: 'high' },
+  'L29-12': { name: 'checkpoint omission', sub: 'checkpoint omissions', trigger: 'Missing gate automated pipes.', evidence: 'Checkpoint.', fp: 'Context.', floor: 'critical' },
+  'L29-13': { name: 'compliance-scope ambiguity detail', sub: 'compliance-scope ambiguity', trigger: 'Unclear scope single-reg.', evidence: 'Compliance.', fp: 'Context.', floor: 'high' },
+  'L29-14': { name: 'enforcement-path gap detail', sub: 'enforcement-path gaps', trigger: 'Unenforced policy voluntary.', evidence: 'Enforcement.', fp: 'Context.', floor: 'high' },
+  'L29-15': { name: 'governance bypass path', sub: 'governance bypass path', trigger: 'Audit-free path break-glass.', evidence: 'Bypass.', fp: 'Context.', floor: 'critical' },
+  'L29-16': { name: 'compliance gate omission', sub: 'checkpoint omissions', trigger: 'Missing compliance check internal.', evidence: 'Checkpoint.', fp: 'Context.', floor: 'critical' },
+  'L29-17': { name: 'enforcement-path gap', sub: 'enforcement-path gaps', trigger: 'Unenforced policy informal.', evidence: 'Enforcement.', fp: 'Context.', floor: 'high' },
+  'L29-18': { name: 'governance checkpoint gap', sub: 'governance checkpoint gaps', trigger: 'Missing audit gate automation.', evidence: 'Checkpoint.', fp: 'Context.', floor: 'critical' },
+  'L29-19': { name: 'PSG mutation bypass detail', sub: 'PSG mutation bypass', trigger: 'Unchecked mutation path bootstrap.', evidence: 'Bypass.', fp: 'Context.', floor: 'critical' },
+  'L29-20': { name: 'missing commit-hash binding detail', sub: 'missing commit-hash binding', trigger: 'Unbound decision informal.', evidence: 'Binding.', fp: 'Context.', floor: 'medium' },
+  'L29-21': { name: 'unauthorized agent write detail', sub: 'unauthorized agent writes', trigger: 'Authority breach delegation.', evidence: 'Security.', fp: 'Context.', floor: 'critical' },
+  'L30-01': { name: 'SPOF risk', sub: 'single points of failure', trigger: 'SPOF trivial apps system.', evidence: 'SPOF.', fp: 'Context.', floor: 'critical' },
+  'L30-02': { name: 'no recovery plan', sub: 'backup/restore gaps', trigger: 'No restore stateless apps.', evidence: 'Recovery.', fp: 'Context.', floor: 'high' },
+  'L30-03': { name: 'degraded mode gap', sub: 'degraded-mode gaps', trigger: 'Crash real-time only database.', evidence: 'Degraded.', fp: 'Context.', floor: 'medium' },
+  'L30-04': { name: 'failover delay', sub: 'failover-ambiguity', trigger: 'Delay manual failover SLA.', evidence: 'Failover.', fp: 'Context.', floor: 'high' },
+  'L30-05': { name: 'data loss risk', sub: 'backup/restore gaps', trigger: 'Write gap consistency async.', evidence: 'Data loss.', fp: 'Context.', floor: 'high' },
+  'L30-06': { name: 'untested restore', sub: 'backup/restore gaps', trigger: 'Verification gap simple logs.', evidence: 'Restore.', fp: 'Context.', floor: 'medium' },
+  'L30-07': { name: 'circuit breaker missing', sub: 'degraded-mode gaps', trigger: 'Storm low traffic calls.', evidence: 'Circuit.', fp: 'Context.', floor: 'high' },
+  'L30-08': { name: 'stale state on resume', sub: 'degraded-mode gaps', trigger: 'Staleness static data outage.', evidence: 'State.', fp: 'Context.', floor: 'medium' },
+  'L30-09': { name: 'rollback infeasibility', sub: 'rollback infeasibility', trigger: 'Irreversible action append-only.', evidence: 'Rollback.', fp: 'Context.', floor: 'high' },
+  'L30-10': { name: 'fail-safe absence', sub: 'fail-safe absence', trigger: 'No safe state fail-open.', evidence: 'Safety.', fp: 'Context.', floor: 'high' },
+  'L30-11': { name: 'backup-restore gap', sub: 'backup/restore gaps', trigger: 'Missing backup spec stateless.', evidence: 'Backup.', fp: 'Context.', floor: 'high' },
+  'L30-12': { name: 'failover ambiguity', sub: 'failover-ambiguity', trigger: 'Vague failover single-instance.', evidence: 'Failover.', fp: 'Context.', floor: 'high' },
+  'L30-13': { name: 'non-idempotent retry risk', sub: 'non-idempotent retries', trigger: 'Duplicate side effects ops.', evidence: 'Retry.', fp: 'Context.', floor: 'critical' },
+  'L30-14': { name: 'outage handling detail', sub: 'outage handling detail', trigger: 'Missing DR plan internal.', evidence: 'Outage.', fp: 'Context.', floor: 'high' },
+  'L30-15': { name: 'state recovery indeterminism', sub: 'state recovery indeterminism', trigger: 'Unstable recovery state heuristic.', evidence: 'Recovery.', fp: 'Context.', floor: 'high' },
+  'L30-16': { name: 'emergency recovery ambiguity', sub: 'emergency recovery ambiguity', trigger: 'Vague recovery path general.', evidence: 'Recovery.', fp: 'Context.', floor: 'high' },
+  'L30-17': { name: 'outage handling gap', sub: 'outage handling', trigger: 'No DR spec low-SLA.', evidence: 'Outage.', fp: 'Context.', floor: 'high' },
+  'L30-18': { name: 'recovery journal gap', sub: 'recovery journal gaps', trigger: 'No journal stateless apps.', evidence: 'Journal.', fp: 'Context.', floor: 'high' },
+  'L30-19': { name: 'simulation gate omission detail', sub: 'simulation gate omissions', trigger: 'Skipped simulation emergency.', evidence: 'Simulation.', fp: 'Context.', floor: 'critical' },
+  'L30-20': { name: 'simulation mutation risk detail', sub: 'simulation mutation risk', trigger: 'Unsafe simulation replicas.', evidence: 'Simulation.', fp: 'Context.', floor: 'critical' },
+  'L31-01': { name: 'missing logging', sub: 'missing logs', trigger: 'Logging gap noisy logs.', evidence: 'Logs.', fp: 'Context.', floor: 'medium' },
+  'L31-02': { name: 'missing metrics', sub: 'metrics gaps', trigger: 'Metrics gap external monitor.', evidence: 'Metrics.', fp: 'Context.', floor: 'medium' },
+  'L31-03': { name: 'missing tracing', sub: 'tracing gaps', trigger: 'Trace gap monoliths services.', evidence: 'Tracing.', fp: 'Context.', floor: 'low' },
+  'L31-04': { name: 'missing alerting', sub: 'correlation IDs and alert-threshold gaps', trigger: 'Alert gap manual monitor.', evidence: 'Alerts.', fp: 'Context.', floor: 'high' },
+  'L31-05': { name: 'missing dashboard', sub: 'metrics gaps', trigger: 'Viz gap CLI only.', evidence: 'Dash.', fp: 'Context.', floor: 'low' },
+  'L31-06': { name: 'missing SLI/SLO', sub: 'correlation IDs and alert-threshold gaps', trigger: 'SLO gap best effort.', evidence: 'SLA.', fp: 'Context.', floor: 'medium' },
+  'L31-07': { name: 'missing incident response', sub: 'correlation IDs and alert-threshold gaps', trigger: 'IR gap small teams.', evidence: 'Response.', fp: 'Context.', floor: 'medium' },
+  'L31-08': { name: 'missing runbook', sub: 'missing logs', trigger: 'Runbook gap self-healing fix.', evidence: 'Runbook.', fp: 'Context.', floor: 'high' },
+  'L31-09': { name: 'observability blind spot', sub: 'blind-spot gaps', trigger: 'Unmonitored path internal components.', evidence: 'Visibility.', fp: 'Context.', floor: 'high' },
+  'L31-10': { name: 'alert-threshold gap', sub: 'correlation IDs and alert-threshold gaps', trigger: 'No alerting spec dashboard.', evidence: 'Alerts.', fp: 'Context.', floor: 'high' },
+  'L31-11': { name: 'blind-spot gap detail', sub: 'blind-spot gaps', trigger: 'Unmonitored subsystem low-impact.', evidence: 'Visibility.', fp: 'Context.', floor: 'high' },
+  'L31-12': { name: 'tracing gap', sub: 'tracing gaps', trigger: 'Trace-free path monoliths distributed.', evidence: 'Tracing.', fp: 'Context.', floor: 'medium' },
+  'L31-13': { name: 'observability cost risk', sub: 'metrics gaps', trigger: 'Oversampling debug logging verbose.', evidence: 'Logs.', fp: 'Context.', floor: 'low' },
+  'L31-14': { name: 'observability blind spot detail', sub: 'observability blind spot', trigger: 'Unmonitored path simple utils.', evidence: 'Visibility.', fp: 'Context.', floor: 'high' },
+  'L32-01': { name: 'missing versioning strategy', sub: 'versioning gaps', trigger: 'Version gap single release.', evidence: 'Evolution.', fp: 'Context.', floor: 'medium' },
+  'L32-02': { name: 'missing migration path', sub: 'evolution/versioning migration scenarios', trigger: 'Migration gap greenfield deployments.', evidence: 'Migration.', fp: 'Context.', floor: 'critical' },
+  'L32-03': { name: 'missing deprecation policy', sub: 'deprecation policy gaps', trigger: 'Deprecation gap internal beta.', evidence: 'Evolution.', fp: 'Context.', floor: 'medium' },
+  'L32-04': { name: 'missing backward compatibility', sub: 'compatibility promises', trigger: 'Compat break major breaks.', evidence: 'Compatibility.', fp: 'Context.', floor: 'high' },
+  'L32-05': { name: 'missing extensibility', sub: 'migration gaps', trigger: 'Extensibility gap proprietary.', evidence: 'Migration.', fp: 'Context.', floor: 'low' },
+  'L32-06': { name: 'missing plugin architecture', sub: 'migration gaps', trigger: 'Hook gap monolithic architecture.', evidence: 'Migration.', fp: 'Context.', floor: 'low' },
+  'L32-07': { name: 'missing feature flags', sub: 'migration gaps', trigger: 'Flag gap small features.', evidence: 'Migration.', fp: 'Context.', floor: 'medium' },
+  'L32-08': { name: 'missing rollout strategy', sub: 'migration gaps', trigger: 'Rollout gap internal apps.', evidence: 'Migration.', fp: 'Context.', floor: 'medium' },
+  'L32-09': { name: 'deprecation policy gap detail', sub: 'deprecation policy gaps', trigger: 'Vague sunset beta deletions.', evidence: 'Evolution.', fp: 'Context.', floor: 'medium' },
+  'L32-10': { name: 'versioning strategy gap', sub: 'versioning gaps', trigger: 'Version drift risk tight monorepos.', evidence: 'Evolution.', fp: 'Context.', floor: 'medium' },
+  'L32-11': { name: 'evolution/versioning migration scenario', sub: 'evolution/versioning migration scenarios', trigger: 'Missing migration spec new installs.', evidence: 'Migration.', fp: 'Context.', floor: 'high' },
+  'L32-12': { name: 'migration gap detail', sub: 'migration gap detail', trigger: 'Missing migration steps fresh installs.', evidence: 'Migration.', fp: 'Context.', floor: 'medium' },
+  'L33-01': { name: 'missing input domain closure', sub: 'input domain closure', trigger: 'Open-ended input string fields.', evidence: 'Spec.', fp: 'Context.', floor: 'medium' },
+  'L33-02': { name: 'canonical vocabulary gap', sub: 'canonical vocabulary enforcement', trigger: 'Undefined term common words.', evidence: 'Vocab.', fp: 'Context.', floor: 'low' },
+  'L33-03': { name: 'state-space undefined', sub: 'state-space definition', trigger: 'Implicit state stateless logic.', evidence: 'States.', fp: 'Context.', floor: 'high' },
+  'L33-04': { name: 'output contract non-determinism', sub: 'output contract determinism', trigger: 'Vague output logs defined.', evidence: 'Output.', fp: 'Context.', floor: 'high' },
+  'L33-05': { name: 'spec completeness violation', sub: 'spec completeness', trigger: 'Undefined behavior zone default.', evidence: 'Spec.', fp: 'Context.', floor: 'medium' },
+  'L33-06': { name: 'terminology registry gap', sub: 'terminology registry', trigger: 'Unregistered term industry standard.', evidence: 'Vocab.', fp: 'Context.', floor: 'medium' },
+  'L33-07': { name: 'type entity rigor gap', sub: 'type/entity rigor', trigger: 'Informal type simple types.', evidence: 'Types.', fp: 'Context.', floor: 'medium' },
+  'L33-08': { name: 'symbol consistency violation', sub: 'symbol consistency', trigger: 'Symbol reuse renamed symbols.', evidence: 'Symbols.', fp: 'Context.', floor: 'medium' },
+  'L33-09': { name: 'input domain non-closure detail', sub: 'input domain closure', trigger: 'Open input domain well-typed.', evidence: 'Spec.', fp: 'Context.', floor: 'high' },
+  'L33-10': { name: 'output contract indeterminism', sub: 'output contract determinism', trigger: 'Non-deterministic output stochastic.', evidence: 'Output.', fp: 'Context.', floor: 'critical' },
+  'L33-11': { name: 'canonical vocabulary enforcement detail', sub: 'canonical vocabulary enforcement', trigger: 'Vocab misuse creative writing.', evidence: 'Vocab.', fp: 'Context.', floor: 'medium' },
+  'L33-12': { name: 'state-space definition gap', sub: 'state-space definition', trigger: 'Undefined state usage ephemeral.', evidence: 'States.', fp: 'Context.', floor: 'medium' },
+  'L33-13': { name: 'symbol consistency violation detail', sub: 'symbol consistency violation', trigger: 'Symbol clash local scoping.', evidence: 'Symbols.', fp: 'Context.', floor: 'medium' },
+  'L34-01': { name: 'mandatory simulation gap', sub: 'mandatory simulation', trigger: 'Direct execution read-only flows.', evidence: 'Simulation.', fp: 'Context.', floor: 'high' },
+  'L34-02': { name: 'simulation mutation risk', sub: 'simulation non-mutation', trigger: 'Mutation in sim local sandbox.', evidence: 'Simulation.', fp: 'Context.', floor: 'critical' },
+  'L34-03': { name: 'pre-simulation governance gap', sub: 'pre-simulation governance', trigger: 'Missing policy open tools.', evidence: 'Governance.', fp: 'Context.', floor: 'medium' },
+  'L34-04': { name: 'verification completeness gap', sub: 'verification completeness', trigger: 'Unchecked results ad-hoc runs.', evidence: 'Verification.', fp: 'Context.', floor: 'high' },
+  'L34-05': { name: 'risk classification missing', sub: 'risk classification', trigger: 'Missing risk tier low-risk.', evidence: 'Risk.', fp: 'Context.', floor: 'high' },
+  'L34-06': { name: 'simulation gate bypass', sub: 'light-vs-heavy simulation correctness', trigger: 'Wrong sim tier read-only ops.', evidence: 'Simulation.', fp: 'Context.', floor: 'high' },
+  'L34-07': { name: 'formal verification boundary undefined', sub: 'formal verification boundary', trigger: 'Undefined boundary informal systems.', evidence: 'Verification.', fp: 'Context.', floor: 'medium' },
+  'L34-08': { name: 'post-simulation validation absence', sub: 'post-simulation governance', trigger: 'No post-check visual inspection.', evidence: 'Governance.', fp: 'Context.', floor: 'high' },
+  'L34-09': { name: 'pre-simulation check absence', sub: 'pre-simulation governance', trigger: 'No pre-check open environments.', evidence: 'Governance.', fp: 'Context.', floor: 'medium' },
+  'L34-10': { name: 'simulation gate omission detail', sub: 'pre-simulation governance', trigger: 'Missing gate low-risk actions.', evidence: 'Governance.', fp: 'Context.', floor: 'critical' },
+  'L34-11': { name: 'simulation mutation risk detail', sub: 'simulation non-mutation', trigger: 'Live mutation read-only sims.', evidence: 'Simulation.', fp: 'Context.', floor: 'critical' },
+  'L34-12': { name: 'verification completeness detail', sub: 'verification completeness', trigger: 'Partial verification targeted verification.', evidence: 'Verification.', fp: 'Context.', floor: 'high' },
+  'L34-13': { name: 'formal verification gap', sub: 'formal verification boundary', trigger: 'Unproven claim heuristic verification.', evidence: 'Verification.', fp: 'Context.', floor: 'high' },
+  'L34-14': { name: 'simulation gate omission detail 2', sub: 'simulation gate omission', trigger: 'Missing gate spec read-only.', evidence: 'Simulation.', fp: 'Context.', floor: 'high' },
+  'L35-01': { name: 'memory temporal inconsistency', sub: 'temporal consistency', trigger: 'Epoch mismatch eventual consistency.', evidence: 'Consistency.', fp: 'Context.', floor: 'high' },
+  'L35-02': { name: 'PSG mutation exclusivity violation', sub: 'PSG mutation gateway exclusivity', trigger: 'Direct write cache updates.', evidence: 'Gateway.', fp: 'Context.', floor: 'critical' },
+  'L35-03': { name: 'snapshot isolation gap', sub: 'PSG snapshot isolation', trigger: 'Dirty read analytics state.', evidence: 'Isolation.', fp: 'Context.', floor: 'high' },
+  'L35-04': { name: 'commit binding gap', sub: 'PSG commit binding', trigger: 'Unbound write ephemeral state.', evidence: 'Binding.', fp: 'Context.', floor: 'medium' },
+  'L35-05': { name: 'memory conflict resolution undefined', sub: 'memory conflict resolution', trigger: 'No resolution single-writer state.', evidence: 'Conflicts.', fp: 'Context.', floor: 'high' },
+  'L35-06': { name: 'read write authority gap', sub: 'read/write authority', trigger: 'Unrestricted access public state.', evidence: 'Authority.', fp: 'Context.', floor: 'high' },
+  'L35-07': { name: 'snapshot version drift', sub: 'snapshot/version invariants', trigger: 'Version mismatch async replication.', evidence: 'Invariants.', fp: 'Context.', floor: 'high' },
+  'L35-08': { name: 'PSG write atomicity gap', sub: 'PSG write atomicity', trigger: 'Partial write single-field updates.', evidence: 'Atomicity.', fp: 'Context.', floor: 'high' },
+  'L35-09': { name: 'memory taxonomy undefined', sub: 'memory taxonomy', trigger: 'Flat memory model simple stores.', evidence: 'Taxonomy.', fp: 'Context.', floor: 'medium' },
+  'L35-10': { name: 'garbage collection determinism', sub: 'garbage collection determinism', trigger: 'Non-deterministic GC manual cleanup.', evidence: 'GC.', fp: 'Context.', floor: 'medium' },
+  'L35-11': { name: 'PSG read consistency gap', sub: 'PSG read consistency', trigger: 'Inconsistent read eventually consistent.', evidence: 'Consistency.', fp: 'Context.', floor: 'high' },
+  'L35-12': { name: 'PSG write atomicity breach', sub: 'PSG write atomicity', trigger: 'Non-atomic write single-variable.', evidence: 'Atomicity.', fp: 'Context.', floor: 'high' },
+  'L35-13': { name: 'memory temporal inconsistency detail', sub: 'memory temporal inconsistency', trigger: 'Stale read risk eventually consistent.', evidence: 'Consistency.', fp: 'Context.', floor: 'high' },
+  'L36-01': { name: 'agent role overlap', sub: 'role non-overlap', trigger: 'Role conflict backup agents.', evidence: 'Roles.', fp: 'Context.', floor: 'high' },
+  'L36-02': { name: 'arbitration ambiguity', sub: 'arbitration strategy', trigger: 'Missing arbiter independent agents.', evidence: 'Arbitration.', fp: 'Context.', floor: 'high' },
+  'L36-03': { name: 'agent authority violation', sub: 'authority boundaries', trigger: 'Over-permission super-agents.', evidence: 'Authority.', fp: 'Context.', floor: 'critical' },
+  'L36-04': { name: 'composability constraints missing', sub: 'composability', trigger: 'Silent failure simple chains.', evidence: 'Composability.', fp: 'Context.', floor: 'medium' },
+  'L36-05': { name: 'agent role boundary violation', sub: 'role non-overlap', trigger: 'Scope violation super-agents.', evidence: 'Roles.', fp: 'Context.', floor: 'high' },
+  'L36-06': { name: 'failure isolation missing', sub: 'failure isolation', trigger: 'Uncontained failure monolithic agents.', evidence: 'Isolation.', fp: 'Context.', floor: 'high' },
+  'L36-07': { name: 'agent I/O contract gap', sub: 'agent I/O contracts', trigger: 'Missing I/O spec simple agents.', evidence: 'Contracts.', fp: 'Context.', floor: 'medium' },
+  'L36-08': { name: 'agent mutation prohibition gap', sub: 'agent mutation prohibitions', trigger: 'Mutation violation write-agents.', evidence: 'Mutation.', fp: 'Context.', floor: 'critical' },
+  'L36-09': { name: 'communication protocol undefined', sub: 'communication protocol', trigger: 'Ad-hoc messaging direct calls.', evidence: 'Protocol.', fp: 'Context.', floor: 'medium' },
+  'L36-10': { name: 'authority boundary overlap', sub: 'authority boundaries', trigger: 'Overlapping domains single agent.', evidence: 'Authority.', fp: 'Context.', floor: 'high' },
+  'L36-11': { name: 'unauthorized agent writes detail', sub: 'unauthorized agent writes', trigger: 'Unauthorized write system-level admin.', evidence: 'Authority.', fp: 'Context.', floor: 'critical' },
+  'L36-12': { name: 'unauthorized agent write', sub: 'unauthorized agent writes', trigger: 'Unauthorized write attempt overrides.', evidence: 'Authority.', fp: 'Context.', floor: 'critical' },
+  'L36-13': { name: 'agent role non-overlap violation', sub: 'role non-overlap', trigger: 'Role collision backup redundancy.', evidence: 'Roles.', fp: 'Context.', floor: 'high' },
+  'L36-14': { name: 'arbitration ambiguity detail', sub: 'arbitration ambiguity', trigger: 'Missing arbitration rules single agent.', evidence: 'Arbitration.', fp: 'Context.', floor: 'high' },
+  'L36-15': { name: 'agent orchestration detail', sub: 'agent_orchestration', trigger: 'Orchestration gap single-agent contexts.', evidence: 'Orchestration.', fp: 'Context.', floor: 'medium' },
+  'L37-01': { name: 'sandbox isolation breach', sub: 'sandbox isolation', trigger: 'Unsafe API approved core tools.', evidence: 'Sandbox.', fp: 'Context.', floor: 'critical' },
+  'L37-02': { name: 'idempotency guarantee missing', sub: 'idempotency', trigger: 'Blind execution read-only tools.', evidence: 'Idempotency.', fp: 'Context.', floor: 'high' },
+  'L37-03': { name: 'rollback path missing', sub: 'rollback rules', trigger: 'One-way tool irreversible actions.', evidence: 'Rollback.', fp: 'Context.', floor: 'high' },
+  'L37-04': { name: 'forbidden direct write', sub: 'forbidden direct write paths', trigger: 'Direct DB access admin tools.', evidence: 'Direct Write.', fp: 'Context.', floor: 'critical' },
+  'L37-05': { name: 'execution authority violation', sub: 'execution authority violations', trigger: 'Over-privileged execution admin tools.', evidence: 'Authority.', fp: 'Context.', floor: 'critical' },
+  'L37-06': { name: 'unsafe execution path', sub: 'unsafe execution paths', trigger: 'Unguarded path atomic operations.', evidence: 'Safety.', fp: 'Context.', floor: 'high' },
+  'L37-07': { name: 'tool invocation contract gap', sub: 'tool invocation contract', trigger: 'Contract gap validated calls.', evidence: 'Contract.', fp: 'Context.', floor: 'high' },
+  'L37-08': { name: 'side effect validation absence', sub: 'side-effect validation', trigger: 'Unchecked side effect read-only tools.', evidence: 'Validation.', fp: 'Context.', floor: 'high' },
+  'L37-09': { name: 'sandbox isolation breach detail 2', sub: 'sandbox isolation', trigger: 'Sandbox breakout path system tools.', evidence: 'Sandbox.', fp: 'Context.', floor: 'critical' },
+  'L37-10': { name: 'tool safety check detail', sub: 'tool invocation contract', trigger: 'Safety rule clash internal diagnostic.', evidence: 'Safety.', fp: 'Context.', floor: 'high' },
+  'L37-11': { name: 'forbidden direct write path', sub: 'forbidden direct write paths', trigger: 'Bypassed gateway admin maintenance.', evidence: 'Direct Write.', fp: 'Context.', floor: 'critical' },
+  'L37-12': { name: 'sandbox isolation breach detail', sub: 'sandbox isolation breach', trigger: 'Sandbox leak path privileged tools.', evidence: 'Sandbox.', fp: 'Context.', floor: 'critical' },
+  'L37-13': { name: 'tool safety detail', sub: 'tool_execution_safety', trigger: 'Tool safety gap read-only tools.', evidence: 'Safety.', fp: 'Context.', floor: 'high' },
+  'L38-01': { name: 'remote deployment prohibition violation', sub: 'remote deployment prohibition', trigger: 'Cloud requirement local network.', evidence: 'Deployment.', fp: 'Context.', floor: 'critical' },
+  'L38-02': { name: 'local export structure gap', sub: 'export structure completeness', trigger: 'Incomplete bundle partial exports.', evidence: 'Export.', fp: 'Context.', floor: 'high' },
+  'L38-03': { name: 'export atomicity gap', sub: 'export atomicity', trigger: 'Partial write streamed exports.', evidence: 'Export.', fp: 'Context.', floor: 'medium' },
+  'L38-04': { name: 'offline-run inability', sub: 'offline-run capability', trigger: 'Network call license checks.', evidence: 'Offline.', fp: 'Context.', floor: 'high' },
+  'L38-05': { name: 'export path non-determinism', sub: 'export path determinism', trigger: 'Variable path timestamped paths.', evidence: 'Export.', fp: 'Context.', floor: 'medium' },
+  'L38-06': { name: 'executable validation absence', sub: 'executable validation', trigger: 'No validation step signed builds.', evidence: 'Validation.', fp: 'Context.', floor: 'high' },
+  'L38-07': { name: 'deployment term misuse', sub: 'deployment-term misuse', trigger: 'Term confusion clear definitions.', evidence: 'Terms.', fp: 'Context.', floor: 'medium' },
+  'L38-08': { name: 'local export enforcement gap', sub: 'local export enforcement', trigger: 'Export leakage cloud systems.', evidence: 'Enforcement.', fp: 'Context.', floor: 'critical' },
+  'L38-09': { name: 'export structure incomplete', sub: 'export structure completeness', trigger: 'Missing export parts partial exports.', evidence: 'Export.', fp: 'Context.', floor: 'high' },
+  'L38-10': { name: 'remote deployment violation detail', sub: 'remote deployment violation', trigger: 'Cloud dependency leak hybrid features.', evidence: 'Deployment.', fp: 'Context.', floor: 'high' },
+  'L38-11': { name: 'deployment term misuse detail', sub: 'deployment-term misuse', trigger: 'Term drift informal build guides.', evidence: 'Terms.', fp: 'Context.', floor: 'low' },
+  'L38-12': { name: 'export structure gap detail', sub: 'export structure completeness', trigger: 'Missing artifact parts minimalist.', evidence: 'Export.', fp: 'Context.', floor: 'high' },
+  'L38-13': { name: 'remote deployment violation', sub: 'remote deployment violation', trigger: 'Deployment leak hybrid models.', evidence: 'Deployment.', fp: 'Context.', floor: 'high' },
+  'L39-01': { name: 'platform exclusion violation', sub: 'platform-exclusion enforcement', trigger: 'Platform mismatch shared libraries.', evidence: 'Exclusion.', fp: 'Context.', floor: 'high' },
+  'L39-02': { name: 'abstraction leakage', sub: 'abstraction leakage', trigger: 'Leaky type platform extensions.', evidence: 'Abstraction.', fp: 'Context.', floor: 'medium' },
+  'L39-03': { name: 'target lock invariants missing', sub: 'target lock invariants', trigger: 'Missing guard universal code.', evidence: 'Invariants.', fp: 'Context.', floor: 'medium' },
+  'L39-04': { name: 'implementation divergence', sub: 'implementation divergence', trigger: 'Behavior gap native UI parity.', evidence: 'Divergence.', fp: 'Context.', floor: 'high' },
+  'L39-05': { name: 'platform-neutral architecture violation', sub: 'platform-neutral architecture', trigger: 'Platform assumption specific features.', evidence: 'Architecture.', fp: 'Context.', floor: 'high' },
+  'L39-06': { name: 'cross-platform consistency gap', sub: 'cross-platform consistency', trigger: 'Platform gap specific features.', evidence: 'Consistency.', fp: 'Context.', floor: 'high' },
+  'L39-07': { name: 'output target mismatch', sub: 'output-target mismatch', trigger: 'Target mismatch multi-target builds.', evidence: 'Mismatch.', fp: 'Context.', floor: 'high' },
+  'L39-08': { name: 'target lock bypass', sub: 'target lock invariants', trigger: 'Missing lock portable code.', evidence: 'Invariants.', fp: 'Context.', floor: 'medium' },
+  'L39-09': { name: 'compiler mapping correctness gap', sub: 'compiler mapping correctness', trigger: 'Config mismatch cross-compilers.', evidence: 'Compiler.', fp: 'Context.', floor: 'high' },
+  'L39-10': { name: 'compiler mapping mismatch detail', sub: 'compiler mapping mismatch', trigger: 'Flag mismatch custom build profiles.', evidence: 'Compiler.', fp: 'Context.', floor: 'medium' },
+  'L39-11': { name: 'platform exclusion enforcement detail', sub: 'platform-exclusion enforcement', trigger: 'Binary leak optional platform optimized.', evidence: 'Exclusion.', fp: 'Context.', floor: 'high' },
+  'L39-12': { name: 'platform abstraction leakage detail', sub: 'abstraction leakage', trigger: 'Leaky abstraction native optims.', evidence: 'Abstraction.', fp: 'Context.', floor: 'medium' },
+  'L39-13': { name: 'compiler mapping mismatch detail 2', sub: 'compiler mapping mismatch', trigger: 'Build-target drift cross-platform toolchains.', evidence: 'Compiler.', fp: 'Context.', floor: 'medium' },
+  'L40-01': { name: 'token budget violation', sub: 'token budget enforcement', trigger: 'Unbounded context local models.', evidence: 'Budget.', fp: 'Context.', floor: 'high' },
+  'L40-02': { name: 'context contamination', sub: 'context contamination / leakage', trigger: 'Bad injection historical logs.', evidence: 'Contamination.', fp: 'Context.', floor: 'critical' },
+  'L40-03': { name: 'decision lock hierarchy gap', sub: 'decision lock hierarchy', trigger: 'Race condition append-only logs.', evidence: 'Hierarchy.', fp: 'Context.', floor: 'high' },
+  'L40-04': { name: 'drift correction missing', sub: 'drift correction', trigger: 'Stale context static analysis.', evidence: 'Drift.', fp: 'Context.', floor: 'medium' },
+  'L40-05': { name: 'deterministic context assembly gap', sub: 'deterministic context assembly', trigger: 'Non-deterministic assembly static contexts.', evidence: 'Assembly.', fp: 'Context.', floor: 'high' },
+  'L40-06': { name: 'retrieval validation missing', sub: 'retrieval validation', trigger: 'Unvalidated retrieval curated sources.', evidence: 'Retrieval.', fp: 'Context.', floor: 'medium' },
+  'L40-07': { name: 'token budget absence', sub: 'token budget enforcement', trigger: 'Unbounded assembly local models.', evidence: 'Budget.', fp: 'Context.', floor: 'high' },
+  'L40-08': { name: 'context conflict undetected', sub: 'conflict detection', trigger: 'Undetected conflict consistent sources.', evidence: 'Conflict.', fp: 'Context.', floor: 'high' },
+  'L40-09': { name: 'context truncation strategy missing', sub: 'context truncation', trigger: 'Hard cut-off small contexts.', evidence: 'Truncation.', fp: 'Context.', floor: 'high' },
+  'L40-10': { name: 'decision lock hierarchy missing', sub: 'decision lock hierarchy', trigger: 'Unresolved conflict append-only logs.', evidence: 'Hierarchy.', fp: 'Context.', floor: 'high' },
+  'L40-11': { name: 'context contamination risk', sub: 'context contamination', trigger: 'Context leakage shared read-only.', evidence: 'Contamination.', fp: 'Context.', floor: 'critical' },
+  'L40-12': { name: 'drift correction absence', sub: 'drift correction', trigger: 'Context drift short-lived runs.', evidence: 'Drift.', fp: 'Context.', floor: 'medium' },
+  'L40-13': { name: 'retrieval relevance gap', sub: 'retrieval validation', trigger: 'Relevance dilution broad research.', evidence: 'Retrieval.', fp: 'Context.', floor: 'low' },
+  'L41-01': { name: 'evidence binding gap', sub: 'evidence binding', trigger: 'Unbound conclusion obvious inferences.', evidence: 'Evidence.', fp: 'Context.', floor: 'high' },
+  'L41-02': { name: 'uncertainty propagation failure', sub: 'uncertainty propagation', trigger: 'False certainty deterministic steps.', evidence: 'Reasoning.', fp: 'Context.', floor: 'high' },
+  'L41-03': { name: 'reasoning trace enforceability gap', sub: 'reasoning trace enforceability', trigger: 'Untraceable step self-evident logic.', evidence: 'Trace.', fp: 'Context.', floor: 'high' },
+  'L41-04': { name: 'multi-step reasoning validation failure', sub: 'multi-step reasoning validation', trigger: 'Logical gap in chain summaries.', evidence: 'Reasoning.', fp: 'Context.', floor: 'high' },
+  'L41-05': { name: 'global contradiction undetected', sub: 'global contradiction detection', trigger: 'Cross-section reasoning clash contextual.', evidence: 'Conflict.', fp: 'Context.', floor: 'high' },
+  'L41-06': { name: 'unbounded self-correction loop', sub: 'self-correction loop boundedness', trigger: 'Reasoning oscillation iterative refinement.', evidence: 'Reasoning.', fp: 'Context.', floor: 'medium' },
+  'L41-07': { name: 'reasoning trace incomplete', sub: 'reasoning trace completeness', trigger: 'Unused premise alternative evidence.', evidence: 'Trace.', fp: 'Context.', floor: 'medium' },
+  'L41-08': { name: 'uncertainty propagation gap', sub: 'uncertainty propagation failure', trigger: 'Ignored uncertainty high-confidence.', evidence: 'Reasoning.', fp: 'Context.', floor: 'high' },
+  'L41-09': { name: 'reasoning trace gap', sub: 'reasoning trace completeness', trigger: 'Missing trace obvious conclusions.', evidence: 'Trace.', fp: 'Context.', floor: 'high' },
+  'L41-10': { name: 'uncertainty propagation failure detail', sub: 'uncertainty propagation failure', trigger: 'Dropped uncertainty high-confidence inputs.', evidence: 'Reasoning.', fp: 'Context.', floor: 'high' },
+  'L41-11': { name: 'reasoning trace enforceability marker', sub: 'reasoning trace enforceability', trigger: 'Unenforceable trace heuristic advice.', evidence: 'Trace.', fp: 'Context.', floor: 'high' },
+  'L41-12': { name: 'evidence binding gap detail', sub: 'evidence binding gap', trigger: 'Unsupported inference self-evident logic.', evidence: 'Evidence.', fp: 'Context.', floor: 'medium' },
+  'L42-01': { name: 'mandatory UI component existence gap', sub: 'mandatory UI component existence', trigger: 'Missing UI element CLI-only systems.', evidence: 'UI Contract.', fp: 'Context.', floor: 'high' },
+  'L42-02': { name: 'UI interactivity enforcement gap', sub: 'UI interactivity enforcement', trigger: 'Static UI element read-only displays.', evidence: 'UI Contract.', fp: 'Context.', floor: 'medium' },
+  'L42-03': { name: 'UI-to-system-state mapping gap', sub: 'UI-to-system-state mapping', trigger: 'State-UI mismatch async lag.', evidence: 'Mapping.', fp: 'Context.', floor: 'high' },
+  'L42-04': { name: 'fatal state exposure in UI', sub: 'no fatal state exposure', trigger: 'Raw error display developer tools.', evidence: 'Fatal UX.', fp: 'Context.', floor: 'high' },
+  'L42-05': { name: 'component state-machine mismatch', sub: 'component state-machine correctness', trigger: 'Invalid UI transition animation.', evidence: 'UI Logic.', fp: 'Context.', floor: 'medium' },
+  'L42-06': { name: 'UI accessibility contract gap', sub: 'UI accessibility contract', trigger: 'A11y failure non-interactive display.', evidence: 'A11y.', fp: 'Context.', floor: 'high' },
+  'L42-07': { name: 'UI layout contract violation', sub: 'UI layout contract', trigger: 'Layout break dynamic layouts.', evidence: 'UI Contract.', fp: 'Context.', floor: 'medium' },
+  'L42-08': { name: 'mandatory UI component missing', sub: 'mandatory UI component existence', trigger: 'Functional UI gap optional UI.', evidence: 'UI Contract.', fp: 'Context.', floor: 'high' },
+  'L42-09': { name: 'UI layout contract violation detail', sub: 'UI layout contract', trigger: 'Layout break detail dynamic layouts.', evidence: 'UI Contract.', fp: 'Context.', floor: 'medium' },
+  'L42-10': { name: 'UI accessibility gap detail', sub: 'UI accessibility contract', trigger: 'A11y failure detail non-interactive.', evidence: 'A11y.', fp: 'Context.', floor: 'high' },
+  'L42-11': { name: 'component state-machine gap', sub: 'component state-machine correctness', trigger: 'Missing UI state simple elements.', evidence: 'UI Logic.', fp: 'Context.', floor: 'medium' },
+  'L42-12': { name: 'mandatory UI component missing detail', sub: 'mandatory UI component missing', trigger: 'Functional UI gap optional expert.', evidence: 'UI Contract.', fp: 'Context.', floor: 'high' },
+  'L43-01': { name: 'transition non-determinism', sub: 'transition determinism', trigger: 'Variable transition intentional entropy.', evidence: 'Execution.', fp: 'Context.', floor: 'critical' },
+  'L43-02': { name: 'concurrency model ambiguity', sub: 'concurrency model definition', trigger: 'Race condition risk single-threaded.', evidence: 'Concurrency.', fp: 'Context.', floor: 'high' },
+  'L43-03': { name: 'deadlock livelock risk', sub: 'deadlock / livelock prevention', trigger: 'Lock cycle re-entrant locks.', evidence: 'Deadlock.', fp: 'Context.', floor: 'critical' },
+  'L43-04': { name: 'scheduling non-determinism', sub: 'scheduling determinism', trigger: 'Unstable schedule dynamic priority.', evidence: 'Execution.', fp: 'Context.', floor: 'high' },
+  'L43-05': { name: 'retry backoff indeterminism', sub: 'retry and backoff policy', trigger: 'Unstable retry exponential backoff.', evidence: 'Retry.', fp: 'Context.', floor: 'medium' },
+  'L43-06': { name: 'deterministic replay impossible', sub: 'deterministic replay capability', trigger: 'Replay drift real-time only.', evidence: 'Replay.', fp: 'Context.', floor: 'high' },
+  'L43-07': { name: 'timing dependency gap', sub: 'timing dependency', trigger: 'Race window generous timeouts.', evidence: 'Execution.', fp: 'Context.', floor: 'high' },
+  'L43-08': { name: 'resource ordering gap', sub: 'resource ordering', trigger: 'Inconsistent lock order single-threaded.', evidence: 'Concurrency.', fp: 'Context.', floor: 'high' },
+  'L43-09': { name: 'scheduling non-determinism detail', sub: 'scheduling determinism', trigger: 'Variable task order preemptive OS.', evidence: 'Execution.', fp: 'Context.', floor: 'high' },
+  'L43-10': { name: 'deterministic replay impossible detail', sub: 'deterministic replay capability', trigger: 'Replay divergence live-only systems.', evidence: 'Replay.', fp: 'Context.', floor: 'high' },
+  'L43-11': { name: 'transition determinism failure', sub: 'transition determinism', trigger: 'Non-deterministic transition random.', evidence: 'Execution.', fp: 'Context.', floor: 'critical' },
+  'L43-12': { name: 'scheduling non-determinism detail 2', sub: 'scheduling non-determinism', trigger: 'Unstable schedule rules preemptive.', evidence: 'Execution.', fp: 'Context.', floor: 'high' },
+  'L44-01': { name: 'control plane separation breach', sub: 'control-plane separation', trigger: 'Authority leak integrated proxies.', evidence: 'Control Plane.', fp: 'Context.', floor: 'critical' },
+  'L44-02': { name: 'authority delegation ambiguity', sub: 'authority delegation rules', trigger: 'Delegation gap static authority.', evidence: 'Control Plane.', fp: 'Context.', floor: 'high' },
+  'L44-03': { name: 'override condition gap', sub: 'override conditions', trigger: 'Permanent override manual reset.', evidence: 'Override.', fp: 'Context.', floor: 'high' },
+  'L44-04': { name: 'execution owner boundary gap', sub: 'execution owner boundary', trigger: 'Owner ambiguity shared authority.', evidence: 'Execution.', fp: 'Context.', floor: 'high' },
+  'L44-05': { name: 'policy enforcement point gap', sub: 'policy enforcement points', trigger: 'Unenforced policy self-governing.', evidence: 'Governance.', fp: 'Context.', floor: 'high' },
+  'L44-06': { name: 'escalation path ambiguity', sub: 'escalation path', trigger: 'No escalation path fail-fast.', evidence: 'Escalation.', fp: 'Context.', floor: 'medium' },
+  'L44-07': { name: 'audit trail requirement gap', sub: 'audit trail requirements', trigger: 'Missing audit trail read-only.', evidence: 'Audit.', fp: 'Context.', floor: 'critical' },
+  'L44-08': { name: 'control-plane authority confusion', sub: 'control-plane separation', trigger: 'Authority confusion admin proxies.', evidence: 'Control Plane.', fp: 'Context.', floor: 'high' },
+  'L44-09': { name: 'escalation path gap', sub: 'escalation path', trigger: 'No escalation spec automated.', evidence: 'Escalation.', fp: 'Context.', floor: 'high' },
+  'L44-10': { name: 'audit trail omission', sub: 'audit trail requirements', trigger: 'Unlogged action read-only queries.', evidence: 'Audit.', fp: 'Context.', floor: 'critical' },
+  'L44-11': { name: 'control plane authority leak', sub: 'control plane separation violation', trigger: 'Authority bypass unified interfaces.', evidence: 'Control Plane.', fp: 'Context.', floor: 'high' },
+  'L45-01': { name: 'state mutation invariant gap', sub: 'state mutation invariants', trigger: 'Invariant breach transitional states.', evidence: 'State Governance.', fp: 'Context.', floor: 'critical' },
+  'L45-02': { name: 'mutation gateway bypass', sub: 'mutation gateway exclusivity', trigger: 'Gateway bypass system recovery.', evidence: 'State Governance.', fp: 'Context.', floor: 'critical' },
+  'L45-03': { name: 'commit hash binding gap', sub: 'commit_hash binding', trigger: 'Unbound mutation ephemeral state.', evidence: 'Binding.', fp: 'Context.', floor: 'high' },
+  'L45-04': { name: 'read write atomicity failure', sub: 'read/write atomicity', trigger: 'Partial read independent fields.', evidence: 'Atomicity.', fp: 'Context.', floor: 'high' },
+  'L45-05': { name: 'graph consistency gap', sub: 'graph consistency / acyclicity', trigger: 'Inconsistent graph flexible meshes.', evidence: 'State Graph.', fp: 'Context.', floor: 'medium' },
+  'L45-06': { name: 'state isolation breach', sub: 'state isolation', trigger: 'Isolation leak global read-only.', evidence: 'Isolation.', fp: 'Context.', floor: 'high' },
+  'L45-07': { name: 'temporal state inconsistency gap', sub: 'temporal state consistency', trigger: 'Anachronistic read eventually consistent.', evidence: 'Consistency.', fp: 'Context.', floor: 'high' },
+  'L45-08': { name: 'state mutation invariant omission', sub: 'state mutation invariants', trigger: 'Missing invariant simple increments.', evidence: 'State Governance.', fp: 'Context.', floor: 'high' },
+  'L45-09': { name: 'graph acyclicity gap', sub: 'graph consistency / acyclicity', trigger: 'Potential cycle DAG-enforced.', evidence: 'State Graph.', fp: 'Context.', floor: 'high' },
+  'L45-10': { name: 'temporal state inconsistency', sub: 'temporal state consistency', trigger: 'Stale snapshot event-sourced.', evidence: 'Consistency.', fp: 'Context.', floor: 'high' },
+  'L45-11': { name: 'state mutation gateway breach', sub: 'mutation gateway exclusivity', trigger: 'Gate bypass system bootstrap.', evidence: 'Gateway.', fp: 'Context.', floor: 'critical' },
+  'L45-12': { name: 'state mutation invariant gap detail', sub: 'state mutation invariant gap', trigger: 'Missing invariant spec simple counters.', evidence: 'State Governance.', fp: 'Context.', floor: 'high' }
 };
 
-/**
- * Enhanced Detector Map (Final 383)
- */
 export const DETECTOR_METADATA = {};
 
-// Process raw metadata into full objects
 Object.entries(rawMetadata).forEach(([id, meta]) => {
   const layerId = id.split('-')[0].replace('L', '');
-  const layerSlug = Object.keys(LAYER_SUBCATEGORIES)[parseInt(layerId) - 1];
+  const layerIdx = parseInt(layerId) - 1;
+  const layerSlug = Object.keys(LAYER_SUBCATEGORIES)[layerIdx];
   
+  if (!layerSlug) {
+    console.warn(`Unknown layer for ID ${id}`);
+    return;
+  }
+
   DETECTOR_METADATA[id] = {
     id,
     name: meta.name,
@@ -597,7 +736,7 @@ export function normalizeSeverityForDetector(detectorId, severity) {
   const severityOrder = { critical: 3, high: 2, medium: 1, low: 0 };
   
   let val = severityOrder[severity?.toLowerCase()];
-  if (val === undefined) val = 1; // Default to medium if unknown
+  if (val === undefined) val = 1;
 
   const floor = severityOrder[meta.severity_floor?.toLowerCase()] || 0;
   if (val < floor) return meta.severity_floor;
@@ -610,10 +749,6 @@ export function normalizeSeverityForDetector(detectorId, severity) {
   return severity;
 }
 
-/**
- * Enriches an issue with metadata based on its detector_id.
- * Backfills missing fields and normalizes severity.
- */
 export function normalizeIssueFromDetector(issue, diagnostics = null) {
   if (!issue) return issue;
   
@@ -624,59 +759,29 @@ export function normalizeIssueFromDetector(issue, diagnostics = null) {
   const meta = getDetectorMetadata(detectorId);
   
   if (diagnostics) {
-    if (parsedId && !originalDetectorId) {
-      diagnostics.detector_id_parsed_from_description_count++;
-    }
-    if (detectorId && !meta) {
-      diagnostics.unknown_detector_id_count++;
-    }
+    if (parsedId && !originalDetectorId) diagnostics.detector_id_parsed_from_description_count++;
+    if (detectorId && !meta) diagnostics.unknown_detector_id_count++;
   }
 
   if (!meta) {
-    if (diagnostics && !issue.category && !issue.subcategory) {
-      diagnostics.missing_taxonomy_after_normalization_count++;
-    }
+    if (diagnostics && !issue.category && !issue.subcategory) diagnostics.missing_taxonomy_after_normalization_count++;
     return issue;
   }
 
   const enriched = { ...issue };
   let normalizedCounted = false;
   
-  // 1. Backfill detector_id if it was only in description
-  if (!enriched.detector_id && detectorId) {
-    enriched.detector_id = detectorId;
-    normalizedCounted = true;
-  }
+  if (!enriched.detector_id && detectorId) { enriched.detector_id = detectorId; normalizedCounted = true; }
+  if (!enriched.detector_name) { enriched.detector_name = meta.name; normalizedCounted = true; }
+  if (!enriched.subcategory) { enriched.subcategory = meta.subcategory; normalizedCounted = true; }
+  if (!enriched.layer) { enriched.layer = meta.layer; normalizedCounted = true; }
+  if (!enriched.category) { enriched.category = meta.layer; normalizedCounted = true; }
 
-  // 2. Backfill missing fields from metadata
-  if (!enriched.detector_name) {
-    enriched.detector_name = meta.name;
-    normalizedCounted = true;
-  }
-  if (!enriched.subcategory) {
-    enriched.subcategory = meta.subcategory;
-    normalizedCounted = true;
-  }
-  if (!enriched.layer) {
-    enriched.layer = meta.layer;
-    normalizedCounted = true;
-  }
-  if (!enriched.category) {
-    enriched.category = meta.layer;
-    normalizedCounted = true;
-  }
+  if (diagnostics && normalizedCounted) diagnostics.normalized_from_detector_count++;
 
-  if (diagnostics && normalizedCounted) {
-    diagnostics.normalized_from_detector_count++;
-  }
-
-  // 3. Normalize severity based on metadata bounds
   const originalSeverity = enriched.severity;
   enriched.severity = normalizeSeverityForDetector(detectorId, enriched.severity);
-  
-  if (diagnostics && enriched.severity !== originalSeverity) {
-    diagnostics.severity_clamped_count++;
-  }
+  if (diagnostics && enriched.severity !== originalSeverity) diagnostics.severity_clamped_count++;
 
   return enriched;
 }
@@ -709,16 +814,14 @@ export function isValidDetectorForSubcategory(detectorId, subcategory) {
 }
 
 export function buildDetectorPrompt() {
-  let prompt = `--- DETECTOR CATALOG (383 DETECTORS) ---\n\n`;
+  const detectorCount = Object.keys(DETECTOR_METADATA).length;
+  let prompt = `--- DETECTOR CATALOG (${detectorCount} DETECTORS) ---\n\n`;
   
   for (const [layerSlug, subcats] of Object.entries(LAYER_SUBCATEGORIES)) {
     const layerIdx = Object.keys(LAYER_SUBCATEGORIES).indexOf(layerSlug) + 1;
     prompt += `LAYER ${layerIdx} [${layerSlug}]\n`;
-    
-    // Get detectors for this layer
     const layerDetectors = Object.values(DETECTOR_METADATA).filter(d => d.layer === layerSlug);
     layerDetectors.sort((a, b) => a.id.localeCompare(b.id));
-    
     layerDetectors.forEach(d => {
       prompt += `[${d.id}] ${d.name}\n`;
       prompt += `  - Subcategory: ${d.subcategory}\n`;
@@ -728,29 +831,16 @@ export function buildDetectorPrompt() {
       prompt += `  - Severity: ${d.severity_floor}+\n\n`;
     });
   }
-  
   return prompt;
 }
 
-// Legacy compatibility
-export function getSubcategoryPrompt() {
-  return buildDetectorPrompt();
-}
+export function getSubcategoryPrompt() { return buildDetectorPrompt(); }
 
-/**
- * Shapes data for JSON export, including taxonomy diagnostics.
- */
 export function buildExportData(results, taxonomyDiagnostics) {
   if (!results) return null;
-  return {
-    ...results,
-    taxonomyDiagnostics
-  };
+  return { ...results, taxonomyDiagnostics };
 }
 
-/**
- * Shapes data for session saving.
- */
 export function buildSessionData({ results, taxonomyDiagnostics, files, config }) {
   if (!results) return null;
   return {
@@ -762,136 +852,63 @@ export function buildSessionData({ results, taxonomyDiagnostics, files, config }
   };
 }
 
-/**
- * Decides which cache to use and whether migration is needed.
- * Returns { cache, shouldMigrate }.
- */
 export function resolveInitialCache(fileCache, legacyCacheString) {
-  // 1. If file cache is present and non-empty, it takes precedence
-  if (fileCache && Object.keys(fileCache).length > 0) {
-    return { cache: fileCache, shouldMigrate: false };
-  }
-
-  // 2. If file cache is empty/missing, attempt to migrate from legacy localStorage
+  if (fileCache && Object.keys(fileCache).length > 0) return { cache: fileCache, shouldMigrate: false };
   if (legacyCacheString) {
     try {
       const parsed = JSON.parse(legacyCacheString);
-      if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
-        return { cache: parsed, shouldMigrate: true };
-      }
-    } catch (e) {
-      // Malformed legacy data is ignored
-    }
+      if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) return { cache: parsed, shouldMigrate: true };
+    } catch (e) {}
   }
-
-  // 3. Fallback to empty state
   return { cache: {}, shouldMigrate: false };
 }
 
-/**
- * Normalizes text for stable identity comparison.
- */
-export const normalizeIdentityText = (text) => (text || '')
-  .replace(/\s+/g, ' ')
-  .trim()
-  .toLowerCase();
+export const normalizeIdentityText = (text) => (text || '').replace(/\s+/g, ' ').trim().toLowerCase();
 
-/**
- * Lightweight string hashing for stable keys.
- */
 export const hashDescription = (text) => {
   let hash = 0;
-  for (let i = 0; i < text.length; i++) {
-    const char = text.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
+  for (let i = 0; i < text.length; i++) { hash = ((hash << 5) - hash) + text.charCodeAt(i); hash = hash & hash; }
   return Math.abs(hash).toString(36);
 };
 
-/**
- * Generates a stable identity key for an issue.
- */
 export const getIssueIdentity = (issue) => {
-  // Create unique key from detector ID, primary file, section, and line number
-  // If line_number is missing, use a stable description+evidence fingerprint as fallback
   const detectorMatch = issue.description?.match(/\[L(\d+)-(\d+)\]/);
   const detectorId = issue.detector_id || (detectorMatch ? `L${detectorMatch[1]}-${detectorMatch[2]}` : 'unknown');
   const primaryFile = issue.files?.[0] || 'unknown';
   const section = issue.section || 'no-section';
-  
-  if (issue.line_number) {
-    return `${detectorId}::${primaryFile}::${section}::${issue.line_number}`;
-  }
-  
-  // Stable fingerprint fallback
+  if (issue.line_number) return `${detectorId}::${primaryFile}::${section}::${issue.line_number}`;
   const description = normalizeIdentityText(issue.description);
   const evidenceSnippet = normalizeIdentityText(issue.evidence).slice(0, 240);
-  const fingerprintSource = evidenceSnippet
-    ? `${description}::${evidenceSnippet}`
-    : description;
-
+  const fingerprintSource = evidenceSnippet ? `${description}::${evidenceSnippet}` : description;
   return `${detectorId}::${primaryFile}::${section}::fp:${hashDescription(fingerprintSource)}`;
 };
 
-/**
- * Compares two audit result sets and returns a diff summary.
- */
 export const compareAudits = (current, previous) => {
   if (!previous || !current || !current.issues) return null;
-  
   const currIssuesMap = new Map();
   current.issues.forEach(i => currIssuesMap.set(getIssueIdentity(i), i));
-  
   const prevIssuesMap = new Map();
   (previous.issues || []).forEach(i => prevIssuesMap.set(getIssueIdentity(i), i));
-  
   const newIssues = [];
   const resolvedIssues = [];
   const changedSeverity = [];
   const unchanged = [];
-  
-  // New and changed
   currIssuesMap.forEach((issue, id) => {
-    if (!prevIssuesMap.has(id)) {
-      newIssues.push({ ...issue, diffStatus: 'new' });
-    } else {
+    if (!prevIssuesMap.has(id)) newIssues.push({ ...issue, diffStatus: 'new' });
+    else {
       const prev = prevIssuesMap.get(id);
-      if (issue.severity !== prev.severity) {
-        changedSeverity.push({ ...issue, diffStatus: 'changed', prevSeverity: prev.severity });
-      } else {
-        unchanged.push({ ...issue, diffStatus: 'unchanged' });
-      }
+      if (issue.severity !== prev.severity) changedSeverity.push({ ...issue, diffStatus: 'changed', prevSeverity: prev.severity });
+      else unchanged.push({ ...issue, diffStatus: 'unchanged' });
     }
   });
-  
-  // Resolved
-  prevIssuesMap.forEach((issue, id) => {
-    if (!currIssuesMap.has(id)) {
-      resolvedIssues.push({ ...issue, diffStatus: 'resolved' });
-    }
-  });
-  
-  return {
-    new: newIssues,
-    resolved: resolvedIssues,
-    changed: changedSeverity,
-    unchanged,
-    totalNew: newIssues.length,
-    totalResolved: resolvedIssues.length,
-    totalChanged: changedSeverity.length
-  };
+  prevIssuesMap.forEach((issue, id) => { if (!currIssuesMap.has(id)) resolvedIssues.push({ ...issue, diffStatus: 'resolved' }); });
+  return { new: newIssues, resolved: resolvedIssues, changed: changedSeverity, unchanged, totalNew: newIssues.length, totalResolved: resolvedIssues.length, totalChanged: changedSeverity.length };
 };
 
-/**
- * Normalizes a loaded session by applying taxonomy backfilling and calculating diagnostics.
- */
 export function normalizeLoadedSession(session) {
   if (!session || !session.results) return session;
-
   const diagnostics = createInitialDiagnostics();
   const normalized = { ...session };
-  
   if (normalized.results.issues) {
     normalized.results.issues = normalized.results.issues.map(issue => {
       const enriched = normalizeIssueFromDetector(issue, diagnostics);
@@ -899,19 +916,12 @@ export function normalizeLoadedSession(session) {
       return enriched;
     });
   }
-
-  // Update session diagnostics based on load normalization
   normalized.taxonomyDiagnostics = diagnostics;
-  
   return normalized;
 }
 
-/**
- * Builds a lightweight metadata object for the history index.
- */
 export function buildHistoryMetadata(results, files, config, domainProfileId, sourceType = 'fresh_analysis') {
   if (!results) return null;
-  
   return {
     timestamp: new Date().toISOString(),
     title: `Audit ${new Date().toLocaleString()}`,

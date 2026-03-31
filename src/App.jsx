@@ -972,7 +972,7 @@ export default function App() {
                 </p>
                 {results.summary?.detectors_evaluated !== undefined && (
                   <p className="text-xs text-[#6B7280] mt-1">
-                    Detectors: {results.summary.detectors_evaluated}/383 evaluated
+                    Detectors: {results.summary.detectors_evaluated}/612 evaluated
                     {results.summary.detectors_skipped > 0 && ` · ${results.summary.detectors_skipped} skipped`}
                   </p>
                 )}

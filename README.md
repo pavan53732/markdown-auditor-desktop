@@ -1,18 +1,18 @@
 # Markdown Document Intelligence Auditor
 
-Windows desktop application for auditing Markdown documentation with AI across 45 analytical layers and 383 micro-detectors.
+Windows desktop application for auditing Markdown documentation with AI across 45 analytical layers and 612 micro-detectors.
 
 ## Overview
 
 Markdown Intelligence Auditor is an Electron + React desktop app that accepts one or more `.md` / `.markdown` files, sends them to an OpenAI-compatible provider, and returns a structured report of documentation issues with severity, traceability, remediation guidance, and export support.
 
-The current build includes chunk-aware batching, deterministic post-processing, incremental result reuse, session diffing, root-cause grouping, a structured 383-detector catalog, and portable Windows packaging.
+The current build includes chunk-aware batching, deterministic post-processing, incremental result reuse, session diffing, root-cause grouping, a structured 612-detector catalog, and portable Windows packaging.
 
 ## Current Capabilities
 
 - Drag-and-drop upload for `.md` and `.markdown` files
 - 45 analytical layers with explicit, deepened subcategories preventing thematic ambiguity
-- 383 code-defined micro-detectors across all 45 layers, including 13 deep-spec layers with full detector coverage
+- 612 code-defined micro-detectors across all 45 layers, including 13 deep-spec layers with full detector coverage
 - Full structured detector metadata including trigger patterns, evidence requirements, related layers, and false-positive guards
 - Taxonomy benchmark fixtures supporting automated evaluation of classification correctness
 - Programmatic system prompt generation from structured taxonomy and metadata
@@ -96,7 +96,7 @@ Any additional OpenAI-compatible provider, including services such as Together A
 
 1. `SCAN`
    - read input files
-   - evaluate 383 detectors
+    - evaluate 612 detectors
    - record detector coverage
 2. `CROSS-LAYER CORRELATION`
    - relate findings across layers
@@ -323,7 +323,7 @@ Current packaged output:
 
 ## Release Readiness
 
-- **Current Version**: 1.10.0
+- **Current Version**: 1.11.0
 - **Verification Status**: Local verification performed via `npm run verify`
 - **Logic Status**: Verified all tests pass via `npm test`
 - **Packaging**: Local Windows packaging supported via `npm run dist`

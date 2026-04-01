@@ -686,13 +686,43 @@ const rawMetadata = {
   'L42-14': { name: 'UI fatal-state exposure detail', sub: 'UI fatal-state exposure', trigger: 'Fatal state exposed without recovery.', evidence: 'Fatal UX.', fp: 'Context.', floor: 'critical' }
 };
 
+const RELATED_LAYERS_MAP = {
+  // L33 specification_formalism → requirement, completeness, logical, contradiction, state_machine
+  'L33': ['requirement', 'completeness', 'logical', 'contradiction', 'state_machine'],
+  // L34 simulation_verification → governance, deterministic_execution, tool_execution_safety, resilience, control_plane_authority
+  'L34': ['governance', 'deterministic_execution', 'tool_execution_safety', 'resilience', 'control_plane_authority'],
+  // L35 memory_world_model → world_state_governance, data_flow, state_machine, deterministic_execution, agent_orchestration
+  'L35': ['world_state_governance', 'data_flow', 'state_machine', 'deterministic_execution', 'agent_orchestration'],
+  // L36 agent_orchestration → tool_execution_safety, control_plane_authority, memory_world_model, governance, architectural
+  'L36': ['tool_execution_safety', 'control_plane_authority', 'memory_world_model', 'governance', 'architectural'],
+  // L37 tool_execution_safety → deployment_contract, platform_abstraction, deterministic_execution, agent_orchestration, security
+  'L37': ['deployment_contract', 'platform_abstraction', 'deterministic_execution', 'agent_orchestration', 'security'],
+  // L38 deployment_contract → platform_abstraction, resilience, deterministic_execution, configuration, tool_execution_safety
+  'L38': ['platform_abstraction', 'resilience', 'deterministic_execution', 'configuration', 'tool_execution_safety'],
+  // L39 platform_abstraction → deployment_contract, configuration, architectural, tool_execution_safety, deterministic_execution
+  'L39': ['deployment_contract', 'configuration', 'architectural', 'tool_execution_safety', 'deterministic_execution'],
+  // L40 context_orchestration → execution_path, memory_world_model, deterministic_execution, reasoning_integrity, security
+  'L40': ['execution_path', 'memory_world_model', 'deterministic_execution', 'reasoning_integrity', 'security'],
+  // L41 reasoning_integrity → contradiction, logical, factual, metacognition, specification_formalism
+  'L41': ['contradiction', 'logical', 'factual', 'metacognition', 'specification_formalism'],
+  // L42 ui_surface_contract → state_machine, usability, functional, error_handling, architectural
+  'L42': ['state_machine', 'usability', 'functional', 'error_handling', 'architectural'],
+  // L43 deterministic_execution → state_machine, temporal, execution_path, resilience, control_plane_authority
+  'L43': ['state_machine', 'temporal', 'execution_path', 'resilience', 'control_plane_authority'],
+  // L44 control_plane_authority → architectural, governance, execution_path, security, agent_orchestration
+  'L44': ['architectural', 'governance', 'execution_path', 'security', 'agent_orchestration'],
+  // L45 world_state_governance → memory_world_model, data_flow, governance, state_machine, deterministic_execution
+  'L45': ['memory_world_model', 'data_flow', 'governance', 'state_machine', 'deterministic_execution'],
+};
+
 export const DETECTOR_METADATA = {};
 
 Object.entries(rawMetadata).forEach(([id, meta]) => {
-  const layerId = id.split('-')[0].replace('L', '');
-  const layerIdx = parseInt(layerId) - 1;
+  const layerNum = id.split('-')[0].replace('L', '');
+  const layerIdx = parseInt(layerNum) - 1;
   const layerSlug = Object.keys(LAYER_SUBCATEGORIES)[layerIdx];
-  
+  const layerPrefix = `L${layerNum}`;
+
   if (!layerSlug) {
     console.warn(`Unknown layer for ID ${id}`);
     return;
@@ -710,7 +740,7 @@ Object.entries(rawMetadata).forEach(([id, meta]) => {
     severity_floor: meta.floor,
     severity_ceiling: meta.ceiling,
     remediation_template: meta.remediation || `Resolve the ${meta.name} by following best practices for ${layerSlug}.`,
-    related_layers: meta.related_layers || []
+    related_layers: RELATED_LAYERS_MAP[layerPrefix] || []
   };
 });
 

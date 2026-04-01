@@ -324,7 +324,7 @@ Current packaged output:
 
 ## Release Readiness
 
-- **Current Version**: 1.11.0
+- **Current Version**: 1.12.0
 - **Verification Status**: Local verification performed via `npm run verify`
 - **Logic Status**: Verified all tests pass via `npm test`
 - **Packaging**: Local Windows packaging supported via `npm run dist`

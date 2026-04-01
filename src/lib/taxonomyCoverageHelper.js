@@ -33,6 +33,12 @@ export function generateTaxonomyQualityReport() {
     // Subcategory density warnings
     const subcategoryDensity = subcategories.length > 0 ? usedSubcategories.size / subcategories.length : 0;
 
+    // ─── NEW: related_layers coverage percent per layer ──────────────────
+    const detectorsWithRelatedLayers = layerDetectors.filter(d => Array.isArray(d.related_layers) && d.related_layers.length > 0).length;
+    const relatedLayersCoveragePct = layerDetectors.length > 0
+      ? Math.round((detectorsWithRelatedLayers / layerDetectors.length) * 100)
+      : 0;
+
     // ─── NEW: Metadata richness scoring (0-100 based on 4 fields) ──────
     const fieldsToCheck = ['severity_ceiling', 'severity_floor', 'trigger_pattern', 'related_layers'];
     const richnessFieldCounts = fieldsToCheck.map(field => {
@@ -104,7 +110,8 @@ export function generateTaxonomyQualityReport() {
       isDeepSpecLayer,
       isDeepLayerDensityGap,
       isLowMetadataRichness,
-      isLowRichnessDeepLayer
+      isLowRichnessDeepLayer,
+      relatedLayersCoveragePct
     };
   });
 
@@ -159,7 +166,8 @@ export function generateTaxonomyQualityReport() {
       isDeepSpecLayer: s.isDeepSpecLayer,
       isDeepLayerDensityGap: s.isDeepLayerDensityGap,
       isLowMetadataRichness: s.isLowMetadataRichness,
-      isLowRichnessDeepLayer: s.isLowRichnessDeepLayer
+      isLowRichnessDeepLayer: s.isLowRichnessDeepLayer,
+      relatedLayersCoveragePct: s.relatedLayersCoveragePct
     };
   });
 
@@ -246,6 +254,56 @@ export function generateTaxonomyQualityReport() {
       richnessPct: s.metadataRichnessPct
     }));
 
+  // ─── NEW: Weakest cross-layer metadata (bottom 10 by related_layers coverage) ──
+  const weakestCrossLayerMetadata = [...layerStats]
+    .sort((a, b) => a.relatedLayersCoveragePct - b.relatedLayersCoveragePct)
+    .slice(0, 10)
+    .map(s => ({
+      layer: s.layer,
+      relatedLayersCoveragePct: s.relatedLayersCoveragePct,
+      missingRelatedLayersCount: s.missingRelatedLayers
+    }));
+
+  // ─── NEW: Most frequently referenced layers ───────────────────────────
+  const layerReferenceCounts = {};
+  detectors.forEach(d => {
+    if (Array.isArray(d.related_layers)) {
+      d.related_layers.forEach(refLayer => {
+        layerReferenceCounts[refLayer] = (layerReferenceCounts[refLayer] || 0) + 1;
+      });
+    }
+  });
+  const mostReferencedLayers = Object.entries(layerReferenceCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([layer, count]) => ({ layer, count }));
+
+  // ─── NEW: Top cross-layer relationship pairs ──────────────────────────
+  const pairCounts = {};
+  detectors.forEach(d => {
+    if (Array.isArray(d.related_layers) && d.related_layers.length > 0) {
+      d.related_layers.forEach(refLayer => {
+        const pair = `${d.layer}→${refLayer}`;
+        pairCounts[pair] = (pairCounts[pair] || 0) + 1;
+      });
+    }
+  });
+  const topCrossLayerRelationships = Object.entries(pairCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([pair, count]) => ({ pair, count }));
+
+  // ─── NEW: related_layers summary ──────────────────────────────────────
+  const totalDetectorsWithRelatedLayers = detectors.filter(d => Array.isArray(d.related_layers) && d.related_layers.length > 0).length;
+  const totalDetectorsWithoutRelatedLayers = totalDetectors - totalDetectorsWithRelatedLayers;
+  const relatedLayersSummary = {
+    totalDetectorsWithRelatedLayers,
+    totalDetectorsWithoutRelatedLayers,
+    coveragePercent: totalDetectors > 0
+      ? Math.round((totalDetectorsWithRelatedLayers / totalDetectors) * 100)
+      : 0
+  };
+
   return {
     totalLayers: layers.length,
     totalDetectors,
@@ -265,6 +323,10 @@ export function generateTaxonomyQualityReport() {
     bundleCoverageGaps,
     missingFieldSummaries,
     lowMetadataRichnessWarnings,
-    lowRichnessDeepLayerWarnings
+    lowRichnessDeepLayerWarnings,
+    weakestCrossLayerMetadata,
+    mostReferencedLayers,
+    topCrossLayerRelationships,
+    relatedLayersSummary
   };
 }

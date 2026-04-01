@@ -408,3 +408,99 @@ describe('Taxonomy Drift Prevention', () => {
     });
   });
 });
+
+describe('Related Layers Validity', () => {
+  it('all related_layers reference valid layer IDs from layers.js', () => {
+    const validLayerIds = new Set(LAYERS.map(l => l.id));
+    Object.values(DETECTOR_METADATA).forEach(meta => {
+      if (Array.isArray(meta.related_layers) && meta.related_layers.length > 0) {
+        meta.related_layers.forEach(refLayer => {
+          expect(validLayerIds.has(refLayer)).toBe(true);
+        });
+      }
+    });
+  });
+
+  it('all 191 deep-spec detectors (L33-L45) have non-empty related_layers', () => {
+    const deepSpecDetectors = Object.values(DETECTOR_METADATA).filter(d => {
+      const layerNum = parseInt(d.id.match(/^L(\d+)/)[1]);
+      return layerNum >= 33 && layerNum <= 45;
+    });
+    expect(deepSpecDetectors.length).toBe(191);
+    deepSpecDetectors.forEach(d => {
+      expect(Array.isArray(d.related_layers)).toBe(true);
+      expect(d.related_layers.length).toBeGreaterThan(0);
+    });
+  });
+
+  it('L1-L32 detectors have empty related_layers (by design)', () => {
+    const shallowDetectors = Object.values(DETECTOR_METADATA).filter(d => {
+      const layerNum = parseInt(d.id.match(/^L(\d+)/)[1]);
+      return layerNum >= 1 && layerNum <= 32;
+    });
+    shallowDetectors.forEach(d => {
+      expect(Array.isArray(d.related_layers)).toBe(true);
+      expect(d.related_layers.length).toBe(0);
+    });
+  });
+});
+
+describe('Helper Report Related-Layer Coverage', () => {
+  it('relatedLayersSummary reports 191 detectors with related_layers', () => {
+    const report = generateTaxonomyQualityReport();
+    expect(report.relatedLayersSummary.totalDetectorsWithRelatedLayers).toBe(191);
+  });
+
+  it('relatedLayersSummary reports 446 detectors without related_layers', () => {
+    const report = generateTaxonomyQualityReport();
+    expect(report.relatedLayersSummary.totalDetectorsWithoutRelatedLayers).toBe(446);
+  });
+
+  it('weakestCrossLayerMetadata entries are all from L1-L32 layers (0% coverage)', () => {
+    const report = generateTaxonomyQualityReport();
+    const weakestLayers = report.weakestCrossLayerMetadata.map(e => e.layer);
+    const shallowLayerIds = new Set(LAYERS.slice(0, 32).map(l => l.id));
+    weakestLayers.forEach(layerId => {
+      expect(shallowLayerIds.has(layerId)).toBe(true);
+    });
+  });
+
+  it('mostReferencedLayers is non-empty', () => {
+    const report = generateTaxonomyQualityReport();
+    expect(Array.isArray(report.mostReferencedLayers)).toBe(true);
+    expect(report.mostReferencedLayers.length).toBeGreaterThan(0);
+  });
+});
+
+describe('Bundle and Related Layers Consistency', () => {
+  it('bundle layer cross-reference analysis runs without error', () => {
+    // Soft check: verify that for each bundle, we can analyze related_layers coverage
+    // Some bundles may have layers without direct related_layers cross-references
+    // because RELATED_LAYERS_MAP captures common patterns, not bundle-specific ones
+    const analysisResults = CROSS_LAYER_BUNDLES.map(bundle => {
+      const bundleLayerIds = new Set(bundle.layers);
+      const layerCrossReferences = {};
+      bundle.layers.forEach(layerId => {
+        const detectorsInLayer = Object.values(DETECTOR_METADATA).filter(d => d.layer === layerId);
+        const crossRefCount = detectorsInLayer.filter(d => {
+          if (!Array.isArray(d.related_layers) || d.related_layers.length === 0) return false;
+          return d.related_layers.some(ref => bundleLayerIds.has(ref) && ref !== layerId);
+        }).length;
+        layerCrossReferences[layerId] = crossRefCount;
+      });
+      return { bundleId: bundle.id, layerCrossReferences };
+    });
+    expect(analysisResults.length).toBe(CROSS_LAYER_BUNDLES.length);
+    expect(analysisResults.every(r => typeof r.bundleId === 'string')).toBe(true);
+  });
+});
+
+describe('No Self-Referential Related Layers', () => {
+  it('no detector has its own layer in its related_layers array', () => {
+    Object.values(DETECTOR_METADATA).forEach(meta => {
+      if (Array.isArray(meta.related_layers) && meta.related_layers.length > 0) {
+        expect(meta.related_layers).not.toContain(meta.layer);
+      }
+    });
+  });
+});

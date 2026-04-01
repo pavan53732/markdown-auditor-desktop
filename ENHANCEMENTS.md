@@ -24,6 +24,7 @@ This document tracks the major product-level enhancements currently implemented 
 - deep-spec benchmark suite (`deepSpecBenchmarks.test.js`) covering control plane override abuse, evidence-free escalation, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty dropped, and world state atomicity
 - enhanced taxonomy coverage helper (`taxonomyCoverageHelper.js`) with per-layer density analysis, richness metrics, subcategory coverage tracking, and bundle coverage analysis
 - deep-spec layer strengthening with improved detector quality (4 new detectors: L44-14, L44-15, L45-15, L45-16) and bundle escalation logic (3 new bundles: agent_memory_coordination, context_orchestration_execution, deployment_resilience_contract)
+- related_layers metadata populated for 191 deep-spec detectors (L33-L45, 13 layers) to support cross-layer traceability
 - runtime taxonomy diagnostics surfaced in UI, Markdown, and JSON/Session exports
 - basic response validation before rendering
 - file-backed incremental analysis cache (`analysis_cache.json`)

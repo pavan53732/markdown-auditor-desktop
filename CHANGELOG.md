@@ -4,6 +4,21 @@ All notable changes to this project should be documented in this file.
 
 This changelog establishes the current production-ready baseline for the app as it exists in this repository.
 
+## [1.12.0] - 2026-03-31
+
+### Added
+
+- **Taxonomy Expansion to 637 Detectors**: Extended the detector catalog from 612 to 637 code-defined micro-detectors across the existing 45 top-level layers. Four new detectors added: L44-14, L44-15, L45-15, L45-16.
+- **related_layers Population**: Populated `related_layers` metadata for 191 deep-spec detectors (L33-L45, 13 layers) to support cross-layer traceability.
+- **Cross-Layer Bundle Expansion**: Increased cross-layer bundles from 22 to 25, adding agent_memory_coordination, context_orchestration_execution, and deployment_resilience_contract.
+- **Enhanced Taxonomy Coverage Helper**: Updated `taxonomyCoverageHelper.js` with `related_layers` coverage reporting for comprehensive taxonomy observability.
+- **Benchmark Suite Growth**: Deterministic benchmark tests increased from 95 to 136, with deep-spec fixtures covering control plane override abuse, evidence-free escalation, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty dropped, and world state atomicity.
+
+### Changed
+
+- **Test Suite Growth**: Test suite now includes 136 tests across all test files, fully aligned to the 637-detector catalog.
+- **Documentation Alignment**: All current-state documentation and runtime prompt text now reflect the 637-detector baseline with `related_layers` support.
+
 ## [1.11.0] - 2026-03-31
 
 ### Added

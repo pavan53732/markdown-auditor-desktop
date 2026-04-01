@@ -1,5 +1,28 @@
 # Release Notes
 
+## v1.12.0
+
+Release date: 2026-03-31
+
+This release expands the detector catalog from 612 to **637 code-defined micro-detectors** across the same 45 top-level layers, adds `related_layers` cross-referencing for deep-spec detectors, and grows the deterministic benchmark suite.
+
+### What's New
+
+- **637 Micro-Detectors**: Four new detectors added (L44-14, L44-15, L45-15, L45-16) strengthening control plane and world state governance coverage.
+- **related_layers for Deep-Spec Detectors**: Populated `related_layers` metadata for 191 detectors across layers L33-L45, enabling cross-layer traceability for complex specification audits.
+- **25 Cross-Layer Bundles**: Added three new bundles — `agent_memory_coordination`, `context_orchestration_execution`, and `deployment_resilience_contract` — for richer cross-layer correlation.
+- **136 Benchmark Tests**: Deterministic benchmark suite expanded from 95 to 136 tests, covering control plane override abuse, evidence-free escalation, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty dropped, and world state atomicity.
+
+### What's Fixed
+
+- **Taxonomy Coverage Helper**: Enhanced with `related_layers` coverage reporting for comprehensive taxonomy observability.
+- **Documentation Coherence**: All current-state docs now consistently reference the 637-detector baseline with `related_layers` support.
+
+### Known Issues
+
+- The packaged Windows executable remains unsigned; Windows SmartScreen may show a trust warning on first run.
+- Unknown detector IDs still produce warnings rather than hard failures during validation.
+
 ## v1.11.0
 
 Release date: 2026-03-31

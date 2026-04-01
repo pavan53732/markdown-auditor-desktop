@@ -93,7 +93,7 @@ The system supports a local verification workflow with deepened 45-layer coverag
 2.  **Semantic Enforcement**: Validation logic ensures that AI-reported detector IDs, layers, and subcategories are mutually consistent.
 3.  **Benchmark Evaluation**: A suite of canonical Markdown fixtures (`taxonomyBenchmark.test.js`) evaluates empirical taxonomy coverage across complex edge cases without bloating the top-level categories.
 4.  **Deep-Spec Benchmarks**: Additional deterministic benchmark tests in `deepSpecBenchmarks.test.js` (127 total tests) validate deep-spec layer behavior including control plane override abuse, evidence-free escalation, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty dropped, and world state atomicity.
-5.  **Enhanced Taxonomy Coverage Helper**: The `taxonomyCoverageHelper.js` provides per-layer density analysis, richness metrics, subcategory coverage tracking, and bundle coverage analysis for comprehensive taxonomy observability.
+5. **Enhanced Taxonomy Coverage Helper**: The `taxonomyCoverageHelper.js` provides per-layer density analysis, richness metrics, subcategory coverage tracking, bundle coverage analysis, and `related_layers` coverage reporting for comprehensive taxonomy observability.
 6.  **Runtime Diagnostics**: The application tracks enrichment, parsing, and clamping metrics during analysis and session loading.
 7.  **Observability**: Diagnostics are surfaced in the UI results summary and exports to ensure pipeline transparency.
 |-- build/

@@ -6,7 +6,8 @@ dist-electron/
 dist-electron-build/
 dist-electron-v2/
 dist-electron-v3/
-dist-electron-v4/
+dist-electron-v4/*
+!dist-electron-v4/MarkdownAuditor-portable.exe
 build/*
 !build/icon.png
 !build/icon.ico

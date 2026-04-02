@@ -44,7 +44,17 @@ export const LAYERS = [
   { id: 'deterministic_execution', label: 'Deterministic Execution', icon: '⚙️', color: '#059669', bg: '#F0FDF4', border: '#6EE7B7' },
   { id: 'control_plane_authority', label: 'Control Plane Authority', icon: '🕹️', color: '#4F46E5', bg: '#EEF2FF', border: '#A5B4FC' },
   { id: 'world_state_governance', label: 'World State Governance', icon: '🌍', color: '#D97706', bg: '#FFFBEB', border: '#FCD34D' },
+  { id: 'ontology_vocabulary_governance', label: 'Ontology & Vocabulary Governance', icon: 'ON', color: '#9D174D', bg: '#FCE7F3', border: '#F9A8D4' },
+  { id: 'workflow_lifecycle_integrity', label: 'Workflow & Lifecycle Integrity', icon: 'WF', color: '#1D4ED8', bg: '#DBEAFE', border: '#93C5FD' },
+  { id: 'authority_path_integrity', label: 'Authority Path Integrity', icon: 'AU', color: '#7C2D12', bg: '#FFEDD5', border: '#FDBA74' },
+  { id: 'artifact_reproducibility', label: 'Artifact Reproducibility', icon: 'AR', color: '#166534', bg: '#DCFCE7', border: '#86EFAC' },
+  { id: 'environment_toolchain_isolation', label: 'Environment & Toolchain Isolation', icon: 'ENV', color: '#0F766E', bg: '#CCFBF1', border: '#5EEAD4' },
+  { id: 'knowledge_source_authority', label: 'Knowledge Source Authority', icon: 'SRC', color: '#92400E', bg: '#FEF3C7', border: '#FCD34D' },
+  { id: 'failure_recovery_integrity', label: 'Failure Recovery Integrity', icon: 'REC', color: '#991B1B', bg: '#FEE2E2', border: '#FCA5A5' },
+  { id: 'operational_ux_contract', label: 'Operational UX Contract', icon: 'UX', color: '#6D28D9', bg: '#EDE9FE', border: '#C4B5FD' },
 ];
+
+export const TOTAL_LAYER_COUNT = LAYERS.length;
 
 export const SEVERITY_STYLE = {
   critical: { color: '#A32D2D', bg: '#FCEBEB', border: '#F09595', order: 0 },

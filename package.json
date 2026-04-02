@@ -1,6 +1,6 @@
 {
   "name": "markdown-intelligence-auditor",
-  "version": "1.12.0",
+  "version": "1.13.0",
   "description": "Markdown Document Intelligence Auditor - Windows Desktop App",
 
   "author": "Prem V",
@@ -34,7 +34,7 @@
         }
       ],
       "signAndEditExecutable": false,
-      "icon": "build/icon.png"
+      "icon": "build/icon.ico"
     },
     "portable": {
       "artifactName": "MarkdownAuditor-portable.exe"

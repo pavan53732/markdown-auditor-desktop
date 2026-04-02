@@ -158,7 +158,7 @@ export default function IssueCard({ issue }) {
                 <span className="text-[10px] font-mono bg-[#374151] text-[#9CA3AF] px-1.5 py-0.5 rounded">{issue.detector_id}</span>
               )}
             </div>
-            {(issue.subcategory || issue.detector_name) && (
+            {(issue.subcategory || issue.detector_name || issue.failure_type || issue.contract_step) && (
               <div className="flex flex-wrap gap-2 pb-1">
                 {issue.subcategory && (
                   <span className="px-2 py-0.5 bg-[#1F2937] border border-[#4B5563] rounded-full text-[10px] text-[#D1D5DB]">
@@ -170,12 +170,76 @@ export default function IssueCard({ issue }) {
                     Detector: {issue.detector_name}
                   </span>
                 )}
+                {issue.failure_type && (
+                  <span className="px-2 py-0.5 bg-[#1F2937] border border-[#4B5563] rounded-full text-[10px] text-[#D1D5DB]">
+                    Failure: {issue.failure_type}
+                  </span>
+                )}
+                {issue.contract_step && (
+                  <span className="px-2 py-0.5 bg-[#1F2937] border border-[#4B5563] rounded-full text-[10px] text-[#D1D5DB]">
+                    Step: {issue.contract_step}
+                  </span>
+                )}
+              </div>
+            )}
+            {(issue.invariant_broken || issue.authority_boundary || issue.constraint_reference || issue.violation_reference || issue.closed_world_status || issue.analysis_agents?.length) && (
+              <div className="grid gap-2 border-t border-[#374151] pt-2">
+                {issue.invariant_broken && (
+                  <div>
+                    <p className="text-xs font-semibold text-[#9CA3AF] mb-0.5">Invariant broken:</p>
+                    <p className="text-xs text-[#D1D5DB] break-all">{issue.invariant_broken}</p>
+                  </div>
+                )}
+                {issue.authority_boundary && (
+                  <div>
+                    <p className="text-xs font-semibold text-[#9CA3AF] mb-0.5">Authority boundary:</p>
+                    <p className="text-xs text-[#D1D5DB] break-all">{issue.authority_boundary}</p>
+                  </div>
+                )}
+                {issue.constraint_reference && (
+                  <div>
+                    <p className="text-xs font-semibold text-[#9CA3AF] mb-0.5">Constraint reference:</p>
+                    <p className="text-xs text-[#D1D5DB] break-all">{issue.constraint_reference}</p>
+                  </div>
+                )}
+                {issue.violation_reference && (
+                  <div>
+                    <p className="text-xs font-semibold text-[#9CA3AF] mb-0.5">Violation reference:</p>
+                    <p className="text-xs text-[#D1D5DB] break-all">{issue.violation_reference}</p>
+                  </div>
+                )}
+                {issue.closed_world_status && (
+                  <div>
+                    <p className="text-xs font-semibold text-[#9CA3AF] mb-0.5">Closed-world status:</p>
+                    <p className="text-xs text-[#D1D5DB]">{issue.closed_world_status}</p>
+                  </div>
+                )}
+                {issue.analysis_agents?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-[#9CA3AF] mb-1">Analysis agents:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {issue.analysis_agents.map((agentId) => (
+                        <span key={agentId} className="px-2 py-0.5 bg-[#1F2937] border border-[#4B5563] rounded-full text-[10px] text-[#D1D5DB]">
+                          {agentId}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             {issue.why_triggered && (
               <div>
                 <p className="text-xs font-semibold text-[#9CA3AF] mb-0.5">Why triggered:</p>
                 <p className="text-xs text-[#D1D5DB] leading-relaxed">{issue.why_triggered}</p>
+              </div>
+            )}
+            {issue.assumption_detected !== undefined && (
+              <div className="border-t border-[#374151] pt-2">
+                <p className="text-xs font-semibold text-[#9CA3AF] mb-0.5">Assumption detected:</p>
+                <p className={`text-xs leading-relaxed ${issue.assumption_detected ? 'text-[#FCA5A5]' : 'text-[#D1D5DB]'}`}>
+                  {issue.assumption_detected ? 'Yes - unsupported assumption materially affects this finding.' : 'No - finding is grounded in explicit document evidence.'}
+                </p>
               </div>
             )}
             {issue.escalation_reason && (
@@ -187,9 +251,15 @@ export default function IssueCard({ issue }) {
           </div>
 
           {/* Remediation Guidance */}
-          {(issue.recommended_fix || issue.fix_steps) && (
+          {(issue.deterministic_fix || issue.recommended_fix || issue.fix_steps) && (
             <div className="bg-[#064E3B] bg-opacity-20 border border-[#059669] border-opacity-30 rounded-lg p-3 space-y-3">
               <span className="text-[10px] font-bold text-[#10B981] uppercase tracking-widest">Remediation Guidance</span>
+              {issue.deterministic_fix && (
+                <div>
+                  <p className="text-xs font-semibold text-[#D1D5DB] mb-1">Deterministic Fix:</p>
+                  <p className="text-sm text-[#F9FAFB] leading-relaxed font-medium">{issue.deterministic_fix}</p>
+                </div>
+              )}
               {issue.recommended_fix && (
                 <div>
                   <p className="text-xs font-semibold text-[#D1D5DB] mb-1">Recommended Fix:</p>

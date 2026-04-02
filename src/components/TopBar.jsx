@@ -1,20 +1,33 @@
 import React from 'react';
+import brandIcon from '../assets/brand-icon.png';
 
-export default function TopBar({ providerConfigured, onOpenSettings, onOpenHistory }) {
+export default function TopBar({ providerReady, onOpenSettings, onOpenHistory }) {
   return (
     <header className="flex items-center justify-between px-6 py-3 bg-[#1F2937] border-b border-[#374151]">
-      <h1 className="text-lg font-semibold text-[#F9FAFB]">
-        Markdown Intelligence Auditor
-      </h1>
+      <div className="flex items-center gap-3">
+        <img
+          src={brandIcon}
+          alt="Markdown Intelligence Auditor"
+          className="w-10 h-10 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.25)]"
+        />
+        <div>
+          <h1 className="text-lg font-semibold text-[#F9FAFB] leading-tight">
+            Markdown Intelligence Auditor
+          </h1>
+          <p className="text-xs text-[#93C5FD] leading-tight">
+            Deterministic specification and document audit
+          </p>
+        </div>
+      </div>
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
           <span
             className={`w-2.5 h-2.5 rounded-full ${
-              providerConfigured ? 'bg-green-500' : 'bg-red-500'
+              providerReady ? 'bg-green-500' : 'bg-red-500'
             }`}
           />
           <span className="text-sm text-[#9CA3AF]">
-            {providerConfigured ? 'Provider configured' : 'Not configured'}
+            {providerReady ? 'Provider ready' : 'Setup needed'}
           </span>
         </div>
         <div className="flex items-center gap-1">

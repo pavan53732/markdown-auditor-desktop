@@ -49,9 +49,9 @@ Current packaged output:
 
 ### Analysis
 
-- 45 layers / 637 detectors
+- 53 layers / 701 detectors
 - structured detector metadata catalog in `src/lib/detectorMetadata.js`
-- dynamic prompt generation from domain profiles, cross-layer bundles (25 total), and detector metadata
+- deterministic 8-agent prompt generation from the universal taxonomy, optional domain profiles, cross-layer bundles (31 total), and detector metadata
 - detector-aware validation for known detector IDs
 - chunk-aware batching
 - deterministic normalization
@@ -60,8 +60,9 @@ Current packaged output:
 - incremental cached reuse
 - session diffing
 - root-cause grouping
-- 127 deterministic benchmark tests across 22 fixtures including 8 new deep-spec fixtures
+- 29 deterministic benchmark fixtures within a 157-test local suite across 11 files
 - enhanced taxonomy coverage helper with per-layer density, richness, subcategory, and bundle coverage analysis
+- strict issue schema enrichment including `failure_type`, `constraint_reference`, `contract_step`, `invariant_broken`, `authority_boundary`, `closed_world_status`, `analysis_agents`, and `deterministic_fix`
 
 ### UI
 
@@ -123,7 +124,7 @@ Be especially careful with:
 
 ### Analysis Prompt or Taxonomy Work
 
-The taxonomy is defined in `src/lib/detectorMetadata.js` (detectors and subcategories), `src/lib/domainProfiles.js` (domain-specific emphasis), and `src/lib/crossLayerBundles.js` (logical groupings).
+The taxonomy is defined in `src/lib/detectorMetadata.js` (detectors and subcategories), `src/lib/layers.js` (top-level layer registry), `src/lib/domainProfiles.js` (optional domain-specific emphasis), `src/lib/crossLayerBundles.js` (logical groupings), and `src/lib/analysisAgents.js` (the fixed deterministic analysis mesh).
 
 The system prompt is dynamically generated in `src/lib/systemPrompt.js`.
 
@@ -133,6 +134,8 @@ To add or update a detector:
 3. Preserve the detector ID format and layer numbering (`Lx-yy`).
 4. The prompt and validation logic will automatically pick up the changes.
 
+Prefer extending an existing layer with sharper subcategories and detectors before adding a new top-level layer. Add a new layer only when the issue family cannot be represented cleanly within the current 53-layer taxonomy without ambiguity.
+
 The prompt should stay aligned with runtime behavior:
 - do not promise rules that runtime logic does not implement
 - keep field names consistent with the UI and exports
@@ -140,6 +143,8 @@ The prompt should stay aligned with runtime behavior:
 - remember that unknown detector IDs are currently soft-warned, not hard-failed
 
 ### Adding a New Analysis Layer
+
+Use this only when an issue family is genuinely new. If the gap can be captured by a better subcategory, detector, benchmark fixture, or bundle inside the existing 53 layers, prefer that smaller change first.
 
 1. Add the layer definition to `src/lib/layers.js`.
 2. Add the subcategory list to `LAYER_SUBCATEGORIES` in `src/lib/detectorMetadata.js`.
@@ -285,12 +290,12 @@ npm test
 ### Test Coverage
 
 Tests are located in `src/lib/__tests__` and cover:
-- **Taxonomy Integrity**: Verifies the 637-detector catalog consistency.
+- **Taxonomy Integrity**: Verifies the 701-detector catalog consistency.
 - **Normalization & Validation**: Verifies that results are correctly enriched and semantics are enforced.
 - **Prompt Generation**: Verifies the dynamic builder logic.
 - **Cache Service**: Verifies the file-backed persistence layer, atomic writes, and corruption handling.
 - **Diagnostics**: Verifies runtime observability metrics.
-- **Deep-Spec Benchmarks**: 127 deterministic benchmark tests in `deepSpecBenchmarks.test.js` validate deep-spec layer behavior across 22 fixtures including control plane override abuse, evidence-free escalation, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty dropped, and world state atomicity.
+- **Benchmark Suites**: `taxonomyBenchmark.test.js`, `deepSpecBenchmarks.test.js`, and `extendedUniversalBenchmarks.test.js` cover 29 benchmark fixtures, while the full local suite currently contains 157 tests across 11 files.
 - **Taxonomy Coverage Helper**: `taxonomyCoverageHelper.js` provides per-layer density analysis, richness metrics, subcategory coverage tracking, and bundle coverage analysis for comprehensive taxonomy observability.
 
 ALWAYS run tests before submitting changes to the taxonomy or prompt generation logic.

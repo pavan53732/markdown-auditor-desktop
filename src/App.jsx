@@ -9,10 +9,13 @@ import LayerFilterBar from './components/LayerFilterBar';
 import IssueList from './components/IssueList';
 import DiffSummaryPanel from './components/DiffSummaryPanel';
 import HistoryModal from './components/HistoryModal';
+import brandIconDataUrl from './assets/brand-icon.png?inline';
 import { buildSystemPrompt } from './lib/systemPrompt';
 import { repairJSON, validateResults } from './lib/jsonRepair';
+import { ANALYSIS_AGENT_COUNT, ANALYSIS_AGENT_MESH, ANALYSIS_MESH_VERSION } from './lib/analysisAgents';
 import { DOMAIN_PROFILES } from './lib/domainProfiles';
 import { 
+  TOTAL_DETECTOR_COUNT,
   normalizeIssueFromDetector, 
   getAvailableSubcategories,
   createInitialDiagnostics,
@@ -21,13 +24,37 @@ import {
   normalizeLoadedSession,
   resolveInitialCache,
   buildHistoryMetadata,
-  compareAudits
+  compareAudits,
+  getIssueIdentity
 } from './lib/detectorMetadata';
 
 const MAX_SAFE_TOKENS = 6000;
 const CHARS_PER_TOKEN = 4;
 const BATCH_TOKEN_BUFFER = 1000;
 const MIN_CHUNK_CHARS = 1200;
+const BRAND_NAME = 'Markdown Intelligence Auditor';
+const BRAND_TAGLINE = 'Deterministic Markdown specification auditing';
+
+function normalizeFileDisplayNames(fileList) {
+  const totals = new Map();
+  fileList.forEach((file) => {
+    const baseName = file.originalName || file.name;
+    totals.set(baseName, (totals.get(baseName) || 0) + 1);
+  });
+
+  const seen = new Map();
+  return fileList.map((file) => {
+    const baseName = file.originalName || file.name;
+    const nextIndex = (seen.get(baseName) || 0) + 1;
+    seen.set(baseName, nextIndex);
+
+    return {
+      ...file,
+      originalName: baseName,
+      name: totals.get(baseName) > 1 ? `${baseName} [${nextIndex}]` : baseName
+    };
+  });
+}
 
 export default function App() {
   const [config, setConfig] = useState({ baseURL: '', apiKey: '', model: '' });
@@ -53,7 +80,7 @@ export default function App() {
   const [contextWarning, setContextWarning] = useState(null);
   const [fileHashes, setFileHashes] = useState({});
   const [cachedResults, setCachedResults] = useState({}); // { hash: { issues, summary } }
-  const [analysisStats, setAnalysisStats] = useState({ reused: 0, reanalyzed: 0 });
+  const [analysisStats, setAnalysisStats] = useState({ reused: 0, reanalyzed: 0, agentPasses: 0 });
 
   useEffect(() => {
     window.electronAPI.readConfig().then((cfg) => {
@@ -93,27 +120,40 @@ export default function App() {
   };
 
   const calculateHash = async (text) => {
-    const msgUint8 = new TextEncoder().encode(text);
+    const cacheIdentity = [
+      ANALYSIS_MESH_VERSION,
+      domainProfile,
+      config.baseURL || 'no-base-url',
+      config.model || 'no-model',
+      text
+    ].join('\n');
+    const msgUint8 = new TextEncoder().encode(cacheIdentity);
     const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
-  const providerConfigured = !!(config.baseURL && config.apiKey && config.model);
   const canAnalyze = !!(config.baseURL && config.model);
 
   const estimateTokens = useCallback((fileList, profile = domainProfile) => {
-    const prompt = buildSystemPrompt(profile);
-    const systemTokens = Math.ceil(prompt.length / CHARS_PER_TOKEN);
+    const systemTokens = Math.max(
+      ...ANALYSIS_AGENT_MESH.map((agent) => Math.ceil(buildSystemPrompt(profile, agent.id).length / CHARS_PER_TOKEN))
+    );
     const userTokens = fileList.reduce((sum, f) => sum + Math.ceil(f.content.length / CHARS_PER_TOKEN), 0);
-    return { systemTokens, userTokens, total: systemTokens + userTokens };
+    const perPassTotal = systemTokens + userTokens;
+    return {
+      systemTokens,
+      userTokens,
+      perPassTotal,
+      total: perPassTotal * ANALYSIS_AGENT_COUNT
+    };
   }, [domainProfile]);
 
   useEffect(() => {
     if (files.length > 0) {
-      const { total } = estimateTokens(files);
-      if (total > MAX_SAFE_TOKENS) {
-        setContextWarning(`Warning: Estimated ${total.toLocaleString()} tokens exceeds safe limit (${MAX_SAFE_TOKENS.toLocaleString()}). Files will be batched into multiple API calls.`);
+      const { perPassTotal, total } = estimateTokens(files);
+      if (perPassTotal > MAX_SAFE_TOKENS) {
+        setContextWarning(`Warning: Estimated ${perPassTotal.toLocaleString()} tokens per agent pass exceeds the safe per-call limit (${MAX_SAFE_TOKENS.toLocaleString()}). Files will be batched, and the full ${ANALYSIS_AGENT_COUNT}-agent mesh is estimated at ${total.toLocaleString()} tokens.`);
       } else {
         setContextWarning(null);
       }
@@ -123,16 +163,17 @@ export default function App() {
   }, [files, estimateTokens]);
 
   const handleFilesDropped = useCallback((newFiles) => {
-    setFiles((prev) => [...prev, ...newFiles]);
+    setFiles((prev) => normalizeFileDisplayNames([...prev, ...newFiles]));
   }, []);
 
   const handleRemoveFile = useCallback((index) => {
-    setFiles((prev) => prev.filter((_, i) => i !== index));
+    setFiles((prev) => normalizeFileDisplayNames(prev.filter((_, i) => i !== index)));
   }, []);
 
   const getAvailableTokens = useCallback(() => {
-    const prompt = buildSystemPrompt(domainProfile);
-    const systemTokens = Math.ceil(prompt.length / CHARS_PER_TOKEN);
+    const systemTokens = Math.max(
+      ...ANALYSIS_AGENT_MESH.map((agent) => Math.ceil(buildSystemPrompt(domainProfile, agent.id).length / CHARS_PER_TOKEN))
+    );
     return Math.max(1, MAX_SAFE_TOKENS - systemTokens - BATCH_TOKEN_BUFFER);
   }, [domainProfile]);
 
@@ -159,9 +200,29 @@ export default function App() {
 
     const maxChars = Math.max(MIN_CHUNK_CHARS, maxTokens * CHARS_PER_TOKEN);
     const overlapChars = Math.floor(maxChars * 0.1); // 10% overlap
+    const newlineOffsets = [];
+    for (let i = 0; i < file.content.length; i++) {
+      if (file.content[i] === '\n') {
+        newlineOffsets.push(i);
+      }
+    }
+    const getLineNumberAtOffset = (offset) => {
+      let low = 0;
+      let high = newlineOffsets.length;
+
+      while (low < high) {
+        const mid = Math.floor((low + high) / 2);
+        if (newlineOffsets[mid] < offset) {
+          low = mid + 1;
+        } else {
+          high = mid;
+        }
+      }
+
+      return low + 1;
+    };
     const rawChunks = [];
     let start = 0;
-    let lineStart = 1;
 
     while (start < file.content.length) {
       const maxEnd = Math.min(start + maxChars, file.content.length);
@@ -179,6 +240,7 @@ export default function App() {
       }
 
       const content = file.content.slice(start, end);
+      const lineStart = getLineNumberAtOffset(start);
       const lineCount = Math.max(1, content.split('\n').length);
       const lineEnd = lineStart + lineCount - 1;
 
@@ -196,7 +258,6 @@ export default function App() {
       } else {
         start = nextStart;
       }
-      lineStart = lineEnd + 1; // This line is not entirely accurate with overlap, but it provides a rough estimate.
     }
 
     const chunkCount = rawChunks.length;
@@ -238,41 +299,86 @@ export default function App() {
       .map((f) => `=== FILE: ${f.name}${f.isChunked ? ` (Chunk ${f.chunkIndex}/${f.chunkCount})` : ''} ===\n\n${f.content}\n\n${'─'.repeat(60)}\n`)
       .join('');
 
-    const response = await window.electronAPI.callAPI({
-      baseURL: config.baseURL,
-      apiKey: config.apiKey,
-      model: config.model,
-      systemPrompt: buildSystemPrompt(domainProfile),
-      userMessage,
-      timeout: config.timeout,
-      retries: config.retries
-    });
+    const agentResults = [];
+    let rawIssueCount = 0;
 
-    if (!response.success) {
-      throw new Error(`Batch ${batchIndex + 1}/${totalBatches} failed: ${response.error}`);
+    for (const agent of ANALYSIS_AGENT_MESH) {
+      const response = await window.electronAPI.callAPI({
+        baseURL: config.baseURL,
+        apiKey: config.apiKey,
+        model: config.model,
+        systemPrompt: buildSystemPrompt(domainProfile, agent.id),
+        userMessage,
+        timeout: config.timeout,
+        retries: config.retries
+      });
+
+      if (!response.success) {
+        throw new Error(`Batch ${batchIndex + 1}/${totalBatches} failed during ${agent.label}: ${response.error}`);
+      }
+
+      let parsed;
+      try {
+        parsed = repairJSON(response.raw);
+        validateResults(parsed);
+      } catch (e) {
+        throw new Error(`Batch ${batchIndex + 1}/${totalBatches} (${agent.label}): ${e.message}`);
+      }
+
+      if (parsed.summary) {
+        console.log(`[Batch ${batchIndex + 1}/${totalBatches}] ${agent.id}: detectors=${parsed.summary.detectors_evaluated || 'N/A'}, skipped=${parsed.summary.detectors_skipped || 'N/A'}`);
+      }
+
+      const normalizedIssues = (parsed.issues || []).map((issue) => normalizeIssueFromDetector({
+        ...issue,
+        analysis_agent: issue.analysis_agent || agent.id,
+        analysis_agents: Array.isArray(issue.analysis_agents) && issue.analysis_agents.length > 0
+          ? Array.from(new Set([...issue.analysis_agents, agent.id]))
+          : [agent.id]
+      }));
+
+      rawIssueCount += normalizedIssues.length;
+      agentResults.push({
+        ...parsed,
+        issues: normalizedIssues,
+        _sourceFiles: Array.from(new Set(batch.map((file) => file.sourceName || file.name)))
+      });
     }
 
-    let parsed;
-    try {
-      parsed = repairJSON(response.raw);
-      validateResults(parsed);
-    } catch (e) {
-      throw new Error(`Batch ${batchIndex + 1}/${totalBatches}: ${e.message}`);
-    }
-
-    if (parsed.summary) {
-      console.log(`[Batch ${batchIndex + 1}/${totalBatches}] Detectors evaluated: ${parsed.summary.detectors_evaluated || 'N/A'}, Skipped: ${parsed.summary.detectors_skipped || 'N/A'}`);
-    }
-
-    // Taxonomy-aware normalization
-    if (parsed.issues) {
-      parsed.issues = parsed.issues.map(issue => normalizeIssueFromDetector(issue));
-    }
+    const mergedAgentResult = mergeResults(agentResults);
+    mergedAgentResult.summary.detectors_evaluated = TOTAL_DETECTOR_COUNT;
+    mergedAgentResult.summary.detectors_skipped = 0;
+    mergedAgentResult.summary.analysis_agents_run = ANALYSIS_AGENT_COUNT;
+    mergedAgentResult.summary.analysis_agent_passes = agentResults.length;
 
     return {
-      ...parsed,
-      _sourceFiles: Array.from(new Set(batch.map((file) => file.sourceName || file.name)))
+      ...mergedAgentResult,
+      _sourceFiles: Array.from(new Set(batch.map((file) => file.sourceName || file.name))),
+      _rawIssueCount: rawIssueCount,
+      _agentPasses: agentResults.length
     };
+  };
+
+  const deduplicateRootCauses = (rootCauses) => {
+    const seen = new Map();
+
+    rootCauses.forEach((rootCause, index) => {
+      const key = rootCause.id || rootCause.title || `root-cause-${index}`;
+
+      if (seen.has(key)) {
+        const existing = seen.get(key);
+        existing.child_issues = [...new Set([...(existing.child_issues || []), ...(rootCause.child_issues || [])])];
+        existing.description = existing.description || rootCause.description;
+        existing.impact = existing.impact || rootCause.impact;
+      } else {
+        seen.set(key, {
+          ...rootCause,
+          child_issues: [...new Set(rootCause.child_issues || [])]
+        });
+      }
+    });
+
+    return Array.from(seen.values());
   };
 
   const mergeResults = (batchResults) => {
@@ -292,6 +398,7 @@ export default function App() {
 
     merged.summary.files_analyzed = seenFiles.size;
     merged.issues = deduplicateIssues(merged.issues);
+    merged.root_causes = deduplicateRootCauses(merged.root_causes);
     applyPostMergeEscalation(merged.issues);
     
     // Recalculate summary counts after merge/dedupe/escalation
@@ -396,18 +503,54 @@ export default function App() {
       const key = getIssueIdentity(issue);
 
       if (seen.has(key)) {
-        // Merge related_issues from duplicate
         const existing = seen.get(key);
         if (issue.related_issues) {
           existing.related_issues = [...new Set([...(existing.related_issues || []), ...issue.related_issues])];
         }
-        // Keep the higher severity
+        const mergedAgents = [
+          ...(existing.analysis_agents || (existing.analysis_agent ? [existing.analysis_agent] : [])),
+          ...(issue.analysis_agents || (issue.analysis_agent ? [issue.analysis_agent] : []))
+        ];
+        if (mergedAgents.length > 0) {
+          existing.analysis_agents = Array.from(new Set(mergedAgents));
+          existing.analysis_agent = existing.analysis_agents[0];
+        }
+        [
+          'why_triggered',
+          'failure_type',
+          'constraint_reference',
+          'violation_reference',
+          'contract_step',
+          'invariant_broken',
+          'authority_boundary',
+          'evidence_reference',
+          'closed_world_status',
+          'deterministic_fix',
+          'recommended_fix',
+          'root_cause_id'
+        ].forEach((field) => {
+          if (!existing[field] && issue[field]) {
+            existing[field] = issue[field];
+          }
+        });
+        if (existing.assumption_detected === undefined && issue.assumption_detected !== undefined) {
+          existing.assumption_detected = issue.assumption_detected;
+        }
         const severityOrder = { critical: 3, high: 2, medium: 1, low: 0 };
         if (severityOrder[issue.severity] > severityOrder[existing.severity]) {
           existing.severity = issue.severity;
         }
       } else {
-        seen.set(key, { ...issue });
+        const normalizedIssue = {
+          ...issue,
+          analysis_agents: Array.isArray(issue.analysis_agents)
+            ? Array.from(new Set(issue.analysis_agents))
+            : (issue.analysis_agent ? [issue.analysis_agent] : [])
+        };
+        if (!normalizedIssue.analysis_agent && normalizedIssue.analysis_agents.length > 0) {
+          normalizedIssue.analysis_agent = normalizedIssue.analysis_agents[0];
+        }
+        seen.set(key, normalizedIssue);
         deduped.push(seen.get(key));
       }
     });
@@ -430,7 +573,7 @@ export default function App() {
     setTaxonomyDiagnostics(null);
     setActiveLayer('all');
     setSearchQuery('');
-    setAnalysisStats({ reused: 0, reanalyzed: 0 });
+    setAnalysisStats({ reused: 0, reanalyzed: 0, agentPasses: 0 });
 
     try {
       const filesToAnalyze = [];
@@ -454,10 +597,11 @@ export default function App() {
         }
       }
       setFileHashes(currentHashes);
-      setAnalysisStats({ reused: reusedCount, reanalyzed: reanalyzedCount });
+      setAnalysisStats({ reused: reusedCount, reanalyzed: reanalyzedCount, agentPasses: 0 });
 
       let finalBatchResults = [...reusedBatchResults];
       let currentCache = { ...cachedResults };
+      let completedAgentPasses = 0;
 
       if (filesToAnalyze.length > 0) {
         const { total } = estimateTokens(filesToAnalyze);
@@ -469,6 +613,7 @@ export default function App() {
         
         for (let i = 0; i < batches.length; i++) {
           const result = await analyzeBatch(batches[i], i, batches.length);
+          completedAgentPasses += result._agentPasses || 0;
           
           // Update cache for each file in this batch
           const perFileResults = {};
@@ -477,7 +622,7 @@ export default function App() {
               _sourceFiles: [f.sourceName || f.name],
               summary: { ...result.summary, total: 0, critical: 0, high: 0, medium: 0, low: 0 },
               issues: [],
-              root_causes: result.root_causes || []
+              root_causes: []
             };
           });
 
@@ -491,6 +636,28 @@ export default function App() {
                 }
                 perFileResults[primaryFile].summary.total++;
               }
+            });
+          }
+
+          if (result.root_causes) {
+            Object.entries(perFileResults).forEach(([fileName, fileResult]) => {
+              const issueIds = new Set(fileResult.issues.map((issue) => issue.id).filter(Boolean));
+              const rootCauseIds = new Set(fileResult.issues.map((issue) => issue.root_cause_id).filter(Boolean));
+
+              fileResult.root_causes = result.root_causes
+                .filter((rootCause) => {
+                  const matchesByRootCauseId = rootCauseIds.has(rootCause.id);
+                  const matchesByChildIssue = Array.isArray(rootCause.child_issues)
+                    && rootCause.child_issues.some((childIssueId) => issueIds.has(childIssueId));
+
+                  return matchesByRootCauseId || matchesByChildIssue;
+                })
+                .map((rootCause) => ({
+                  ...rootCause,
+                  child_issues: Array.isArray(rootCause.child_issues) && issueIds.size > 0
+                    ? rootCause.child_issues.filter((childIssueId) => issueIds.has(childIssueId))
+                    : rootCause.child_issues
+                }));
             });
           }
 
@@ -508,13 +675,24 @@ export default function App() {
       }
 
       const merged = mergeResults(finalBatchResults);
+      merged.summary.detectors_evaluated = TOTAL_DETECTOR_COUNT;
+      merged.summary.detectors_skipped = 0;
+      merged.summary.analysis_agents_run = ANALYSIS_AGENT_COUNT;
+      merged.summary.analysis_agent_passes = completedAgentPasses;
 
       // Perform final taxonomy enrichment and collect diagnostics
       const diagnostics = createInitialDiagnostics();
       if (merged.issues) {
         merged.issues = merged.issues.map(issue => normalizeIssueFromDetector(issue, diagnostics));
       }
+      diagnostics.analysis_mesh_agents_configured = ANALYSIS_AGENT_COUNT;
+      diagnostics.analysis_mesh_passes_completed = completedAgentPasses;
+      diagnostics.agent_findings_merged_count = Math.max(
+        0,
+        finalBatchResults.reduce((sum, result) => sum + (result._rawIssueCount || result.issues?.length || 0), 0) - (merged.issues?.length || 0)
+      );
       setTaxonomyDiagnostics(diagnostics);
+      setAnalysisStats({ reused: reusedCount, reanalyzed: reanalyzedCount, agentPasses: completedAgentPasses });
 
       const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
       if (merged.issues) {
@@ -530,6 +708,7 @@ export default function App() {
       // Auto-save to history
       const historyMetadata = buildHistoryMetadata(merged, files, config, domainProfile);
       await window.electronAPI.addHistorySession({ metadata: historyMetadata, session: merged });
+      await window.electronAPI.pruneHistory(50);
       const updatedHistory = await window.electronAPI.listHistory();
       setHistoryList(updatedHistory);
 
@@ -591,6 +770,14 @@ export default function App() {
           (issue.detector_id || '').toLowerCase().includes(query) ||
           (issue.detector_name || '').toLowerCase().includes(query) ||
           (issue.subcategory || '').toLowerCase().includes(query) ||
+          (issue.failure_type || '').toLowerCase().includes(query) ||
+          (issue.contract_step || '').toLowerCase().includes(query) ||
+          (issue.invariant_broken || '').toLowerCase().includes(query) ||
+          (issue.authority_boundary || '').toLowerCase().includes(query) ||
+          (issue.constraint_reference || '').toLowerCase().includes(query) ||
+          (issue.violation_reference || '').toLowerCase().includes(query) ||
+          (issue.analysis_agent || '').toLowerCase().includes(query) ||
+          (issue.analysis_agents || []).some((agent) => agent.toLowerCase().includes(query)) ||
           (issue.files || []).some(f => f.toLowerCase().includes(query)) ||
           (issue.tags || []).some(t => t.toLowerCase().includes(query))
         );
@@ -615,14 +802,28 @@ export default function App() {
 
   const exportMarkdown = () => {
     if (!results) return;
-    let md = `# Audit Report - ${new Date().toLocaleString()}\n\n`;
-    md += `## Summary\n\n`;
+
+    const generatedAt = new Date().toLocaleString();
+    let md = '';
+
+    if (brandIconDataUrl) {
+      md += `![${BRAND_NAME} Icon](${brandIconDataUrl})\n\n`;
+    }
+
+    md += `# ${BRAND_NAME}\n\n`;
+    md += `> ${BRAND_TAGLINE}\n>\n> Generated ${generatedAt}\n\n`;
+    md += `## Audit Report Summary\n\n`;
     md += `- **Total Issues:** ${results.summary.total}\n`;
     md += `- **Critical:** ${results.summary.critical}\n`;
     md += `- **High:** ${results.summary.high}\n`;
     md += `- **Medium:** ${results.summary.medium}\n`;
     md += `- **Low:** ${results.summary.low}\n`;
-    md += `- **Files Analyzed:** ${results.summary.files_analyzed}\n\n`;
+    md += `- **Files Analyzed:** ${results.summary.files_analyzed}\n`;
+    md += `- **Analysis Mesh:** ${ANALYSIS_AGENT_COUNT} deterministic agents\n`;
+    if (results.summary.analysis_agent_passes > 0) {
+      md += `- **Agent Passes:** ${results.summary.analysis_agent_passes}\n`;
+    }
+    md += `\n`;
     
     md += `## Issues\n\n`;
     (results.issues || []).forEach((issue, i) => {
@@ -631,6 +832,14 @@ export default function App() {
       if (issue.detector_name) md += `**Detector Name:** ${issue.detector_name}\n`;
       md += `**Category:** ${issue.category}\n`;
       if (issue.subcategory) md += `**Subcategory:** ${issue.subcategory}\n`;
+      if (issue.failure_type) md += `**Failure Type:** ${issue.failure_type}\n`;
+      if (issue.contract_step) md += `**Contract Step:** ${issue.contract_step}\n`;
+      if (issue.invariant_broken) md += `**Invariant Broken:** ${issue.invariant_broken}\n`;
+      if (issue.authority_boundary) md += `**Authority Boundary:** ${issue.authority_boundary}\n`;
+      if (issue.constraint_reference) md += `**Constraint Reference:** ${issue.constraint_reference}\n`;
+      if (issue.violation_reference) md += `**Violation Reference:** ${issue.violation_reference}\n`;
+      if (issue.closed_world_status) md += `**Closed World Status:** ${issue.closed_world_status}\n`;
+      if (issue.analysis_agents?.length) md += `**Analysis Agents:** ${issue.analysis_agents.join(', ')}\n`;
       if (issue.section) md += `**Section:** ${issue.section}\n`;
       if (issue.line_number) md += `**Line:** ${issue.line_number}\n`;
       if (issue.root_cause_id) md += `**Root Cause ID:** ${issue.root_cause_id}\n`;
@@ -642,6 +851,10 @@ export default function App() {
 
       if (issue.escalation_reason) {
         md += `**Escalation Reason:** ${issue.escalation_reason}\n\n`;
+      }
+
+      if (issue.deterministic_fix) {
+        md += `**Deterministic Fix:** ${issue.deterministic_fix}\n\n`;
       }
       
       if (issue.recommended_fix) {
@@ -685,6 +898,9 @@ export default function App() {
       md += `- **Parsed Detector IDs:** ${taxonomyDiagnostics.detector_id_parsed_from_description_count}\n`;
       md += `- **Unknown Detector IDs:** ${taxonomyDiagnostics.unknown_detector_id_count}\n`;
       md += `- **Severity Clamped:** ${taxonomyDiagnostics.severity_clamped_count}\n`;
+      md += `- **Configured Analysis Agents:** ${taxonomyDiagnostics.analysis_mesh_agents_configured}\n`;
+      md += `- **Completed Agent Passes:** ${taxonomyDiagnostics.analysis_mesh_passes_completed}\n`;
+      md += `- **Merged Agent Findings:** ${taxonomyDiagnostics.agent_findings_merged_count}\n`;
       if (taxonomyDiagnostics.total_issues_loaded > 0) {
         md += `- **Total Issues Loaded:** ${taxonomyDiagnostics.total_issues_loaded}\n`;
       }
@@ -703,7 +919,7 @@ export default function App() {
 
   const exportCSV = () => {
     if (!results) return;
-    const headers = ['ID', 'DetectorID', 'DetectorName', 'Severity', 'Category', 'Subcategory', 'Section', 'Line', 'RootCauseID', 'Description', 'Why Triggered', 'Escalation Reason', 'Recommended Fix', 'Fix Steps', 'Verification Steps', 'Effort', 'Evidence', 'Confidence', 'Impact', 'Difficulty', 'Files', 'Tags'];
+    const headers = ['ID', 'DetectorID', 'DetectorName', 'Severity', 'Category', 'Subcategory', 'FailureType', 'ContractStep', 'InvariantBroken', 'AuthorityBoundary', 'ConstraintReference', 'ViolationReference', 'ClosedWorldStatus', 'AnalysisAgents', 'Section', 'Line', 'RootCauseID', 'Description', 'WhyTriggered', 'EscalationReason', 'DeterministicFix', 'RecommendedFix', 'FixSteps', 'VerificationSteps', 'Effort', 'Evidence', 'Confidence', 'Impact', 'Difficulty', 'Files', 'Tags'];
     const rows = (results.issues || []).map((issue) => [
       issue.id || '',
       issue.detector_id || '',
@@ -711,12 +927,21 @@ export default function App() {
       issue.severity || '',
       issue.category || '',
       `"${(issue.subcategory || '').replace(/"/g, '""')}"`,
+      issue.failure_type || '',
+      issue.contract_step || '',
+      `"${(issue.invariant_broken || '').replace(/"/g, '""')}"`,
+      `"${(issue.authority_boundary || '').replace(/"/g, '""')}"`,
+      `"${(issue.constraint_reference || '').replace(/"/g, '""')}"`,
+      `"${(issue.violation_reference || '').replace(/"/g, '""')}"`,
+      issue.closed_world_status || '',
+      `"${((issue.analysis_agents || (issue.analysis_agent ? [issue.analysis_agent] : []))).join(' | ').replace(/"/g, '""')}"`,
       issue.section || '',
       issue.line_number || '',
       issue.root_cause_id || '',
       `"${(issue.description || '').replace(/"/g, '""')}"`,
       `"${(issue.why_triggered || '').replace(/"/g, '""')}"`,
       `"${(issue.escalation_reason || '').replace(/"/g, '""')}"`,
+      `"${(issue.deterministic_fix || '').replace(/"/g, '""')}"`,
       `"${(issue.recommended_fix || '').replace(/"/g, '""')}"`,
       `"${(issue.fix_steps || []).join(' | ').replace(/"/g, '""')}"`,
       `"${(issue.verification_steps || []).join(' | ').replace(/"/g, '""')}"`,
@@ -765,7 +990,7 @@ export default function App() {
           const rawSession = JSON.parse(event.target.result);
           const session = normalizeLoadedSession(rawSession);
           if (session.results) {
-            setFiles(session.files || []);
+            setFiles(normalizeFileDisplayNames(session.files || []));
             setResults(session.results);
             setTaxonomyDiagnostics(session.taxonomyDiagnostics);
             setError(null);
@@ -868,7 +1093,7 @@ export default function App() {
   return (
     <div className="h-screen flex flex-col bg-[#111827] text-[#F9FAFB] overflow-hidden">
       <TopBar
-        providerConfigured={providerConfigured}
+        providerReady={canAnalyze}
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenHistory={() => setHistoryOpen(true)}
       />
@@ -968,12 +1193,12 @@ export default function App() {
               <div>
                 <h2 className="text-xl font-semibold">Audit Results</h2>
                 <p className="text-sm text-[#9CA3AF]">
-                  {results.summary?.files_analyzed || files.length} files analyzed · sorted by severity · model: {config.model}
+                  {results.summary?.files_analyzed || files.length} files analyzed - deterministic 8-agent mesh - model: {config.model}
                 </p>
                 {results.summary?.detectors_evaluated !== undefined && (
                   <p className="text-xs text-[#6B7280] mt-1">
-                    Detectors: {results.summary.detectors_evaluated}/633 evaluated
-                    {results.summary.detectors_skipped > 0 && ` · ${results.summary.detectors_skipped} skipped`}
+                    Detectors: {results.summary.detectors_evaluated}/{TOTAL_DETECTOR_COUNT} evaluated
+                    {results.summary.detectors_skipped > 0 && ` - ${results.summary.detectors_skipped} skipped`}
                   </p>
                 )}
               </div>
@@ -1048,7 +1273,7 @@ export default function App() {
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                   <h3 className="text-[10px] font-bold text-[#6B7280] uppercase tracking-widest">Taxonomy Diagnostics</h3>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
                   <div>
                     <p className="text-[10px] text-[#6B7280] mb-0.5">Enriched</p>
                     <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.normalized_from_detector_count}</p>
@@ -1073,6 +1298,24 @@ export default function App() {
                     <div>
                       <p className="text-[10px] text-[#9CA3AF] mb-0.5">Loaded</p>
                       <p className="text-sm font-semibold text-[#9CA3AF]">{taxonomyDiagnostics.total_issues_loaded}</p>
+                    </div>
+                  )}
+                  {taxonomyDiagnostics.analysis_mesh_agents_configured > 0 && (
+                    <div>
+                      <p className="text-[10px] text-[#9CA3AF] mb-0.5">Agents</p>
+                      <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.analysis_mesh_agents_configured}</p>
+                    </div>
+                  )}
+                  {taxonomyDiagnostics.analysis_mesh_passes_completed > 0 && (
+                    <div>
+                      <p className="text-[10px] text-[#9CA3AF] mb-0.5">Agent Passes</p>
+                      <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.analysis_mesh_passes_completed}</p>
+                    </div>
+                  )}
+                  {taxonomyDiagnostics.agent_findings_merged_count > 0 && (
+                    <div>
+                      <p className="text-[10px] text-[#9CA3AF] mb-0.5">Merged</p>
+                      <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.agent_findings_merged_count}</p>
                     </div>
                   )}
                 </div>
@@ -1189,3 +1432,4 @@ export default function App() {
     </div>
   );
 }
+

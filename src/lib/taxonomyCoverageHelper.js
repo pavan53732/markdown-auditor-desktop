@@ -2,8 +2,9 @@ import { DETECTOR_METADATA, LAYER_SUBCATEGORIES } from './detectorMetadata.js';
 import { CROSS_LAYER_BUNDLES } from './crossLayerBundles.js';
 import { LAYERS } from './layers.js';
 
-// Deep-spec layers are L33-L45 (indices 32-44 in the LAYERS array)
-const DEEP_SPEC_LAYER_IDS = LAYERS.slice(32).map(l => l.id);
+// Core deep-spec layers remain the original L33-L45 slice.
+// Extended universal layers (L46+) are tracked separately and should not inherit the stricter L33-L45 density thresholds automatically.
+const DEEP_SPEC_LAYER_IDS = LAYERS.slice(32, 45).map(l => l.id);
 
 export function generateTaxonomyQualityReport() {
   const detectors = Object.values(DETECTOR_METADATA);

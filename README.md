@@ -1,32 +1,34 @@
 # Markdown Document Intelligence Auditor
 
-Windows desktop application for auditing Markdown documentation with AI across 45 analytical layers and 637 micro-detectors.
+Windows desktop application for auditing Markdown documentation with AI across 53 analytical layers, 701 micro-detectors, and a deterministic 8-agent analysis mesh.
 
 ## Overview
 
 Markdown Intelligence Auditor is an Electron + React desktop app that accepts one or more `.md` / `.markdown` files, sends them to an OpenAI-compatible provider, and returns a structured report of documentation issues with severity, traceability, remediation guidance, and export support.
 
-The current build includes chunk-aware batching, deterministic post-processing, incremental result reuse, session diffing, root-cause grouping, a structured 637-detector catalog, and portable Windows packaging.
+The current build includes chunk-aware batching, deterministic multi-pass post-processing, incremental result reuse, session diffing, root-cause grouping, a structured 701-detector catalog, and portable Windows packaging.
 
 ## Current Capabilities
 
 - Drag-and-drop upload for `.md` and `.markdown` files
-- 45 analytical layers with explicit, deepened subcategories preventing thematic ambiguity
-- 637 code-defined micro-detectors across all 45 layers, including 13 deep-spec layers with full detector coverage
-- Full structured detector metadata including trigger patterns, evidence requirements, related layers, and false-positive guards
-- Taxonomy benchmark fixtures supporting automated evaluation of classification correctness
-- 127 deterministic benchmark tests across 22 benchmark fixtures including 8 new deep-spec fixtures for control plane override abuse, evidence-free escalation, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty dropped, and world state atomicity
+- 53 analytical layers with explicit, deepened subcategories preventing thematic ambiguity
+- 701 code-defined micro-detectors across all 53 layers, including the deep-spec core plus 8 universal governance and reproducibility extensions
+- Full structured detector metadata for all detectors, including trigger patterns, evidence requirements, false-positive guards, and `related_layers` cross-references for 255 detectors across the specification-intensive layers
+- Taxonomy benchmark fixtures supporting deterministic evaluation of taxonomy validation, normalization, and detector mapping correctness
+- 29 deterministic benchmark fixtures inside a 157-test local suite across 11 test files, including deep-spec and universal-audit scenarios for authority bypass, workflow skips, artifact reproducibility, toolchain isolation, recovery loop collapse, and operational UX leakage
 - Programmatic system prompt generation from structured taxonomy and metadata
 - Taxonomy-driven runtime normalization: backfilling metadata and enforcing severity bounds
 - Advanced semantic validation enforcing category -> subcategory -> detector consistency
 - Local regression suite verifying taxonomy integrity and normalization logic
 - Runtime taxonomy diagnostics surfaced in UI, Markdown reports, and JSON exports for pipeline observability
 - Seven domain profiles (e.g., API Docs, Runbooks, PRDs) adjusting detector emphasis
+- Deterministic 8-agent analysis mesh with bounded roles for specification absoluteness, architecture authority, UI/operational integrity, execution/simulation, memory/world state, tool/deployment safety, reasoning/evidence, and cross-layer synthesis
 ...
 - `total_issues_loaded`: specifically tracks issues processed during session load or import
-- 25 cross-layer bundles connecting concepts like Security, Data Flow, Governance, Agent Memory Coordination, Context Orchestration Execution, and Deployment Resilience Contracts, plus deep-spec bundles for tool safety, world state, control plane, reasoning, UI contracts, deterministic execution, deployment, and platform abstraction
+- 31 cross-layer bundles connecting concepts like Security, Data Flow, Governance, Agent Memory Coordination, Context Orchestration Execution, Deployment Resilience Contracts, vocabulary authority, workflow execution, artifact environment integrity, and operational UI contracts
 - Enhanced UI filtering by subcategory and grouping by subcategory or root cause
-- Four-phase analysis flow: scan -> cross-layer correlation -> severity escalation -> final output
+- Deterministic multi-pass analysis model: 8 fixed agent prompts -> validation/repair -> metadata enrichment -> merged output
+- Branded in-app surfaces, including the top bar, loading state, and self-contained Markdown report header
 - Four deterministic escalation rules applied during runtime normalization
 - Severity reporting: `critical`, `high`, `medium`, `low`
 - Incremental analysis using SHA-256 file hashing and local cached results
@@ -34,7 +36,8 @@ The current build includes chunk-aware batching, deterministic post-processing, 
 - **Local Audit History Workbench**: Search, filter by source/model/profile, sort, label, and compare past audits in a local archive
 - Root-cause grouping in addition to the flat issue list
 - Detector traceability fields such as `detector_id`, `why_triggered`, and `escalation_reason`
-- Remediation guidance including `recommended_fix`, `fix_steps`, `estimated_effort`, and `verification_steps`
+- Strict issue schema fields including `failure_type`, `constraint_reference`, `violation_reference`, `contract_step`, `invariant_broken`, `authority_boundary`, `closed_world_status`, `analysis_agents`, and `deterministic_fix`
+- Remediation guidance including `recommended_fix`, `fix_steps`, `estimated_effort`, `verification_steps`, and deterministic fix guidance
 - Search, layer filtering, and grouping by file, severity, layer, or root cause
 - Export to JSON, Markdown, and CSV
 - Session save/load support
@@ -93,31 +96,55 @@ Any additional OpenAI-compatible provider, including services such as Together A
 
 ## Analysis Pipeline
 
-### Analysis Stages
+### Deterministic 8-Agent Analysis Mesh
 
-1. `SCAN`
-   - read input files
-     - evaluate 637 detectors
-   - record detector coverage
-2. `CROSS-LAYER CORRELATION`
-   - relate findings across layers
-   - preserve linked issues
-   - support root-cause grouping
-3. `SEVERITY ESCALATION`
-   - apply deterministic escalation rules
-4. `FINAL OUTPUT`
-   - validate JSON structure
-   - normalize and render/export results
+The runtime performs eight bounded analysis passes over each batch. Each pass uses the same taxonomy but a different fixed audit lens:
+
+1. `SPEC_ABSOLUTENESS`
+   - specification completeness
+   - terminology and ontology governance
+   - closed-world assumption detection
+2. `ARCHITECTURE_AUTHORITY`
+   - component and authority boundaries
+   - control-path integrity
+   - workflow/lifecycle correctness
+3. `UI_OPERATIONAL`
+   - UI surface contracts
+   - operational UX guarantees
+   - state projection correctness
+4. `EXECUTION_SIMULATION`
+   - execution invariants
+   - simulation/governance ordering
+   - retry and recovery integrity
+5. `MEMORY_WORLD_STATE`
+   - memory authority rules
+   - snapshot isolation
+   - world-state mutation constraints
+6. `TOOL_DEPLOYMENT`
+   - tool safety
+   - deployment/export contracts
+   - environment/toolchain isolation
+7. `REASONING_EVIDENCE`
+   - evidence binding
+   - contradiction detection
+   - uncertainty and assumption handling
+8. `CROSS_LAYER_SYNTHESIS`
+   - merge high-signal findings
+   - preserve cross-layer traceability
+   - support deterministic root-cause grouping
 
 ### Runtime Processing
 
 - Chunk-aware batching for large files
+- Eight sequential agent passes per batch with deterministic prompt construction
 - Issue deduplication with stable identity keys
+- Agent-result merge with `analysis_agent` / `analysis_agents` provenance
 - Post-merge escalation across the combined result set
 - Cross-layer validation after escalation
 - Cached result reuse for unchanged files (file-backed)
 - Session diffing against the previous in-memory audit
 - Known detector IDs are validated against the structured taxonomy
+- Strict schema normalization backfills `failure_type`, `constraint_reference`, `violation_reference`, `contract_step`, `invariant_broken`, `authority_boundary`, `closed_world_status`, `assumption_detected`, `evidence_reference`, and `deterministic_fix`
 - Unknown but well-formed detector IDs currently generate runtime warnings instead of hard validation failures
 
 ### Deterministic Escalation Rules
@@ -127,7 +154,7 @@ Any additional OpenAI-compatible provider, including services such as Together A
 - Rule 3: completeness + functional issues on missing steps -> escalate to high
 - Rule 4: contradiction + intent issues on the same content -> escalate to high
 
-## Analysis Layers (45 Total)
+## Analysis Layers (53 Total)
 
 ### Foundation Layers (1-14)
 
@@ -186,6 +213,17 @@ Any additional OpenAI-compatible provider, including services such as Together A
 44. Control Plane Authority
 45. World State Governance
 
+### Universal Audit Extension Layers (46-53)
+
+46. Ontology Vocabulary Governance
+47. Workflow Lifecycle Integrity
+48. Authority Path Integrity
+49. Artifact Reproducibility
+50. Environment Toolchain Isolation
+51. Knowledge Source Authority
+52. Failure Recovery Integrity
+53. Operational UX Contract
+
 ## Issue Schema
 
 Typical issue fields include:
@@ -204,6 +242,17 @@ Typical issue fields include:
 - `evidence`
 - `why_triggered`
 - `escalation_reason`
+- `failure_type`
+- `constraint_reference`
+- `violation_reference`
+- `contract_step`
+- `invariant_broken`
+- `authority_boundary`
+- `closed_world_status`
+- `analysis_agent`
+- `analysis_agents`
+- `assumption_detected`
+- `deterministic_fix`
 - `confidence`
 - `impact_score`
 - `fix_difficulty`
@@ -242,6 +291,8 @@ Top-level result output may also include:
     "layers_triggered": [],
     "detectors_evaluated": 0,
     "detectors_skipped": 0,
+    "analysis_agents_run": 8,
+    "analysis_agent_passes": 8,
     "overall_score": 0,
     "improvement_priority": []
   },
@@ -261,6 +312,17 @@ Top-level result output may also include:
       "evidence": "Direct quote from the documentation",
       "why_triggered": "The document references traffic routing but does not define the gateway layer.",
       "escalation_reason": "Escalated to critical because the missing component creates architectural ambiguity.",
+      "failure_type": "invariant_break",
+      "constraint_reference": "architectural_design.missing_components.L8-02",
+      "violation_reference": "L8-02::missing_component",
+      "contract_step": "architecture_contract_validation",
+      "invariant_broken": "architectural_missing_components",
+      "authority_boundary": "component_contract_surface",
+      "closed_world_status": "bounded_inference",
+      "analysis_agent": "architecture_authority_agent",
+      "analysis_agents": ["architecture_authority_agent", "cross_layer_synthesis_agent"],
+      "assumption_detected": false,
+      "deterministic_fix": "Define the missing component explicitly, connect it to existing architecture nodes, and re-run validation.",
       "confidence": 0.95,
       "impact_score": 8,
       "fix_difficulty": "moderate",
@@ -324,7 +386,7 @@ Current packaged output:
 
 ## Release Readiness
 
-- **Current Version**: 1.12.0
+- **Current Version**: 1.13.0
 - **Verification Status**: Local verification performed via `npm run verify`
 - **Logic Status**: Verified all tests pass via `npm test`
 - **Packaging**: Local Windows packaging supported via `npm run dist`

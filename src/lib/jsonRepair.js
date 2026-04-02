@@ -132,6 +132,42 @@ export function validateResults(results) {
     if (issue.escalation_reason && typeof issue.escalation_reason !== 'string') {
       throw new Error(`Issue at index ${index} has invalid escalation_reason type`);
     }
+    if (issue.failure_type && typeof issue.failure_type !== 'string') {
+      throw new Error(`Issue at index ${index} has invalid failure_type type`);
+    }
+    if (issue.constraint_reference && typeof issue.constraint_reference !== 'string') {
+      throw new Error(`Issue at index ${index} has invalid constraint_reference type`);
+    }
+    if (issue.violation_reference && typeof issue.violation_reference !== 'string') {
+      throw new Error(`Issue at index ${index} has invalid violation_reference type`);
+    }
+    if (issue.contract_step && typeof issue.contract_step !== 'string') {
+      throw new Error(`Issue at index ${index} has invalid contract_step type`);
+    }
+    if (issue.invariant_broken && typeof issue.invariant_broken !== 'string') {
+      throw new Error(`Issue at index ${index} has invalid invariant_broken type`);
+    }
+    if (issue.authority_boundary && typeof issue.authority_boundary !== 'string') {
+      throw new Error(`Issue at index ${index} has invalid authority_boundary type`);
+    }
+    if (issue.evidence_reference && typeof issue.evidence_reference !== 'string') {
+      throw new Error(`Issue at index ${index} has invalid evidence_reference type`);
+    }
+    if (issue.closed_world_status && typeof issue.closed_world_status !== 'string') {
+      throw new Error(`Issue at index ${index} has invalid closed_world_status type`);
+    }
+    if (issue.assumption_detected !== undefined && typeof issue.assumption_detected !== 'boolean') {
+      throw new Error(`Issue at index ${index} has invalid assumption_detected type`);
+    }
+    if (issue.deterministic_fix && typeof issue.deterministic_fix !== 'string') {
+      throw new Error(`Issue at index ${index} has invalid deterministic_fix type`);
+    }
+    if (issue.analysis_agent && typeof issue.analysis_agent !== 'string') {
+      throw new Error(`Issue at index ${index} has invalid analysis_agent type`);
+    }
+    if (issue.analysis_agents && !Array.isArray(issue.analysis_agents)) {
+      throw new Error(`Issue at index ${index} has invalid analysis_agents (must be array)`);
+    }
     if (issue.recommended_fix && typeof issue.recommended_fix !== 'string') {
       throw new Error(`Issue at index ${index} has invalid recommended_fix type`);
     }

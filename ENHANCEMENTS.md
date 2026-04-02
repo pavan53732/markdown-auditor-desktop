@@ -6,26 +6,28 @@ This document tracks the major product-level enhancements currently implemented 
 
 ### Analysis Engine
 
-- 45 analytical layers with explicit deepened subcategories covering weak themes
-- 637 code-defined micro-detectors enriched with `related_layers`, with all 45 layers having at least 8-detector coverage
+- 53 analytical layers with explicit deepened subcategories covering weak themes
+- 701 code-defined micro-detectors with structured metadata for every detector, with non-empty `related_layers` populated for 255 specification-intensive detectors (L33-L53)
 - structured detector metadata in `src/lib/detectorMetadata.js`
 - taxonomy benchmark fixtures and evaluation suite
 - dynamic detector catalog generation for the system prompt
-- domain profiles and cross-layer bundles (25 total) composed into prompt generation, including 3 new deep-spec bundles: agent_memory_coordination, context_orchestration_execution, and deployment_resilience_contract
+- deterministic 8-agent analysis mesh defined in `src/lib/analysisAgents.js`
+- universal taxonomy plus optional domain profiles and cross-layer bundles (31 total) composed into prompt generation
 - chunk-aware batching for oversized files
 - deterministic post-merge normalization
 - four runtime escalation rules
 - cross-layer validation after escalation
 - JSON repair before validation
 - detector-aware validation for Lx-yy ID format, existence, and semantic consistency
-- taxonomy-driven normalization: automatic metadata backfilling and severity bound clamping
+- taxonomy-driven normalization: automatic metadata backfilling, agent provenance merge, and severity bound clamping
 - automated test suite for taxonomy integrity, prompt generation, normalization, and session persistence
-- 127 deterministic benchmark tests across 22 fixtures (14 existing + 8 new deep-spec fixtures)
-- deep-spec benchmark suite (`deepSpecBenchmarks.test.js`) covering control plane override abuse, evidence-free escalation, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty dropped, and world state atomicity
+- 29 deterministic benchmark fixtures within a 157-test local suite across 11 files
+- benchmark suites covering control plane override abuse, evidence-free escalation, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty dropped, world state atomicity, workflow skips, artifact reproducibility, toolchain isolation, recovery loop collapse, and operational UX leakage
 - enhanced taxonomy coverage helper (`taxonomyCoverageHelper.js`) with per-layer density analysis, richness metrics, subcategory coverage tracking, and bundle coverage analysis
-- deep-spec layer strengthening with improved detector quality (4 new detectors: L44-14, L44-15, L45-15, L45-16) and bundle escalation logic (3 new bundles: agent_memory_coordination, context_orchestration_execution, deployment_resilience_contract)
-- related_layers metadata populated for 191 deep-spec detectors (L33-L45, 13 layers) to support cross-layer traceability
+- universal audit layer expansion with 8 new layers covering ontology governance, workflow integrity, authority paths, artifact reproducibility, environment/toolchain isolation, knowledge-source authority, failure recovery, and operational UX contracts
+- related_layers metadata populated for 255 detectors across the deep-spec core and universal extension layers to support cross-layer traceability
 - runtime taxonomy diagnostics surfaced in UI, Markdown, and JSON/Session exports
+- strict issue schema enrichment for `failure_type`, `constraint_reference`, `violation_reference`, `contract_step`, `invariant_broken`, `authority_boundary`, `closed_world_status`, `analysis_agents`, and `deterministic_fix`
 - basic response validation before rendering
 - file-backed incremental analysis cache (`analysis_cache.json`)
 
@@ -83,6 +85,7 @@ This document tracks the major product-level enhancements currently implemented 
 - File-backed cache improves reliability, but very large cache files (>50MB) may still impact initial load performance.
 - Chunk overlap improves context retention, but line range reporting for overlapped chunks is still best-effort.
 - Validation is stronger than before, but it is still not a full strict schema validator for every optional field.
+- The deterministic 8-agent mesh materially increases latency and token usage compared with the earlier single-pass flow.
 - Unknown detector IDs currently produce warnings during validation instead of failing hard.
 - The packaged executable is unsigned.
 
@@ -90,9 +93,12 @@ This document tracks the major product-level enhancements currently implemented 
 
 ### High Value
 
-- Add stricter schema validation for optional traceability and remediation fields
-- Add explicit cost / token usage reporting per run
-- Add automated regression tests for caching, diffing, and export behavior
+- Add stricter runtime validation for optional traceability fields that are now displayed but not all hard-required
+- Add explicit cost / token usage reporting per run and per agent pass
+- Add automated regression tests for caching, diffing, export behavior, and per-agent merge stability
+- Deepen the new universal layers with sharper detectors and benchmark fixtures before adding another top-level expansion
+- Add richer UI surfacing for analysis-mesh diagnostics, such as per-agent timing and per-pass findings deltas
+- Add stronger handling for unknown detector IDs if hard-fail validation becomes a product goal
 
 ### Quality of Life
 

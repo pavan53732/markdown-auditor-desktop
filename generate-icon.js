@@ -1,222 +1,475 @@
 const fs = require('fs');
+const path = require('path');
+const zlib = require('zlib');
 
-// Create a simple 256x256 PNG icon programmatically
-// This creates a document with magnifying glass design
+const BUILD_DIR = path.join(__dirname, 'build');
+const WORK_SIZE = 768;
+const ICON_SIZES = [16, 24, 32, 48, 64, 128, 256];
 
-function createPNG() {
-  // PNG header and IHDR chunk for 256x256 RGBA
-  const width = 256;
-  const height = 256;
-  
-  // Create raw pixel data (RGBA)
-  const pixels = Buffer.alloc(width * height * 4);
-  
-  // Helper to set pixel
-  function setPixel(x, y, r, g, b, a = 255) {
-    if (x >= 0 && x < width && y >= 0 && y < height) {
-      const idx = (y * width + x) * 4;
-      pixels[idx] = r;
-      pixels[idx + 1] = g;
-      pixels[idx + 2] = b;
-      pixels[idx + 3] = a;
-    }
-  }
-  
-  // Helper to fill a rectangle
-  function fillRect(x1, y1, w, h, r, g, b, a = 255) {
-    for (let y = y1; y < y1 + h; y++) {
-      for (let x = x1; x < x1 + w; x++) {
-        setPixel(x, y, r, g, b, a);
-      }
-    }
-  }
-  
-  // Helper to draw a filled circle
-  function fillCircle(cx, cy, radius, r, g, b, a = 255) {
-    for (let y = cy - radius; y <= cy + radius; y++) {
-      for (let x = cx - radius; x <= cx + radius; x++) {
-        const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
-        if (dist <= radius) {
-          setPixel(x, y, r, g, b, a);
-        }
-      }
-    }
-  }
-  
-  // Helper to draw a ring (outline circle)
-  function drawRing(cx, cy, outerRadius, innerRadius, r, g, b, a = 255) {
-    for (let y = cy - outerRadius; y <= cy + outerRadius; y++) {
-      for (let x = cx - outerRadius; x <= cx + outerRadius; x++) {
-        const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
-        if (dist <= outerRadius && dist >= innerRadius) {
-          setPixel(x, y, r, g, b, a);
-        }
-      }
-    }
-  }
-  
-  // Helper to draw a filled rounded rectangle
-  function fillRoundedRect(x1, y1, w, h, radius, r, g, b, a = 255) {
-    for (let y = y1; y < y1 + h; y++) {
-      for (let x = x1; x < x1 + w; x++) {
-        let inRect = false;
-        // Check corners
-        const dx = Math.min(x - x1, x1 + w - 1 - x);
-        const dy = Math.min(y - y1, y1 + h - 1 - y);
-        
-        if (dx >= 0 && dy >= 0) {
-          if (dx < radius && dy < radius) {
-            const cornerX = dx < radius ? (x < x1 + radius ? x1 + radius : x1 + w - radius) : x;
-            const cornerY = dy < radius ? (y < y1 + radius ? y1 + radius : y1 + h - radius) : y;
-            const dist = Math.sqrt((x - cornerX) ** 2 + (y - cornerY) ** 2);
-            inRect = dist <= radius;
-          } else {
-            inRect = true;
-          }
-        }
-        
-        if (inRect) {
-          setPixel(x, y, r, g, b, a);
-        }
-      }
-    }
-  }
-  
-  // Background: dark blue (#1E40AF)
-  fillRect(0, 0, width, height, 30, 64, 175);
-  
-  // Document body (white with slight blue tint)
-  fillRoundedRect(60, 40, 136, 180, 12, 240, 245, 255);
-  
-  // Document fold corner
-  for (let i = 0; i < 30; i++) {
-    fillRect(166 - i, 40 + i, i + 1, 2, 200, 210, 230);
-  }
-  fillRect(166, 40, 30, 30, 200, 210, 230);
-  
-  // Text lines on document
-  for (let i = 0; i < 6; i++) {
-    const lineWidth = i === 5 ? 60 : 90;
-    fillRect(80, 70 + i * 24, lineWidth, 8, 100, 116, 139);
-  }
-  
-  // Magnifying glass handle
-  const handleStartX = 180;
-  const handleStartY = 180;
-  const handleEndX = 230;
-  const handleEndY = 230;
-  const handleWidth = 12;
-  
-  for (let t = 0; t <= 1; t += 0.01) {
-    const x = handleStartX + (handleEndX - handleStartX) * t;
-    const y = handleStartY + (handleEndY - handleStartY) * t;
-    for (let w = -handleWidth/2; w <= handleWidth/2; w++) {
-      const perpX = x + w * 0.707;
-      const perpY = y - w * 0.707;
-      setPixel(Math.round(perpX), Math.round(perpY), 59, 130, 246);
-    }
-  }
-  
-  // Magnifying glass circle (outer ring - blue)
-  drawRing(165, 165, 55, 45, 59, 130, 246);
-  
-  // Magnifying glass circle (inner - light blue)
-  fillCircle(165, 165, 45, 147, 197, 253, 180);
-  
-  // Checkmark inside magnifying glass
-  const checkPoints = [
-    [145, 170], [155, 185], [190, 145]
-  ];
-  
-  // Draw thick checkmark
-  for (let t = 0; t <= 1; t += 0.02) {
-    let segIdx, segT;
-    if (t < 0.5) {
-      segIdx = 0;
-      segT = t * 2;
-    } else {
-      segIdx = 1;
-      segT = (t - 0.5) * 2;
-    }
-    const x = Math.round(checkPoints[segIdx][0] + (checkPoints[segIdx + 1][0] - checkPoints[segIdx][0]) * segT);
-    const y = Math.round(checkPoints[segIdx][1] + (checkPoints[segIdx + 1][1] - checkPoints[segIdx][1]) * segT);
-    for (let w = -4; w <= 4; w++) {
-      for (let h = -4; h <= 4; h++) {
-        if (w*w + h*h <= 16) {
-          setPixel(x + w, y + h, 22, 163, 74);
-        }
-      }
-    }
-  }
-  
-  // Encode as PNG
-  return encodePNG(width, height, pixels);
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
 }
 
-// Simple PNG encoder (no compression library needed)
-function encodePNG(width, height, pixels) {
-  const { createDeflate } = require('zlib');
-  
-  // PNG signature
+function mix(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function createCanvas(size) {
+  return {
+    size,
+    pixels: new Uint8ClampedArray(size * size * 4)
+  };
+}
+
+function blendPixel(canvas, x, y, r, g, b, a = 255) {
+  if (x < 0 || y < 0 || x >= canvas.size || y >= canvas.size || a <= 0) return;
+  const idx = (y * canvas.size + x) * 4;
+  const srcA = clamp(a, 0, 255) / 255;
+  const dstA = canvas.pixels[idx + 3] / 255;
+  const outA = srcA + dstA * (1 - srcA);
+
+  if (outA <= 0) {
+    canvas.pixels[idx] = 0;
+    canvas.pixels[idx + 1] = 0;
+    canvas.pixels[idx + 2] = 0;
+    canvas.pixels[idx + 3] = 0;
+    return;
+  }
+
+  const dstR = canvas.pixels[idx];
+  const dstG = canvas.pixels[idx + 1];
+  const dstB = canvas.pixels[idx + 2];
+
+  const outR = (r * srcA + dstR * dstA * (1 - srcA)) / outA;
+  const outG = (g * srcA + dstG * dstA * (1 - srcA)) / outA;
+  const outB = (b * srcA + dstB * dstA * (1 - srcA)) / outA;
+
+  canvas.pixels[idx] = Math.round(outR);
+  canvas.pixels[idx + 1] = Math.round(outG);
+  canvas.pixels[idx + 2] = Math.round(outB);
+  canvas.pixels[idx + 3] = Math.round(outA * 255);
+}
+
+function rgba(color, alphaOverride = null) {
+  return {
+    r: color[0],
+    g: color[1],
+    b: color[2],
+    a: alphaOverride === null ? (color[3] ?? 255) : alphaOverride
+  };
+}
+
+function pointInRoundedRect(x, y, rect) {
+  const { x: rx, y: ry, w, h, radius } = rect;
+  const innerLeft = rx + radius;
+  const innerRight = rx + w - radius;
+  const innerTop = ry + radius;
+  const innerBottom = ry + h - radius;
+
+  if (x >= innerLeft && x < innerRight && y >= ry && y < ry + h) return true;
+  if (y >= innerTop && y < innerBottom && x >= rx && x < rx + w) return true;
+
+  const corners = [
+    [rx + radius, ry + radius],
+    [rx + w - radius, ry + radius],
+    [rx + radius, ry + h - radius],
+    [rx + w - radius, ry + h - radius]
+  ];
+
+  for (const [cx, cy] of corners) {
+    const dx = x - cx;
+    const dy = y - cy;
+    if (dx * dx + dy * dy <= radius * radius) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function fillRoundedRect(canvas, rect, colorFn) {
+  const xStart = Math.floor(rect.x);
+  const yStart = Math.floor(rect.y);
+  const xEnd = Math.ceil(rect.x + rect.w);
+  const yEnd = Math.ceil(rect.y + rect.h);
+
+  for (let y = yStart; y < yEnd; y++) {
+    for (let x = xStart; x < xEnd; x++) {
+      if (!pointInRoundedRect(x + 0.5, y + 0.5, rect)) continue;
+      const color = colorFn(x, y);
+      blendPixel(canvas, x, y, color.r, color.g, color.b, color.a);
+    }
+  }
+}
+
+function pointInCircle(x, y, cx, cy, radius) {
+  const dx = x - cx;
+  const dy = y - cy;
+  return dx * dx + dy * dy <= radius * radius;
+}
+
+function fillCircle(canvas, cx, cy, radius, colorFn) {
+  const xStart = Math.floor(cx - radius);
+  const yStart = Math.floor(cy - radius);
+  const xEnd = Math.ceil(cx + radius);
+  const yEnd = Math.ceil(cy + radius);
+
+  for (let y = yStart; y < yEnd; y++) {
+    for (let x = xStart; x < xEnd; x++) {
+      if (!pointInCircle(x + 0.5, y + 0.5, cx, cy, radius)) continue;
+      const color = colorFn(x, y);
+      blendPixel(canvas, x, y, color.r, color.g, color.b, color.a);
+    }
+  }
+}
+
+function fillRing(canvas, cx, cy, outerRadius, innerRadius, colorFn) {
+  const xStart = Math.floor(cx - outerRadius);
+  const yStart = Math.floor(cy - outerRadius);
+  const xEnd = Math.ceil(cx + outerRadius);
+  const yEnd = Math.ceil(cy + outerRadius);
+  const outerSq = outerRadius * outerRadius;
+  const innerSq = innerRadius * innerRadius;
+
+  for (let y = yStart; y < yEnd; y++) {
+    for (let x = xStart; x < xEnd; x++) {
+      const dx = x + 0.5 - cx;
+      const dy = y + 0.5 - cy;
+      const distSq = dx * dx + dy * dy;
+      if (distSq > outerSq || distSq < innerSq) continue;
+      const color = colorFn(x, y, Math.sqrt(distSq));
+      blendPixel(canvas, x, y, color.r, color.g, color.b, color.a);
+    }
+  }
+}
+
+function drawCapsuleLine(canvas, x1, y1, x2, y2, thickness, color) {
+  const radius = thickness / 2;
+  const minX = Math.floor(Math.min(x1, x2) - radius - 1);
+  const minY = Math.floor(Math.min(y1, y2) - radius - 1);
+  const maxX = Math.ceil(Math.max(x1, x2) + radius + 1);
+  const maxY = Math.ceil(Math.max(y1, y2) + radius + 1);
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+
+  for (let y = minY; y < maxY; y++) {
+    for (let x = minX; x < maxX; x++) {
+      const px = x + 0.5;
+      const py = y + 0.5;
+      let t = 0;
+      if (lenSq > 0) {
+        t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+        t = clamp(t, 0, 1);
+      }
+      const projX = x1 + dx * t;
+      const projY = y1 + dy * t;
+      const distX = px - projX;
+      const distY = py - projY;
+      if (distX * distX + distY * distY <= radius * radius) {
+        blendPixel(canvas, x, y, color.r, color.g, color.b, color.a);
+      }
+    }
+  }
+}
+
+function fillTriangle(canvas, p1, p2, p3, colorFn) {
+  const minX = Math.floor(Math.min(p1[0], p2[0], p3[0]));
+  const minY = Math.floor(Math.min(p1[1], p2[1], p3[1]));
+  const maxX = Math.ceil(Math.max(p1[0], p2[0], p3[0]));
+  const maxY = Math.ceil(Math.max(p1[1], p2[1], p3[1]));
+
+  const area = (p2[1] - p3[1]) * (p1[0] - p3[0]) + (p3[0] - p2[0]) * (p1[1] - p3[1]);
+  if (area === 0) return;
+
+  for (let y = minY; y < maxY; y++) {
+    for (let x = minX; x < maxX; x++) {
+      const px = x + 0.5;
+      const py = y + 0.5;
+      const w1 = ((p2[1] - p3[1]) * (px - p3[0]) + (p3[0] - p2[0]) * (py - p3[1])) / area;
+      const w2 = ((p3[1] - p1[1]) * (px - p3[0]) + (p1[0] - p3[0]) * (py - p3[1])) / area;
+      const w3 = 1 - w1 - w2;
+      if (w1 >= 0 && w2 >= 0 && w3 >= 0) {
+        const color = colorFn(px, py, w1, w2, w3);
+        blendPixel(canvas, x, y, color.r, color.g, color.b, color.a);
+      }
+    }
+  }
+}
+
+function addRadialGlow(canvas, cx, cy, radius, color, strength = 1) {
+  const xStart = Math.floor(cx - radius);
+  const yStart = Math.floor(cy - radius);
+  const xEnd = Math.ceil(cx + radius);
+  const yEnd = Math.ceil(cy + radius);
+
+  for (let y = yStart; y < yEnd; y++) {
+    for (let x = xStart; x < xEnd; x++) {
+      const dx = x + 0.5 - cx;
+      const dy = y + 0.5 - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > radius) continue;
+      const t = 1 - dist / radius;
+      const alpha = Math.round((color[3] ?? 255) * t * t * strength);
+      blendPixel(canvas, x, y, color[0], color[1], color[2], alpha);
+    }
+  }
+}
+
+function downsample(canvas, targetSize) {
+  const scale = canvas.size / targetSize;
+  const output = Buffer.alloc(targetSize * targetSize * 4);
+
+  for (let y = 0; y < targetSize; y++) {
+    for (let x = 0; x < targetSize; x++) {
+      const startX = Math.floor(x * scale);
+      const endX = Math.floor((x + 1) * scale);
+      const startY = Math.floor(y * scale);
+      const endY = Math.floor((y + 1) * scale);
+
+      let sumR = 0;
+      let sumG = 0;
+      let sumB = 0;
+      let sumA = 0;
+      let count = 0;
+
+      for (let sy = startY; sy < endY; sy++) {
+        for (let sx = startX; sx < endX; sx++) {
+          const idx = (sy * canvas.size + sx) * 4;
+          sumR += canvas.pixels[idx];
+          sumG += canvas.pixels[idx + 1];
+          sumB += canvas.pixels[idx + 2];
+          sumA += canvas.pixels[idx + 3];
+          count++;
+        }
+      }
+
+      const outIdx = (y * targetSize + x) * 4;
+      output[outIdx] = Math.round(sumR / count);
+      output[outIdx + 1] = Math.round(sumG / count);
+      output[outIdx + 2] = Math.round(sumB / count);
+      output[outIdx + 3] = Math.round(sumA / count);
+    }
+  }
+
+  return output;
+}
+
+function crc32(buffer) {
+  let crc = 0xffffffff;
+  const table = new Array(256).fill(0).map((_, n) => {
+    let c = n;
+    for (let i = 0; i < 8; i++) {
+      c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+    }
+    return c >>> 0;
+  });
+
+  for (let i = 0; i < buffer.length; i++) {
+    crc = table[(crc ^ buffer[i]) & 0xff] ^ (crc >>> 8);
+  }
+
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function createChunk(type, data) {
+  const typeBuffer = Buffer.from(type);
+  const length = Buffer.alloc(4);
+  length.writeUInt32BE(data.length, 0);
+  const crcBuffer = Buffer.alloc(4);
+  crcBuffer.writeUInt32BE(crc32(Buffer.concat([typeBuffer, data])), 0);
+  return Buffer.concat([length, typeBuffer, data, crcBuffer]);
+}
+
+function encodePNG(width, height, rgbaBuffer) {
   const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
-  
-  // IHDR chunk
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(width, 0);
   ihdr.writeUInt32BE(height, 4);
-  ihdr[8] = 8;  // bit depth
-  ihdr[9] = 6;  // color type (RGBA)
-  ihdr[10] = 0; // compression
-  ihdr[11] = 0; // filter
-  ihdr[12] = 0; // interlace
-  
-  // IDAT chunk data (with filter bytes)
-  const rawData = Buffer.alloc(height * (width * 4 + 1));
+  ihdr[8] = 8;
+  ihdr[9] = 6;
+
+  const stride = width * 4 + 1;
+  const rawData = Buffer.alloc(height * stride);
   for (let y = 0; y < height; y++) {
-    rawData[y * (width * 4 + 1)] = 0; // filter type None
-    pixels.copy(rawData, y * (width * 4 + 1) + 1, y * width * 4, (y + 1) * width * 4);
+    rawData[y * stride] = 0;
+    rgbaBuffer.copy(rawData, y * stride + 1, y * width * 4, (y + 1) * width * 4);
   }
-  
-  // Compress with deflate
-  const zlib = require('zlib');
-  const compressed = zlib.deflateSync(rawData);
-  
-  // Build chunks
-  function createChunk(type, data) {
-    const typeBuffer = Buffer.from(type);
-    const length = Buffer.alloc(4);
-    length.writeUInt32BE(data.length, 0);
-    const crc = crc32(Buffer.concat([typeBuffer, data]));
-    const crcBuffer = Buffer.alloc(4);
-    crcBuffer.writeUInt32BE(crc, 0);
-    return Buffer.concat([length, typeBuffer, data, crcBuffer]);
-  }
-  
-  // CRC32 implementation
-  function crc32(buf) {
-    let crc = 0xFFFFFFFF;
-    const table = [];
-    for (let i = 0; i < 256; i++) {
-      let c = i;
-      for (let j = 0; j < 8; j++) {
-        c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
-      }
-      table[i] = c;
-    }
-    for (let i = 0; i < buf.length; i++) {
-      crc = table[(crc ^ buf[i]) & 0xFF] ^ (crc >>> 8);
-    }
-    return (crc ^ 0xFFFFFFFF) >>> 0;
-  }
-  
-  const ihdrChunk = createChunk('IHDR', ihdr);
-  const idatChunk = createChunk('IDAT', compressed);
-  const iendChunk = createChunk('IEND', Buffer.alloc(0));
-  
-  return Buffer.concat([signature, ihdrChunk, idatChunk, iendChunk]);
+
+  const compressed = zlib.deflateSync(rawData, { level: 9 });
+  return Buffer.concat([
+    signature,
+    createChunk('IHDR', ihdr),
+    createChunk('IDAT', compressed),
+    createChunk('IEND', Buffer.alloc(0))
+  ]);
 }
 
-// Generate and save
-const pngData = createPNG();
-fs.writeFileSync('build/icon.png', pngData);
-console.log('Icon created: build/icon.png');
+function encodeICO(images) {
+  const header = Buffer.alloc(6);
+  header.writeUInt16LE(0, 0);
+  header.writeUInt16LE(1, 2);
+  header.writeUInt16LE(images.length, 4);
+
+  const directory = Buffer.alloc(images.length * 16);
+  let offset = 6 + directory.length;
+
+  images.forEach((image, index) => {
+    const entryOffset = index * 16;
+    directory[entryOffset] = image.size === 256 ? 0 : image.size;
+    directory[entryOffset + 1] = image.size === 256 ? 0 : image.size;
+    directory[entryOffset + 2] = 0;
+    directory[entryOffset + 3] = 0;
+    directory.writeUInt16LE(1, entryOffset + 4);
+    directory.writeUInt16LE(32, entryOffset + 6);
+    directory.writeUInt32LE(image.png.length, entryOffset + 8);
+    directory.writeUInt32LE(offset, entryOffset + 12);
+    offset += image.png.length;
+  });
+
+  return Buffer.concat([header, directory, ...images.map((image) => image.png)]);
+}
+
+function paintBackground(canvas) {
+  const tile = { x: 72, y: 72, w: 624, h: 624, radius: 172 };
+
+  fillRoundedRect(canvas, { ...tile, x: tile.x + 18, y: tile.y + 30 }, () => rgba([3, 8, 20, 118]));
+  fillRoundedRect(canvas, tile, (x, y) => {
+    const nx = (x - tile.x) / tile.w;
+    const ny = (y - tile.y) / tile.h;
+    return rgba([
+      Math.round(mix(11, 18, ny * 0.6 + nx * 0.3)),
+      Math.round(mix(22, 52, ny * 0.7)),
+      Math.round(mix(42, 116, nx * 0.6 + ny * 0.4)),
+      255
+    ]);
+  });
+
+  addRadialGlow(canvas, 225, 170, 220, [71, 183, 255, 58], 1.15);
+  addRadialGlow(canvas, 560, 590, 260, [31, 99, 255, 44], 1.0);
+  addRadialGlow(canvas, 384, 112, 200, [255, 255, 255, 28], 0.9);
+
+  fillRoundedRect(canvas, { x: 92, y: 92, w: 584, h: 12, radius: 6 }, () => rgba([255, 255, 255, 18]));
+}
+
+function paintDocument(canvas) {
+  const card = { x: 182, y: 138, w: 308, h: 400, radius: 76 };
+  fillRoundedRect(canvas, { ...card, x: card.x + 18, y: card.y + 24 }, () => rgba([2, 6, 23, 52]));
+  fillRoundedRect(canvas, card, (x, y) => {
+    const ny = (y - card.y) / card.h;
+    return rgba([
+      Math.round(mix(247, 231, ny)),
+      Math.round(mix(251, 241, ny)),
+      Math.round(mix(255, 248, ny)),
+      255
+    ]);
+  });
+
+  fillRoundedRect(canvas, { x: 204, y: 158, w: 264, h: 10, radius: 5 }, () => rgba([255, 255, 255, 54]));
+
+  const foldBase = [card.x + card.w - 108, card.y];
+  const foldTip = [card.x + card.w, card.y + 108];
+  const foldJoin = [card.x + card.w, card.y];
+  fillTriangle(canvas, foldBase, foldTip, foldJoin, () => rgba([216, 229, 255, 255]));
+  fillTriangle(canvas, [foldBase[0] - 6, foldBase[1] + 10], [foldTip[0] - 10, foldTip[1] - 6], [foldJoin[0] - 10, foldJoin[1] + 8], () => rgba([195, 214, 248, 180]));
+
+  const ink = rgba([29, 78, 216, 255]);
+  fillRoundedRect(canvas, { x: 246, y: 214, w: 26, h: 132, radius: 13 }, () => ink);
+  fillRoundedRect(canvas, { x: 308, y: 214, w: 26, h: 132, radius: 13 }, () => ink);
+  fillRoundedRect(canvas, { x: 214, y: 246, w: 152, h: 26, radius: 13 }, () => ink);
+  fillRoundedRect(canvas, { x: 214, y: 310, w: 152, h: 26, radius: 13 }, () => ink);
+
+  const lineColor = rgba([90, 108, 142, 220]);
+  const lines = [
+    { x: 248, y: 388, w: 154 },
+    { x: 248, y: 426, w: 128 },
+    { x: 248, y: 464, w: 172 }
+  ];
+  for (const line of lines) {
+    fillRoundedRect(canvas, { x: line.x, y: line.y, w: line.w, h: 18, radius: 9 }, () => lineColor);
+  }
+}
+
+function paintLens(canvas) {
+  const lensX = 502;
+  const lensY = 476;
+  const outerRadius = 138;
+  const innerRadius = 100;
+
+  fillCircle(canvas, lensX + 16, lensY + 18, outerRadius, () => rgba([1, 9, 27, 54]));
+  fillCircle(canvas, lensX, lensY, outerRadius, (x, y) => {
+    const dist = Math.hypot(x - lensX, y - lensY);
+    const t = clamp(dist / outerRadius, 0, 1);
+    return rgba([
+      Math.round(mix(127, 48, t)),
+      Math.round(mix(215, 118, t)),
+      Math.round(mix(255, 255, t * 0.65)),
+      Math.round(mix(228, 255, 1 - t * 0.25))
+    ]);
+  });
+
+  fillRing(canvas, lensX, lensY, outerRadius, innerRadius, (_, __, dist) => {
+    const t = clamp((dist - innerRadius) / (outerRadius - innerRadius), 0, 1);
+    return rgba([
+      Math.round(mix(96, 28, t)),
+      Math.round(mix(224, 130, t)),
+      255,
+      Math.round(mix(255, 228, t))
+    ]);
+  });
+
+  fillCircle(canvas, lensX, lensY, innerRadius, (x, y) => {
+    const t = clamp((y - (lensY - innerRadius)) / (innerRadius * 2), 0, 1);
+    return rgba([
+      Math.round(mix(216, 164, t)),
+      Math.round(mix(245, 221, t)),
+      Math.round(mix(255, 255, t)),
+      112
+    ]);
+  });
+
+  addRadialGlow(canvas, lensX - 36, lensY - 42, 110, [255, 255, 255, 48], 1);
+  drawCapsuleLine(canvas, 584, 560, 664, 640, 54, rgba([16, 34, 80, 210]));
+  drawCapsuleLine(canvas, 590, 554, 670, 634, 26, rgba([109, 211, 255, 220]));
+
+  drawCapsuleLine(canvas, 454, 488, 492, 530, 34, rgba([19, 198, 125, 255]));
+  drawCapsuleLine(canvas, 490, 530, 560, 442, 34, rgba([19, 198, 125, 255]));
+
+  fillCircle(canvas, 598, 342, 22, () => rgba([255, 215, 76, 255]));
+  drawCapsuleLine(canvas, 598, 308, 598, 332, 10, rgba([255, 215, 76, 235]));
+  drawCapsuleLine(canvas, 598, 352, 598, 376, 10, rgba([255, 215, 76, 235]));
+  drawCapsuleLine(canvas, 564, 342, 588, 342, 10, rgba([255, 215, 76, 235]));
+  drawCapsuleLine(canvas, 608, 342, 632, 342, 10, rgba([255, 215, 76, 235]));
+}
+
+function createIconCanvas() {
+  const canvas = createCanvas(WORK_SIZE);
+  paintBackground(canvas);
+  paintDocument(canvas);
+  paintLens(canvas);
+  return canvas;
+}
+
+function writeOutputs() {
+  fs.mkdirSync(BUILD_DIR, { recursive: true });
+
+  const canvas = createIconCanvas();
+  const pngImages = ICON_SIZES.map((size) => {
+    const rgbaBuffer = downsample(canvas, size);
+    return {
+      size,
+      rgbaBuffer,
+      png: encodePNG(size, size, rgbaBuffer)
+    };
+  });
+
+  const preview = pngImages.find((image) => image.size === 256);
+  fs.writeFileSync(path.join(BUILD_DIR, 'icon.png'), preview.png);
+  fs.writeFileSync(path.join(BUILD_DIR, 'icon.ico'), encodeICO(pngImages));
+
+  console.log('Created icon assets:');
+  console.log(`- ${path.join('build', 'icon.png')}`);
+  console.log(`- ${path.join('build', 'icon.ico')}`);
+}
+
+writeOutputs();

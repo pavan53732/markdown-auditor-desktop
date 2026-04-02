@@ -6,12 +6,13 @@ Markdown Intelligence Auditor is a desktop application built with Electron, Reac
 
 The current architecture supports:
 
-- 45 analytical layers with 637 code-defined micro-detectors
+- 53 analytical layers with 701 code-defined micro-detectors
 - Full structured detector metadata (trigger patterns, evidence, FP guards)
-- Programmatic system prompt generation using a dynamic builder
+- Programmatic system prompt generation using a dynamic builder and fixed agent-role prompts
 - Detector-aware validation for known detector/category/subcategory combinations
-- Domain-aware profiles (e.g. API Docs, Runbooks)
-- 25 cross-layer logical bundles
+- Optional domain-aware profiles (e.g. API Docs, Runbooks) that adjust emphasis without replacing the universal taxonomy
+- 31 cross-layer logical bundles
+- Deterministic 8-agent analysis mesh with bounded, mergeable passes
 - chunk-aware batching for large files
 - deterministic runtime normalization
 - incremental cache reuse for unchanged files
@@ -33,9 +34,11 @@ Electron Main Process
 Renderer Process (React)
 - file intake and local UI state
 - hashing, caching, batching, merging, diffing
-- taxonomy orchestration (profiles, bundles, subcategories, detectors)
+- taxonomy orchestration (layers, optional profiles, bundles, subcategories, detectors, agent mesh)
+- deterministic 8-pass agent execution and merge orchestration
 - taxonomy-driven normalization: metadata backfilling and severity clamping
 - result rendering with advanced subcategory filtering and grouping
+- renderer-branded asset usage for the top bar, progress state, and Markdown export header
 - History Workbench UI (search, filter, sort, edit, compare)
 - export generation (JSON, Markdown, CSV)
 
@@ -77,26 +80,28 @@ Provider Layer
 |   |   |-- SummaryDashboard.jsx
 |   |   `-- TopBar.jsx
 |   `-- lib/
+|       |-- analysisAgents.js
 |       |-- crossLayerBundles.js
-|       |-- detectorMetadata.js (Source of truth for 637 detectors)
+|       |-- detectorMetadata.js (Source of truth for 701 detectors)
 |       |-- domainProfiles.js
 |       |-- jsonRepair.js (Advanced semantic validation)
 |       |-- layers.js
 |       |-- taxonomyCoverageHelper.js (Per-layer density, richness, subcategory, and bundle coverage analysis)
-|       `-- systemPrompt.js (Dynamic prompt generator)
+|       `-- systemPrompt.js (Dynamic prompt generator for the deterministic agent mesh)
 
 ## Taxonomy Verification and Diagnostics
 
-The system supports a local verification workflow with deepened 45-layer coverage:
+The system supports a local verification workflow with deepened 53-layer coverage:
 
-1.  **Integrity Validation**: Local automated tests verify the 637-detector catalog against the 45-layer schema.
+1.  **Integrity Validation**: Local automated tests verify the 701-detector catalog against the 53-layer schema.
 2.  **Semantic Enforcement**: Validation logic ensures that AI-reported detector IDs, layers, and subcategories are mutually consistent.
-3.  **Benchmark Evaluation**: A suite of canonical Markdown fixtures (`taxonomyBenchmark.test.js`) evaluates empirical taxonomy coverage across complex edge cases without bloating the top-level categories.
-4.  **Deep-Spec Benchmarks**: Additional deterministic benchmark tests in `deepSpecBenchmarks.test.js` (127 total tests) validate deep-spec layer behavior including control plane override abuse, evidence-free escalation, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty dropped, and world state atomicity.
-5. **Enhanced Taxonomy Coverage Helper**: The `taxonomyCoverageHelper.js` provides per-layer density analysis, richness metrics, subcategory coverage tracking, bundle coverage analysis, and `related_layers` coverage reporting for comprehensive taxonomy observability.
-6.  **Runtime Diagnostics**: The application tracks enrichment, parsing, and clamping metrics during analysis and session loading.
-7.  **Observability**: Diagnostics are surfaced in the UI results summary and exports to ensure pipeline transparency.
+3.  **Benchmark Evaluation**: Canonical Markdown fixtures across `taxonomyBenchmark.test.js`, `deepSpecBenchmarks.test.js`, and `extendedUniversalBenchmarks.test.js` exercise deterministic taxonomy validation, normalization, and detector mapping behavior across 29 benchmark fixtures.
+4.  **Expanded Coverage**: The benchmark suites now cover deep-spec and universal-audit scenarios such as authority bypass, workflow skips, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty drops, artifact reproducibility gaps, toolchain leakage, recovery loop collapse, and operational UX leakage. The full local suite currently contains 157 tests across 11 files.
+5.  **Enhanced Taxonomy Coverage Helper**: `taxonomyCoverageHelper.js` provides per-layer density analysis, richness metrics, subcategory coverage tracking, bundle coverage analysis, and `related_layers` coverage reporting for comprehensive taxonomy observability.
+6.  **Runtime Diagnostics**: The application tracks enrichment, parsing, clamping, and multi-agent merge metrics during analysis and session loading.
+7.  **Observability**: Diagnostics are surfaced in the UI results summary and exports to ensure pipeline transparency, including configured agent count, completed passes, and merged findings.
 |-- build/
+|   |-- icon.ico
 |   `-- icon.png
 |-- dist/
 `-- dist-electron-v4/
@@ -133,6 +138,7 @@ The system supports a local verification workflow with deepened 45-layer coverag
 - hashing and incremental cache lookup
 - chunking and batching
 - API request orchestration
+- 8-pass deterministic agent execution using `analysisAgents.js`
 - JSON repair and response validation
 - merge, deduplication, escalation, and cross-layer validation
 - history management and comparison workflows
@@ -142,9 +148,10 @@ The system supports a local verification workflow with deepened 45-layer coverag
 `src/lib/detectorMetadata.js` is the taxonomy source of truth for:
 
 - layer subcategories
-- all 637 detector definitions
+- all 701 detector definitions
 - detector prompt generation helpers
 - known-detector validation helpers
+- detector-driven defaults for `failure_type`, `constraint_reference`, `contract_step`, `invariant_broken`, `authority_boundary`, `closed_world_status`, `evidence_reference`, and `deterministic_fix`
 - pure helpers for export and session data shaping (`buildExportData`, `buildSessionData`, `normalizeLoadedSession`, `resolveInitialCache`, `buildHistoryMetadata`)
 
 ## Key UI Components

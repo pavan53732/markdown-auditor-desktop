@@ -4,6 +4,31 @@ All notable changes to this project should be documented in this file.
 
 This changelog establishes the current production-ready baseline for the app as it exists in this repository.
 
+## [Unreleased]
+
+## [1.13.0] - 2026-04-02
+### Added
+
+- **Universal Taxonomy Expansion (53 Layers / 701 Detectors)**: Extended the taxonomy with eight new universal audit layers covering ontology vocabulary governance, workflow lifecycle integrity, authority path integrity, artifact reproducibility, environment toolchain isolation, knowledge source authority, failure recovery integrity, and operational UX contracts.
+- **Deterministic 8-Agent Analysis Mesh**: Added a fixed multi-pass runtime mesh (`analysisAgents.js`) with bounded roles for specification absoluteness, architecture authority, UI/operational integrity, execution/simulation, memory/world state, tool/deployment safety, reasoning/evidence, and cross-layer synthesis.
+- **Strict Issue Schema Enrichment**: Added normalized fields for `failure_type`, `constraint_reference`, `violation_reference`, `contract_step`, `invariant_broken`, `authority_boundary`, `closed_world_status`, `analysis_agent`, `analysis_agents`, `assumption_detected`, `evidence_reference`, and `deterministic_fix`.
+- **Extended Benchmark Coverage**: Added 8 new universal-audit fixtures and a dedicated `extendedUniversalBenchmarks.test.js` suite covering authority bypass, workflow skips, artifact reproducibility, toolchain isolation, knowledge-source authority, recovery-loop failure, and operational UX leakage scenarios.
+- **Branded Windows Icon Assets**: Added a generated icon pipeline that produces both `build/icon.png` and `build/icon.ico`, giving the packaged Windows app a custom Markdown-audit icon instead of the Electron default.
+
+### Changed
+
+- **Cross-Layer Bundle Expansion**: Increased cross-layer bundles from 25 to 31 to cover vocabulary authority, workflow execution, authority/governance/world-state, artifact environment integrity, knowledge-memory-context, and operational UI contracts.
+- **Runtime Orchestration**: `src/App.jsx` now executes eight deterministic analysis passes per batch, merges agent provenance, enriches diagnostics with mesh metrics, and exports the stricter issue fields across JSON, Markdown, and CSV outputs.
+- **Cache Identity Hardening**: Incremental cache hashing now includes the analysis mesh version, selected profile, provider base URL, and model to avoid stale reuse across runtime-capability changes.
+- **Progress and Issue UI Alignment**: Progress and issue rendering now surface mesh-aware status text, analysis-agent provenance, stricter traceability fields, and deterministic fix guidance.
+- **Branding Surface Alignment**: The custom audit icon now appears in the top bar, loading state, and self-contained Markdown report header for a more consistent app identity.
+- **Documentation and Tests**: Current-state docs now reflect the 53-layer / 701-detector baseline, and the local suite now covers 157 tests across 11 files with 29 benchmark fixtures.
+
+### Fixed
+
+- **Schema Wiring Consistency**: Prompt generation, repair/validation, normalization, exports, diagnostics, and issue-card rendering are now aligned for the expanded issue schema instead of leaving partially wired fields.
+- **Taxonomy Runtime Truthfulness**: User-facing architecture and capability docs now describe the implemented universal taxonomy and agent mesh rather than the older 45-layer / 637-detector single-pass baseline.
+
 ## [1.12.0] - 2026-03-31
 
 ### Added
@@ -12,12 +37,12 @@ This changelog establishes the current production-ready baseline for the app as 
 - **related_layers Population**: Populated `related_layers` metadata for 191 deep-spec detectors (L33-L45, 13 layers) to support cross-layer traceability.
 - **Cross-Layer Bundle Expansion**: Increased cross-layer bundles from 22 to 25, adding agent_memory_coordination, context_orchestration_execution, and deployment_resilience_contract.
 - **Enhanced Taxonomy Coverage Helper**: Updated `taxonomyCoverageHelper.js` with `related_layers` coverage reporting for comprehensive taxonomy observability.
-- **Benchmark Suite Growth**: Deterministic benchmark tests increased from 95 to 136, with deep-spec fixtures covering control plane override abuse, evidence-free escalation, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty dropped, and world state atomicity.
+- **Benchmark Suite Growth**: The local automated suite increased from 95 to 136 tests overall, with benchmark fixtures covering control plane override abuse, evidence-free escalation, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty dropped, and world state atomicity.
 
 ### Changed
 
 - **Test Suite Growth**: Test suite now includes 136 tests across all test files, fully aligned to the 637-detector catalog.
-- **Documentation Alignment**: All current-state documentation and runtime prompt text now reflect the 637-detector baseline with `related_layers` support.
+- **Documentation Alignment**: All current-state documentation and runtime prompt text now reflect the 637-detector baseline, with `related_layers` described accurately as deep-spec cross-references.
 
 ## [1.11.0] - 2026-03-31
 

@@ -44,6 +44,14 @@ export const LAYER_SUBCATEGORIES = {
   deterministic_execution: ['transition determinism', 'concurrency model definition', 'deadlock / livelock prevention', 'scheduling determinism', 'retry and backoff policy', 'deterministic replay capability', 'timing dependency', 'resource ordering', 'scheduling non-determinism', 'deterministic replay requirements', 'deadlock livelock risk articulation'],
   control_plane_authority: ['control-plane separation', 'authority delegation rules', 'override conditions', 'execution owner boundary', 'policy enforcement points', 'escalation path', 'audit trail requirements', 'control plane separation violation', 'control-plane override conditions', 'execution owner boundary clarity'],
   world_state_governance: ['state mutation invariants', 'mutation gateway exclusivity', 'commit_hash binding', 'read/write atomicity', 'graph consistency / acyclicity', 'state isolation', 'temporal state consistency', 'state mutation invariant gap', 'snapshot isolation atomicity', 'state mutation invariants detail'],
+  ontology_vocabulary_governance: ['terminology registry completeness', 'canonical vocabulary enforcement', 'forbidden terminology enforcement', 'symbol definition coverage', 'type/entity naming stability', 'undefined term rejection', 'vocabulary-to-contract mapping', 'term collision avoidance'],
+  workflow_lifecycle_integrity: ['required step ordering', 'lifecycle stage completeness', 'no-skip execution paths', 'rollback stage integrity', 'checkpoint coverage', 'transition guard coverage', 'status projection consistency', 'workflow exit criteria'],
+  authority_path_integrity: ['write path uniqueness', 'execution authority exclusivity', 'governance checkpoint completeness', 'approval chain determinism', 'delegation boundary clarity', 'mutation gateway exclusivity', 'control/runtime authority segregation', 'authority bypass resistance'],
+  artifact_reproducibility: ['deterministic build inputs', 'deterministic outputs', 'artifact lineage binding', 'export structure reproducibility', 'environment snapshot completeness', 'reproducible replay capability', 'version increment determinism', 'packaging integrity'],
+  environment_toolchain_isolation: ['isolated toolchain provisioning', 'clean-room environment construction', 'host dependency prohibition', 'cache isolation', 'path leakage prevention', 'capability manifest completeness', 'runtime provisioning integrity', 'sandbox fallback integrity'],
+  knowledge_source_authority: ['source-of-truth ranking', 'closed-world validation', 'external knowledge verification', 'memory trust calibration', 'assumption rejection', 'evidence origin binding', 'stale knowledge invalidation', 'authority override prevention'],
+  failure_recovery_integrity: ['retry budget correctness', 'recovery journal completeness', 'rollback idempotency', 'emergency recovery path', 'failure domain isolation', 'loop/cycle break enforcement', 'stop evidence capture', 'aborted-state consistency'],
+  operational_ux_contract: ['calm-state error translation', 'progress state projection', 'hidden-system-boundary clarity', 'user intervention clarity', 'preview fidelity', 'results-only UX contract', 'no raw-log exposure', 'operator control affordances'],
 };
 
 const rawMetadata = {
@@ -686,6 +694,128 @@ const rawMetadata = {
   'L42-14': { name: 'UI fatal-state exposure detail', sub: 'UI fatal-state exposure', trigger: 'Fatal state exposed without recovery.', evidence: 'Fatal UX.', fp: 'Context.', floor: 'critical' }
 };
 
+const EXTENDED_LAYER_GENERATORS = [
+  {
+    layerNumber: 46,
+    detectors: [
+      { name: 'terminology registry completeness gap', sub: 'terminology registry completeness', trigger: 'Canonical terms are used but not registered or defined consistently.', evidence: 'Glossary or term usage mismatch.', fp: 'Incidental wording variants without contract significance.', floor: 'medium', ceiling: 'high' },
+      { name: 'canonical vocabulary enforcement gap', sub: 'canonical vocabulary enforcement', trigger: 'Multiple incompatible labels are used for the same concept or contract surface.', evidence: 'Conflicting labels across sections.', fp: 'Intentional synonym tables with explicit mapping.', floor: 'medium', ceiling: 'high' },
+      { name: 'forbidden terminology enforcement gap', sub: 'forbidden terminology enforcement', trigger: 'A forbidden or explicitly deprecated term remains in normative guidance.', evidence: 'Deprecated term appears in rules or instructions.', fp: 'Historical mention clearly marked as legacy.', floor: 'medium' },
+      { name: 'symbol definition coverage gap', sub: 'symbol definition coverage', trigger: 'Symbols, abbreviations, or shorthand appear without deterministic definition.', evidence: 'Undeclared symbol or abbreviation.', fp: 'Universally obvious notation already defined nearby.', floor: 'medium' },
+      { name: 'type and entity naming instability', sub: 'type/entity naming stability', trigger: 'Entity or type names drift across sections, diagrams, or examples.', evidence: 'Naming drift for the same entity.', fp: 'Intentional subtype naming with explicit distinction.', floor: 'medium' },
+      { name: 'undefined term rejection gap', sub: 'undefined term rejection', trigger: 'Normative behavior depends on a term that is never formally defined.', evidence: 'Undefined term appears in a requirement or contract.', fp: 'Term is defined in the same closed set of materials.', floor: 'high' },
+      { name: 'vocabulary-to-contract mapping gap', sub: 'vocabulary-to-contract mapping', trigger: 'Terms exist but are not linked to explicit behaviors, contracts, or acceptance conditions.', evidence: 'Glossary terms without behavioral binding.', fp: 'Purely descriptive vocabulary with no normative role.', floor: 'medium' },
+      { name: 'term collision avoidance gap', sub: 'term collision avoidance', trigger: 'Two distinct concepts share near-identical labels, creating classification ambiguity.', evidence: 'Colliding labels for different concepts.', fp: 'Shared prefix with explicit namespace separation.', floor: 'medium' }
+    ]
+  },
+  {
+    layerNumber: 47,
+    detectors: [
+      { name: 'required step ordering gap', sub: 'required step ordering', trigger: 'A deterministic sequence exists but the documented order is incomplete or inconsistent.', evidence: 'Out-of-order or conflicting steps.', fp: 'Non-normative examples that are explicitly optional.', floor: 'high' },
+      { name: 'lifecycle stage completeness gap', sub: 'lifecycle stage completeness', trigger: 'A workflow lifecycle omits a required stage or terminal condition.', evidence: 'Missing lifecycle stage.', fp: 'Minimal workflows intentionally scoped to a smaller lifecycle.', floor: 'medium' },
+      { name: 'no-skip execution path gap', sub: 'no-skip execution paths', trigger: 'The document implies mandatory steps can be skipped without validation or consequence.', evidence: 'Skip path around a required step.', fp: 'Fast paths with explicit equivalent guarantees.', floor: 'high' },
+      { name: 'rollback stage integrity gap', sub: 'rollback stage integrity', trigger: 'Rollback exists but is not aligned with the forward lifecycle stages it must reverse.', evidence: 'Rollback stage mismatch.', fp: 'External rollback handled by a referenced, verified system.', floor: 'high' },
+      { name: 'checkpoint coverage gap', sub: 'checkpoint coverage', trigger: 'Critical transitions occur without checkpointing, validation, or audit state capture.', evidence: 'Missing checkpoint around critical boundary.', fp: 'Truly atomic step with no intermediate risk surface.', floor: 'medium' },
+      { name: 'transition guard coverage gap', sub: 'transition guard coverage', trigger: 'State transitions lack deterministic entry or exit guards.', evidence: 'Missing precondition or guard.', fp: 'Stateless transition where guards are provably unnecessary.', floor: 'high' },
+      { name: 'status projection consistency gap', sub: 'status projection consistency', trigger: 'Internal lifecycle state and user-visible or documented status diverge.', evidence: 'Status naming or projection mismatch.', fp: 'Different audiences with explicit mapping.', floor: 'medium' },
+      { name: 'workflow exit criteria gap', sub: 'workflow exit criteria', trigger: 'Completion, abort, or handoff conditions are ambiguous or missing.', evidence: 'Undefined workflow exit state.', fp: 'Open-ended exploratory note without execution contract.', floor: 'medium' }
+    ]
+  },
+  {
+    layerNumber: 48,
+    detectors: [
+      { name: 'write path uniqueness gap', sub: 'write path uniqueness', trigger: 'Multiple implicit write paths can mutate the same authority surface.', evidence: 'Parallel mutation paths.', fp: 'Read-only mirrors that never commit writes.', floor: 'critical' },
+      { name: 'execution authority exclusivity gap', sub: 'execution authority exclusivity', trigger: 'Two or more components appear to own the same execution authority.', evidence: 'Conflicting execution owner statements.', fp: 'Supervisory vs executor roles explicitly separated.', floor: 'critical' },
+      { name: 'governance checkpoint completeness gap', sub: 'governance checkpoint completeness', trigger: 'A required authority gate is absent before mutation, execution, or export.', evidence: 'Missing governance checkpoint.', fp: 'Provably inert operation with no state consequence.', floor: 'high' },
+      { name: 'approval chain determinism gap', sub: 'approval chain determinism', trigger: 'The approval path is order-dependent but not fully specified.', evidence: 'Ambiguous approval ordering.', fp: 'Single-step approval with explicit exclusivity.', floor: 'high' },
+      { name: 'delegation boundary clarity gap', sub: 'delegation boundary clarity', trigger: 'Delegated authority lacks clear scope, limits, or non-delegable boundaries.', evidence: 'Unclear delegation scope.', fp: 'Advisory delegation with no execution rights.', floor: 'high' },
+      { name: 'mutation gateway exclusivity gap', sub: 'mutation gateway exclusivity', trigger: 'A documented fallback or side path can bypass the canonical mutation gateway.', evidence: 'Bypass around canonical gateway.', fp: 'Read-only audit or replay paths.', floor: 'critical' },
+      { name: 'control runtime authority segregation gap', sub: 'control/runtime authority segregation', trigger: 'Control and runtime responsibilities leak into each other without choke-point enforcement.', evidence: 'Shared control/runtime authority.', fp: 'Explicit host-orchestrated adaptation layer.', floor: 'critical' },
+      { name: 'authority bypass resistance gap', sub: 'authority bypass resistance', trigger: 'The document does not prove how unauthorized actors are prevented from bypassing authority paths.', evidence: 'Missing bypass resistance rule.', fp: 'Closed static system with no alternate invocation surface.', floor: 'high' }
+    ]
+  },
+  {
+    layerNumber: 49,
+    detectors: [
+      { name: 'deterministic build input gap', sub: 'deterministic build inputs', trigger: 'Build inputs depend on ambient environment or unstated mutable sources.', evidence: 'Unpinned build input source.', fp: 'Purely local static input set.', floor: 'high' },
+      { name: 'deterministic output gap', sub: 'deterministic outputs', trigger: 'Repeated identical runs can produce materially different outputs.', evidence: 'Output variance under identical inputs.', fp: 'Intentional random artifact generation that is out of scope.', floor: 'critical' },
+      { name: 'artifact lineage binding gap', sub: 'artifact lineage binding', trigger: 'Artifacts are not traceably bound to the source state, version, or commit that produced them.', evidence: 'Missing artifact lineage reference.', fp: 'Disposable intermediate artifact not exposed as an output.', floor: 'high' },
+      { name: 'export structure reproducibility gap', sub: 'export structure reproducibility', trigger: 'Output folder structure varies by host, mode, or time without deterministic mapping.', evidence: 'Variable export structure.', fp: 'User-selected custom export root with preserved internal structure.', floor: 'medium' },
+      { name: 'environment snapshot completeness gap', sub: 'environment snapshot completeness', trigger: 'The environment that produced the artifact cannot be reconstructed from the documented snapshot.', evidence: 'Missing environment snapshot fields.', fp: 'Hermetic fixed environment with external manifest reference.', floor: 'high' },
+      { name: 'reproducible replay capability gap', sub: 'reproducible replay capability', trigger: 'Replay or rebuild claims exist without enough input lineage to reproduce them.', evidence: 'Replay claim without reproducibility evidence.', fp: 'Replay explicitly marked unsupported.', floor: 'high' },
+      { name: 'version increment determinism gap', sub: 'version increment determinism', trigger: 'Artifact versioning changes without a deterministic rule tied to validated change classes.', evidence: 'Unspecified version bump behavior.', fp: 'Manual release process explicitly outside the document scope.', floor: 'medium' },
+      { name: 'packaging integrity gap', sub: 'packaging integrity', trigger: 'Packaging does not prove completeness, integrity, or launchability of the produced artifact.', evidence: 'Missing packaging validation.', fp: 'Package generation intentionally out of scope.', floor: 'medium' }
+    ]
+  },
+  {
+    layerNumber: 50,
+    detectors: [
+      { name: 'isolated toolchain provisioning gap', sub: 'isolated toolchain provisioning', trigger: 'Required toolchains are assumed to exist globally instead of being provisioned deterministically.', evidence: 'Global toolchain dependency.', fp: 'Explicit external prerequisite section with no local automation claims.', floor: 'high' },
+      { name: 'clean-room environment construction gap', sub: 'clean-room environment construction', trigger: 'Build or execution environment inherits uncontrolled host state.', evidence: 'Ambient environment inheritance.', fp: 'Host state explicitly constrained and audited.', floor: 'high' },
+      { name: 'host dependency prohibition gap', sub: 'host dependency prohibition', trigger: 'The contract forbids host dependencies but still relies on them materially.', evidence: 'Contradictory host dependency requirement.', fp: 'Optional convenience integration outside critical path.', floor: 'critical' },
+      { name: 'cache isolation gap', sub: 'cache isolation', trigger: 'Shared caches can cross-contaminate parallel runs, tenants, or targets.', evidence: 'Unisolated cache path or policy.', fp: 'Immutable read-only cache with validated content-addressing.', floor: 'medium' },
+      { name: 'path leakage prevention gap', sub: 'path leakage prevention', trigger: 'Environment or path reconstruction can leak host-specific locations into reproducible flows.', evidence: 'Host path leakage.', fp: 'Diagnostic-only path output clearly excluded from runtime logic.', floor: 'medium' },
+      { name: 'capability manifest completeness gap', sub: 'capability manifest completeness', trigger: 'Required runtime or platform capabilities are not fully declared or validated.', evidence: 'Missing capability declaration.', fp: 'Capability is dynamically discovered and safely non-critical.', floor: 'high' },
+      { name: 'runtime provisioning integrity gap', sub: 'runtime provisioning integrity', trigger: 'Provisioned runtimes are not version-locked, verified, or lifecycle-bound.', evidence: 'Unverified runtime provisioning.', fp: 'Single embedded runtime with immutable checksum.', floor: 'high' },
+      { name: 'sandbox fallback integrity gap', sub: 'sandbox fallback integrity', trigger: 'Fallback from a preferred isolation mode weakens guarantees without explicit downgrade rules.', evidence: 'Unsafe sandbox fallback.', fp: 'Fallback preserves equivalent controls.', floor: 'high' }
+    ]
+  },
+  {
+    layerNumber: 51,
+    detectors: [
+      { name: 'source of truth ranking gap', sub: 'source-of-truth ranking', trigger: 'Multiple knowledge sources exist without a deterministic authority order.', evidence: 'Unranked competing sources.', fp: 'Single authoritative source explicitly named.', floor: 'high' },
+      { name: 'closed-world validation gap', sub: 'closed-world validation', trigger: 'Claims rely on entities or behaviors not verified within the accepted source set.', evidence: 'Open-world assumption leakage.', fp: 'External source is explicitly validated and cited.', floor: 'high' },
+      { name: 'external knowledge verification gap', sub: 'external knowledge verification', trigger: 'External knowledge can shape conclusions without verification, caching, or source binding.', evidence: 'Unverified external knowledge use.', fp: 'Read-only official source with explicit version binding.', floor: 'medium' },
+      { name: 'memory trust calibration gap', sub: 'memory trust calibration', trigger: 'Historical memory is reused without trust scoring, freshness checks, or invalidation logic.', evidence: 'Uncalibrated memory reuse.', fp: 'Memory is treated as advisory and revalidated every time.', floor: 'medium' },
+      { name: 'assumption rejection gap', sub: 'assumption rejection', trigger: 'The workflow does not explicitly reject unsupported assumptions before acting on them.', evidence: 'Assumption accepted as fact.', fp: 'Clearly marked human hypothesis with no execution consequence.', floor: 'high' },
+      { name: 'evidence origin binding gap', sub: 'evidence origin binding', trigger: 'Evidence exists but is not bound to its originating source or authority class.', evidence: 'Unbound evidence origin.', fp: 'Single-source document with no competing authority.', floor: 'medium' },
+      { name: 'stale knowledge invalidation gap', sub: 'stale knowledge invalidation', trigger: 'No rule explains when stale memory, references, or external knowledge must be discarded.', evidence: 'Missing staleness invalidation.', fp: 'Immutable historical archive intentionally preserved as non-current.', floor: 'medium' },
+      { name: 'authority override prevention gap', sub: 'authority override prevention', trigger: 'Lower-authority sources can silently override higher-authority facts or rules.', evidence: 'Authority inversion in knowledge flow.', fp: 'Override is explicit, governed, and logged.', floor: 'high' }
+    ]
+  },
+  {
+    layerNumber: 52,
+    detectors: [
+      { name: 'retry budget correctness gap', sub: 'retry budget correctness', trigger: 'Retry policies exist but are unbounded, asymmetric, or disconnected from failure class.', evidence: 'Incorrect or missing retry budget.', fp: 'Single-attempt action with no retry path.', floor: 'high' },
+      { name: 'recovery journal completeness gap', sub: 'recovery journal completeness', trigger: 'Recovery steps are not durably recorded with enough detail to resume safely.', evidence: 'Missing or incomplete recovery journal.', fp: 'Purely stateless recovery action.', floor: 'medium' },
+      { name: 'rollback idempotency gap', sub: 'rollback idempotency', trigger: 'Rollback can compound state damage or produce different results when repeated.', evidence: 'Non-idempotent rollback behavior.', fp: 'Rollback runs exactly once under hard enforcement.', floor: 'high' },
+      { name: 'emergency recovery path gap', sub: 'emergency recovery path', trigger: 'Critical failure handling stops at detection without a documented recovery mode.', evidence: 'Missing emergency recovery path.', fp: 'System intentionally fail-stops with no recovery promise.', floor: 'high' },
+      { name: 'failure domain isolation gap', sub: 'failure domain isolation', trigger: 'Local failures can propagate beyond their intended containment boundary.', evidence: 'Unbounded failure propagation.', fp: 'Single-domain system with no isolation claims.', floor: 'critical' },
+      { name: 'loop break enforcement gap', sub: 'loop/cycle break enforcement', trigger: 'Self-healing, retry, or planning loops lack deterministic cycle break rules.', evidence: 'Infinite or circular recovery path.', fp: 'Human-gated loop with explicit hard stop.', floor: 'high' },
+      { name: 'stop evidence capture gap', sub: 'stop evidence capture', trigger: 'Cancellation or kill paths do not preserve enough evidence for audit or recovery.', evidence: 'Missing stop evidence artifact.', fp: 'Ephemeral prototype flow with no audit requirements.', floor: 'medium' },
+      { name: 'aborted state consistency gap', sub: 'aborted-state consistency', trigger: 'Abort or suspension leaves the system in an ambiguous partially-applied state.', evidence: 'Inconsistent aborted state.', fp: 'Abort occurs strictly before any side effects.', floor: 'high' }
+    ]
+  },
+  {
+    layerNumber: 53,
+    detectors: [
+      { name: 'calm-state error translation gap', sub: 'calm-state error translation', trigger: 'Raw system failures leak to users instead of controlled operational messaging.', evidence: 'Raw or alarming failure language exposed.', fp: 'Developer-only diagnostic mode explicitly disclosed.', floor: 'medium' },
+      { name: 'progress state projection gap', sub: 'progress state projection', trigger: 'User-visible progress states do not accurately represent the operational lifecycle.', evidence: 'Incorrect progress mapping.', fp: 'Best-effort advisory progress with explicit caveat.', floor: 'medium' },
+      { name: 'hidden system boundary clarity gap', sub: 'hidden-system-boundary clarity', trigger: 'Invisible internal systems leak into the user surface without abstraction or mapping.', evidence: 'Internal subsystem exposed directly.', fp: 'Advanced diagnostics view clearly separated from normal UX.', floor: 'medium' },
+      { name: 'user intervention clarity gap', sub: 'user intervention clarity', trigger: 'The user is required to act, but the contract does not explain when, why, or how safely.', evidence: 'Ambiguous intervention requirement.', fp: 'Optional hint with no gating effect.', floor: 'medium' },
+      { name: 'preview fidelity gap', sub: 'preview fidelity', trigger: 'The preview surface does not faithfully represent the actual artifact or executable behavior.', evidence: 'Preview deviates from real output.', fp: 'Explicit mock preview mode.', floor: 'high' },
+      { name: 'results-only UX contract gap', sub: 'results-only UX contract', trigger: 'Internal repair turbulence leaks into a UX that promises calm abstracted outcomes.', evidence: 'Internal failure mechanics exposed.', fp: 'Operator-facing engineering console.', floor: 'medium' },
+      { name: 'no raw log exposure gap', sub: 'no raw-log exposure', trigger: 'Logs, stack traces, or raw traces are surfaced despite a contract forbidding them.', evidence: 'Raw log exposure.', fp: 'Developer mode with explicit opt-in.', floor: 'high' },
+      { name: 'operator control affordance gap', sub: 'operator control affordances', trigger: 'Cancellation, pause, export, or recovery affordances are missing or unsafe.', evidence: 'Unsafe or missing operator control.', fp: 'Fully autonomous mode with explicit no-control design.', floor: 'medium' }
+    ]
+  }
+];
+
+EXTENDED_LAYER_GENERATORS.forEach(({ layerNumber, detectors }) => {
+  detectors.forEach((detector, index) => {
+    const detectorId = `L${layerNumber}-${String(index + 1).padStart(2, '0')}`;
+    rawMetadata[detectorId] = {
+      name: detector.name,
+      sub: detector.sub,
+      trigger: detector.trigger,
+      evidence: detector.evidence,
+      fp: detector.fp,
+      floor: detector.floor,
+      ceiling: detector.ceiling
+    };
+  });
+});
+
 const RELATED_LAYERS_MAP = {
   // L33 specification_formalism → requirement, completeness, logical, contradiction, state_machine
   'L33': ['requirement', 'completeness', 'logical', 'contradiction', 'state_machine'],
@@ -713,6 +843,192 @@ const RELATED_LAYERS_MAP = {
   'L44': ['architectural', 'governance', 'execution_path', 'security', 'agent_orchestration'],
   // L45 world_state_governance → memory_world_model, data_flow, governance, state_machine, deterministic_execution
   'L45': ['memory_world_model', 'data_flow', 'governance', 'state_machine', 'deterministic_execution'],
+  'L46': ['specification_formalism', 'semantic', 'requirement', 'reasoning_integrity', 'knowledge_source_authority'],
+  'L47': ['execution_path', 'state_machine', 'deterministic_execution', 'failure_recovery_integrity', 'operational_ux_contract'],
+  'L48': ['control_plane_authority', 'governance', 'world_state_governance', 'tool_execution_safety', 'agent_orchestration'],
+  'L49': ['deterministic_execution', 'deployment_contract', 'environment_toolchain_isolation', 'platform_abstraction', 'configuration'],
+  'L50': ['deployment_contract', 'tool_execution_safety', 'artifact_reproducibility', 'platform_abstraction', 'configuration'],
+  'L51': ['factual', 'requirement', 'reasoning_integrity', 'memory_world_model', 'ontology_vocabulary_governance'],
+  'L52': ['resilience', 'error_handling', 'deterministic_execution', 'governance', 'workflow_lifecycle_integrity'],
+  'L53': ['ui_surface_contract', 'usability', 'workflow_lifecycle_integrity', 'state_machine', 'error_handling'],
+};
+
+const FAILURE_TYPE_BY_LAYER = {
+  contradiction: 'invariant_break',
+  logical: 'invariant_break',
+  structural: 'contract_incompleteness',
+  semantic: 'ambiguity_leak',
+  factual: 'traceability_gap',
+  functional: 'unsafe_execution',
+  temporal: 'state_inconsistency',
+  architectural: 'authority_confusion',
+  completeness: 'contract_incompleteness',
+  intent: 'ambiguity_leak',
+  metacognition: 'traceability_gap',
+  adversarial: 'unsafe_execution',
+  knowledge_graph: 'state_inconsistency',
+  quantitative: 'invariant_break',
+  requirement: 'contract_incompleteness',
+  state_machine: 'state_inconsistency',
+  api_contract: 'contract_incompleteness',
+  dependency_graph: 'state_inconsistency',
+  data_flow: 'unsafe_execution',
+  execution_path: 'unsafe_execution',
+  configuration: 'state_inconsistency',
+  error_handling: 'recovery_break',
+  security: 'unsafe_execution',
+  performance: 'determinism_violation',
+  testability: 'traceability_gap',
+  maintainability: 'contract_incompleteness',
+  usability: 'ambiguity_leak',
+  interoperability: 'contract_incompleteness',
+  governance: 'governance_bypass',
+  resilience: 'recovery_break',
+  observability: 'traceability_gap',
+  evolution: 'contract_incompleteness',
+  specification_formalism: 'ambiguity_leak',
+  simulation_verification: 'governance_bypass',
+  memory_world_model: 'state_inconsistency',
+  agent_orchestration: 'authority_confusion',
+  tool_execution_safety: 'unsafe_execution',
+  deployment_contract: 'unsafe_execution',
+  platform_abstraction: 'contract_incompleteness',
+  context_orchestration: 'ambiguity_leak',
+  reasoning_integrity: 'traceability_gap',
+  ui_surface_contract: 'unsafe_execution',
+  deterministic_execution: 'determinism_violation',
+  control_plane_authority: 'authority_confusion',
+  world_state_governance: 'state_inconsistency',
+  ontology_vocabulary_governance: 'ambiguity_leak',
+  workflow_lifecycle_integrity: 'contract_incompleteness',
+  authority_path_integrity: 'authority_confusion',
+  artifact_reproducibility: 'determinism_violation',
+  environment_toolchain_isolation: 'unsafe_execution',
+  knowledge_source_authority: 'traceability_gap',
+  failure_recovery_integrity: 'recovery_break',
+  operational_ux_contract: 'unsafe_execution'
+};
+
+const CONTRACT_STEP_BY_LAYER = {
+  contradiction: 'cross_layer_validation',
+  logical: 'cross_layer_validation',
+  structural: 'foundation_validation',
+  semantic: 'foundation_validation',
+  factual: 'foundation_validation',
+  requirement: 'foundation_validation',
+  specification_formalism: 'foundation_validation',
+  ontology_vocabulary_governance: 'foundation_validation',
+  architectural: 'architecture_validation',
+  api_contract: 'architecture_validation',
+  dependency_graph: 'architecture_validation',
+  data_flow: 'architecture_validation',
+  platform_abstraction: 'architecture_validation',
+  agent_orchestration: 'agent_system_validation',
+  execution_path: 'execution_model_validation',
+  temporal: 'execution_model_validation',
+  state_machine: 'execution_model_validation',
+  deterministic_execution: 'execution_model_validation',
+  workflow_lifecycle_integrity: 'execution_model_validation',
+  simulation_verification: 'simulation_validation',
+  memory_world_model: 'memory_validation',
+  world_state_governance: 'psg_validation',
+  authority_path_integrity: 'governance_validation',
+  control_plane_authority: 'governance_validation',
+  governance: 'governance_validation',
+  context_orchestration: 'context_validation',
+  knowledge_source_authority: 'context_validation',
+  reasoning_integrity: 'reasoning_validation',
+  deployment_contract: 'deployment_validation',
+  artifact_reproducibility: 'deployment_validation',
+  environment_toolchain_isolation: 'tool_safety_validation',
+  tool_execution_safety: 'tool_safety_validation',
+  ui_surface_contract: 'ui_validation',
+  operational_ux_contract: 'ui_validation',
+  failure_recovery_integrity: 'recovery_validation',
+  resilience: 'recovery_validation',
+  error_handling: 'recovery_validation'
+};
+
+const AUTHORITY_BOUNDARY_BY_LAYER = {
+  control_plane_authority: 'control_runtime_boundary',
+  authority_path_integrity: 'authority_path_boundary',
+  world_state_governance: 'world_state_boundary',
+  memory_world_model: 'memory_state_boundary',
+  agent_orchestration: 'agent_execution_boundary',
+  tool_execution_safety: 'tool_authority_boundary',
+  deployment_contract: 'deployment_export_boundary',
+  platform_abstraction: 'platform_compilation_boundary',
+  artifact_reproducibility: 'artifact_lineage_boundary',
+  environment_toolchain_isolation: 'toolchain_isolation_boundary',
+  knowledge_source_authority: 'knowledge_authority_boundary',
+  reasoning_integrity: 'reasoning_evidence_boundary',
+  ontology_vocabulary_governance: 'vocabulary_contract_boundary',
+  workflow_lifecycle_integrity: 'workflow_execution_boundary',
+  failure_recovery_integrity: 'recovery_control_boundary',
+  operational_ux_contract: 'operator_surface_boundary',
+  ui_surface_contract: 'ui_system_projection_boundary'
+};
+
+const STRICT_CLOSED_WORLD_LAYERS = new Set([
+  'factual',
+  'requirement',
+  'specification_formalism',
+  'knowledge_source_authority',
+  'reasoning_integrity',
+  'governance',
+  'deployment_contract',
+  'deterministic_execution',
+  'control_plane_authority',
+  'world_state_governance',
+  'authority_path_integrity',
+  'artifact_reproducibility',
+  'environment_toolchain_isolation',
+  'ontology_vocabulary_governance',
+  'simulation_verification'
+]);
+
+const BOUNDED_INFERENCE_LAYERS = new Set([
+  'semantic',
+  'intent',
+  'usability',
+  'operational_ux_contract',
+  'workflow_lifecycle_integrity'
+]);
+
+const ASSUMPTION_SENSITIVE_LAYERS = new Set([
+  'logical',
+  'semantic',
+  'factual',
+  'requirement',
+  'reasoning_integrity',
+  'knowledge_source_authority',
+  'ontology_vocabulary_governance'
+]);
+
+const toSnakeCase = (value) => (value || 'unknown')
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, '_')
+  .replace(/^_+|_+$/g, '');
+
+const getFailureTypeForLayer = (layer) => FAILURE_TYPE_BY_LAYER[layer] || 'contract_incompleteness';
+const getContractStepForLayer = (layer) => CONTRACT_STEP_BY_LAYER[layer] || 'cross_layer_validation';
+const getAuthorityBoundaryForLayer = (layer) => AUTHORITY_BOUNDARY_BY_LAYER[layer] || `${toSnakeCase(layer)}_boundary`;
+const getClosedWorldStatusForLayer = (layer) => {
+  if (STRICT_CLOSED_WORLD_LAYERS.has(layer)) return 'strict_required';
+  if (BOUNDED_INFERENCE_LAYERS.has(layer)) return 'bounded_inference';
+  return 'evidence_required';
+};
+const getAssumptionDetectedDefault = (layer) => ASSUMPTION_SENSITIVE_LAYERS.has(layer);
+const buildConstraintReference = (id, layer, subcategory) => `${id}:${toSnakeCase(layer)}:${toSnakeCase(subcategory)}`;
+const buildInvariantBroken = (layer, subcategory) => `${toSnakeCase(layer)}.${toSnakeCase(subcategory)}`;
+const buildEvidenceReference = (id) => `detector_catalog:${id}`;
+const buildDeterministicFixTemplate = (meta, layer) =>
+  meta.remediation || `Enforce a deterministic contract for ${meta.sub} within the ${layer} layer and validate it with explicit evidence.`;
+const buildViolationReference = (issue, detectorId) => {
+  const filePart = issue.files?.[0] || 'unknown_file';
+  const sectionPart = issue.section ? `#${toSnakeCase(issue.section)}` : '';
+  const linePart = issue.line_number ? `:L${issue.line_number}` : '';
+  return `${filePart}${sectionPart}${linePart}::${detectorId || 'unknown_detector'}`;
 };
 
 export const DETECTOR_METADATA = {};
@@ -740,9 +1056,20 @@ Object.entries(rawMetadata).forEach(([id, meta]) => {
     severity_floor: meta.floor,
     severity_ceiling: meta.ceiling,
     remediation_template: meta.remediation || `Resolve the ${meta.name} by following best practices for ${layerSlug}.`,
-    related_layers: RELATED_LAYERS_MAP[layerPrefix] || []
+    related_layers: RELATED_LAYERS_MAP[layerPrefix] || [],
+    failure_type: getFailureTypeForLayer(layerSlug),
+    constraint_reference: buildConstraintReference(id, layerSlug, meta.sub),
+    contract_step: getContractStepForLayer(layerSlug),
+    invariant_broken: buildInvariantBroken(layerSlug, meta.sub),
+    authority_boundary: getAuthorityBoundaryForLayer(layerSlug),
+    closed_world_status: getClosedWorldStatusForLayer(layerSlug),
+    evidence_reference: buildEvidenceReference(id),
+    assumption_detected_default: getAssumptionDetectedDefault(layerSlug),
+    deterministic_fix_template: buildDeterministicFixTemplate(meta, layerSlug)
   };
 });
+
+export const TOTAL_DETECTOR_COUNT = Object.keys(DETECTOR_METADATA).length;
 
 export function getDetectorMetadata(id) {
   return DETECTOR_METADATA[id] || null;
@@ -831,6 +1158,21 @@ export function normalizeIssueFromDetector(issue, diagnostics = null) {
   if (!enriched.subcategory) { enriched.subcategory = meta.subcategory; normalizedCounted = true; }
   if (!enriched.layer) { enriched.layer = meta.layer; normalizedCounted = true; }
   if (!enriched.category) { enriched.category = meta.layer; normalizedCounted = true; }
+  if (!enriched.failure_type) { enriched.failure_type = meta.failure_type; normalizedCounted = true; }
+  if (!enriched.constraint_reference) { enriched.constraint_reference = meta.constraint_reference; normalizedCounted = true; }
+  if (!enriched.contract_step) { enriched.contract_step = meta.contract_step; normalizedCounted = true; }
+  if (!enriched.invariant_broken) { enriched.invariant_broken = meta.invariant_broken; normalizedCounted = true; }
+  if (!enriched.authority_boundary) { enriched.authority_boundary = meta.authority_boundary; normalizedCounted = true; }
+  if (!enriched.closed_world_status) { enriched.closed_world_status = meta.closed_world_status; normalizedCounted = true; }
+  if (!enriched.evidence_reference) { enriched.evidence_reference = meta.evidence_reference; normalizedCounted = true; }
+  if (enriched.assumption_detected === undefined) { enriched.assumption_detected = meta.assumption_detected_default; normalizedCounted = true; }
+  if (!enriched.deterministic_fix) { enriched.deterministic_fix = meta.deterministic_fix_template; normalizedCounted = true; }
+  if (!enriched.violation_reference) { enriched.violation_reference = buildViolationReference(enriched, detectorId); normalizedCounted = true; }
+  if (enriched.analysis_agent && !Array.isArray(enriched.analysis_agents)) {
+    enriched.analysis_agents = [enriched.analysis_agent];
+  } else if (!enriched.analysis_agent && Array.isArray(enriched.analysis_agents) && enriched.analysis_agents.length > 0) {
+    enriched.analysis_agent = enriched.analysis_agents[0];
+  }
 
   if (diagnostics && normalizedCounted) diagnostics.normalized_from_detector_count++;
 
@@ -849,6 +1191,9 @@ export function createInitialDiagnostics() {
     severity_clamped_count: 0,
     missing_taxonomy_after_normalization_count: 0,
     total_issues_loaded: 0,
+    analysis_mesh_agents_configured: 0,
+    analysis_mesh_passes_completed: 0,
+    agent_findings_merged_count: 0,
     warnings: []
   };
 }

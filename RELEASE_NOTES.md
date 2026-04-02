@@ -1,5 +1,27 @@
 # Release Notes
 
+## v1.13.0
+
+Release date: 2026-04-02
+
+This release expands the universal audit taxonomy from 45 to **53 top-level layers** and from 637 to **701 code-defined micro-detectors**, adds a deterministic **8-agent analysis mesh**, and wires a stricter issue schema through validation, UI rendering, exports, and diagnostics.
+
+### Highlights
+
+- **53 Universal Audit Layers**: Added ontology vocabulary governance, workflow lifecycle integrity, authority path integrity, artifact reproducibility, environment toolchain isolation, knowledge source authority, failure recovery integrity, and operational UX contract coverage.
+- **701 Micro-Detectors**: The detector catalog now extends across all 53 layers, with enriched defaults for schema fields such as `failure_type`, `constraint_reference`, `contract_step`, `invariant_broken`, `authority_boundary`, `closed_world_status`, and `deterministic_fix`.
+- **Deterministic 8-Agent Mesh**: Analysis now runs through eight fixed passes that each audit a bounded slice of the same taxonomy before deterministic merge and escalation.
+- **31 Cross-Layer Bundles**: Added six new bundles to correlate vocabulary authority, workflow execution, authority/governance/world-state, artifact/environment integrity, knowledge/context, and operational UI contracts.
+- **29 Benchmark Fixtures / 157 Automated Tests**: Added universal-audit fixtures and a dedicated benchmark suite for authority bypass, workflow skips, artifact reproducibility, toolchain leakage, recovery-loop collapse, and operational UX leakage.
+- **Custom Windows App Icon**: The packaged app now uses a branded Markdown-audit icon generated into `build/icon.ico` instead of falling back to Electron's default icon.
+- **Branded UI and Report Header**: The same icon now appears in the top bar, loading experience, and Markdown report header for consistent product branding.
+
+### Release Notes
+
+- Runtime latency and token usage are higher than the earlier single-pass flow because each batch now goes through eight agent prompts.
+- Unknown detector IDs still produce warnings rather than hard failures during validation.
+- The packaged Windows executable remains unsigned; Windows SmartScreen may show a trust warning on first run.
+
 ## v1.12.0
 
 Release date: 2026-03-31
@@ -11,12 +33,12 @@ This release expands the detector catalog from 612 to **637 code-defined micro-d
 - **637 Micro-Detectors**: Four new detectors added (L44-14, L44-15, L45-15, L45-16) strengthening control plane and world state governance coverage.
 - **related_layers for Deep-Spec Detectors**: Populated `related_layers` metadata for 191 detectors across layers L33-L45, enabling cross-layer traceability for complex specification audits.
 - **25 Cross-Layer Bundles**: Added three new bundles — `agent_memory_coordination`, `context_orchestration_execution`, and `deployment_resilience_contract` — for richer cross-layer correlation.
-- **136 Benchmark Tests**: Deterministic benchmark suite expanded from 95 to 136 tests, covering control plane override abuse, evidence-free escalation, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty dropped, and world state atomicity.
+- **136 Automated Tests / 40 Benchmark-Focused Checks**: The local suite expanded from 95 to 136 tests overall, including deterministic benchmark-focused coverage across 21 fixtures for control plane override abuse, evidence-free escalation, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty dropped, and world state atomicity.
 
 ### What's Fixed
 
 - **Taxonomy Coverage Helper**: Enhanced with `related_layers` coverage reporting for comprehensive taxonomy observability.
-- **Documentation Coherence**: All current-state docs now consistently reference the 637-detector baseline with `related_layers` support.
+- **Documentation Coherence**: All current-state docs now consistently reference the 637-detector baseline and accurately describe `related_layers` as deep-spec cross-referencing.
 
 ### Known Issues
 

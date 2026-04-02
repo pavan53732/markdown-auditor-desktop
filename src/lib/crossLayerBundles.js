@@ -173,6 +173,48 @@ export const CROSS_LAYER_BUNDLES = [
     layers: ['deployment_contract', 'resilience'],
     description: 'Ensures deployment constraints do not undermine system resilience guarantees such as retry budgets, circuit breakers, and graceful degradation.',
     escalation_rule: 'Escalate to CRITICAL if deployment contract constraints (L38) undermine resilience guarantees (L30), such as insufficient retry budgets, missing circuit breakers, or inability to degrade gracefully under deployment-imposed resource limits.'
+  },
+  {
+    id: 'vocabulary_reasoning_authority',
+    name: 'Vocabulary, Reasoning & Source Authority',
+    layers: ['ontology_vocabulary_governance', 'specification_formalism', 'reasoning_integrity', 'knowledge_source_authority'],
+    description: 'Verifies canonical vocabulary, formal specification rigor, evidence binding, and source-of-truth ranking operate as one coherent contract.',
+    escalation_rule: 'Escalate to HIGH if vocabulary drift (L46) or undefined terms (L33/L4) cause evidence-free reasoning (L41) or authority inversion in the accepted source set (L51).'
+  },
+  {
+    id: 'workflow_execution_recovery',
+    name: 'Workflow, Execution & Recovery',
+    layers: ['workflow_lifecycle_integrity', 'execution_path', 'deterministic_execution', 'failure_recovery_integrity'],
+    description: 'Audits step ordering, no-skip guarantees, deterministic execution, and bounded recovery when workflow contracts fail.',
+    escalation_rule: 'Escalate to CRITICAL if a no-skip workflow breach (L47) combines with non-deterministic execution (L43) or unbounded recovery loops (L52).'
+  },
+  {
+    id: 'authority_governance_world_state',
+    name: 'Authority, Governance & World State',
+    layers: ['authority_path_integrity', 'control_plane_authority', 'governance', 'world_state_governance'],
+    description: 'Ensures authority paths, governance checkpoints, and world-state mutation boundaries cannot be bypassed or duplicated.',
+    escalation_rule: 'Escalate to CRITICAL if duplicated authority paths (L48) or governance bypass (L29) can mutate world state outside the canonical gateway (L45).'
+  },
+  {
+    id: 'artifact_environment_deployment',
+    name: 'Artifacts, Environment & Deployment',
+    layers: ['artifact_reproducibility', 'environment_toolchain_isolation', 'deployment_contract', 'tool_execution_safety'],
+    description: 'Verifies reproducible artifacts depend on isolated toolchains, safe tools, and deterministic deployment/export contracts.',
+    escalation_rule: 'Escalate to CRITICAL if host-environment leakage (L50) or unsafe tools (L37) make deployment artifacts non-reproducible (L49) or violate export constraints (L38).'
+  },
+  {
+    id: 'knowledge_memory_context',
+    name: 'Knowledge, Memory & Context',
+    layers: ['knowledge_source_authority', 'memory_world_model', 'context_orchestration', 'reasoning_integrity'],
+    description: 'Ensures retrieved context, memory, and evidence originate from ranked sources and remain valid inside the reasoning flow.',
+    escalation_rule: 'Escalate to HIGH if stale memory or context contamination (L40/L35) overrides higher-authority evidence sources (L51) or corrupts reasoning traces (L41).'
+  },
+  {
+    id: 'operational_ui_surface',
+    name: 'Operational UX & Surface Contracts',
+    layers: ['operational_ux_contract', 'ui_surface_contract', 'usability', 'state_machine'],
+    description: 'Checks whether the user-facing surface projects safe operational state, hides forbidden raw internals, and preserves actionable recovery UX.',
+    escalation_rule: 'Escalate to HIGH if operational UX contracts (L53) expose fatal UI states (L42/L16) or degrade usability in critical flows (L27).'
   }
 ];
 

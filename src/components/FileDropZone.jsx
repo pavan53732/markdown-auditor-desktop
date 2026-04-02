@@ -11,7 +11,14 @@ export default function FileDropZone({ files, onFilesDropped, onRemoveFile }) {
       if (ext === 'md' || ext === 'markdown') {
         try {
           const content = await file.text();
-          accepted.push({ name: file.name, content });
+          accepted.push({
+            name: file.name,
+            originalName: file.name,
+            path: file.path,
+            size: file.size,
+            lastModified: file.lastModified,
+            content
+          });
         } catch {
           // skip unreadable files
         }

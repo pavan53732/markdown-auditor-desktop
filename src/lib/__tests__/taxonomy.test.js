@@ -12,13 +12,14 @@ import {
 } from '../detectorMetadata';
 import { buildSystemPrompt } from '../systemPrompt';
 import { LAYERS } from '../layers';
+import { ANALYSIS_AGENT_COUNT, ANALYSIS_AGENT_MESH } from '../analysisAgents';
 import { generateTaxonomyQualityReport } from '../taxonomyCoverageHelper';
 import { CROSS_LAYER_BUNDLES } from '../crossLayerBundles';
 
 describe('Taxonomy Integrity', () => {
-  it('should have exactly 637 detectors', () => {
+  it('should have exactly 701 detectors', () => {
     const ids = Object.keys(DETECTOR_METADATA);
-    expect(ids.length).toBe(637);
+    expect(ids.length).toBe(701);
   });
 
   it('should have unique detector IDs following Lx-yy format', () => {
@@ -58,6 +59,19 @@ describe('Taxonomy Integrity', () => {
       expect(meta.required_evidence).toBeDefined();
       expect(meta.false_positive_guards).toBeDefined();
       expect(meta.severity_floor).toBeDefined();
+    });
+  });
+
+  it('should expose strict schema metadata defaults for every detector', () => {
+    Object.values(DETECTOR_METADATA).forEach(meta => {
+      expect(meta.failure_type).toBeDefined();
+      expect(meta.constraint_reference).toBeDefined();
+      expect(meta.contract_step).toBeDefined();
+      expect(meta.invariant_broken).toBeDefined();
+      expect(meta.authority_boundary).toBeDefined();
+      expect(meta.closed_world_status).toBeDefined();
+      expect(meta.evidence_reference).toBeDefined();
+      expect(meta.deterministic_fix_template).toBeDefined();
     });
   });
 
@@ -131,14 +145,21 @@ describe('Prompt Generation', () => {
   });
 
   describe('Prompt and Documentation Alignment', () => {
-    it('system prompt reflects the correct 45/637 counts', () => {
+    it('system prompt reflects the correct 53/701 counts', () => {
       const prompt = buildSystemPrompt();
       const detectorCount = Object.keys(DETECTOR_METADATA).length;
       const layerCount = Object.keys(LAYER_SUBCATEGORIES).length;
 
       expect(prompt).toContain(`**${layerCount} analytical layers and ${detectorCount} micro-detectors**`);
-      expect(prompt).toContain(`Evaluate all ${detectorCount} detectors across all ${layerCount} layers`);
+      expect(prompt).toContain(`evaluate all ${detectorCount} detectors across all ${layerCount} layers`);
       expect(prompt).toContain(`Include detectors_evaluated count (must be ≤${detectorCount})`);
+    });
+
+    it('agent-specific prompt includes the active mesh role', () => {
+      const firstAgent = ANALYSIS_AGENT_MESH[0];
+      const prompt = buildSystemPrompt('auto', firstAgent.id);
+      expect(prompt).toContain(`ANALYSIS MESH ROLE: ${firstAgent.label}`);
+      expect(prompt).toContain(`analysis_agent="${firstAgent.id}"`);
     });
 
     it('detector catalog header in prompt matches reality', () => {
@@ -196,8 +217,8 @@ describe('Deep-Spec Layer Coverage', () => {
 describe('Taxonomy Coverage Helper', () => {
   it('generates a valid report', () => {
     const report = generateTaxonomyQualityReport();
-    expect(report.totalLayers).toBe(45);
-    expect(report.totalDetectors).toBe(637);
+    expect(report.totalLayers).toBe(53);
+    expect(report.totalDetectors).toBe(701);
     expect(report.metadataRichness).toBeDefined();
     expect(report.layerMetrics).toBeDefined();
   });
@@ -232,8 +253,8 @@ describe('Taxonomy Coverage Helper', () => {
 });
 
 describe('Cross-Layer Bundles', () => {
-  it('has at least 17 bundles', () => {
-    expect(CROSS_LAYER_BUNDLES.length).toBeGreaterThanOrEqual(17);
+  it('has at least 31 bundles', () => {
+    expect(CROSS_LAYER_BUNDLES.length).toBeGreaterThanOrEqual(31);
   });
 
   it('all bundles have required fields', () => {
@@ -334,32 +355,40 @@ describe('Helper Report Consistency', () => {
     expect(report).toHaveProperty('lowRichnessDeepLayerWarnings');
   });
 
-  it('report totalLayers equals 45', () => {
+  it('report totalLayers equals 53', () => {
     const report = generateTaxonomyQualityReport();
-    expect(report.totalLayers).toBe(45);
+    expect(report.totalLayers).toBe(53);
   });
 
-  it('report totalDetectors equals 637', () => {
+  it('report totalDetectors equals 701', () => {
     const report = generateTaxonomyQualityReport();
-    expect(report.totalDetectors).toBe(637);
+    expect(report.totalDetectors).toBe(701);
   });
 
-  it('layerMetrics has entries for all 45 layers', () => {
+  it('layerMetrics has entries for all 53 layers', () => {
     const report = generateTaxonomyQualityReport();
     const layerKeys = Object.keys(report.layerMetrics);
-    expect(layerKeys.length).toBe(45);
+    expect(layerKeys.length).toBe(53);
   });
 });
 
 describe('Benchmark Mapping to Expected Layers', () => {
   const benchmarkLayerMappings = [
+    { fixture: 'benchmark-artifact-reproducibility.md', expectedLayer: 'artifact_reproducibility' },
+    { fixture: 'benchmark-authority-path-bypass.md', expectedLayer: 'authority_path_integrity' },
     { fixture: 'benchmark-control-plane-override-abuse.md', expectedLayer: 'control_plane_authority' },
     { fixture: 'benchmark-evidence-free-escalation.md', expectedLayer: 'reasoning_integrity' },
     { fixture: 'benchmark-export-non-determinism.md', expectedLayer: 'deterministic_execution' },
+    { fixture: 'benchmark-knowledge-source-authority.md', expectedLayer: 'knowledge_source_authority' },
+    { fixture: 'benchmark-operational-ux-leakage.md', expectedLayer: 'operational_ux_contract' },
+    { fixture: 'benchmark-recovery-loop-collapse.md', expectedLayer: 'failure_recovery_integrity' },
     { fixture: 'benchmark-simulation-governance-mismatch.md', expectedLayer: 'simulation_verification' },
     { fixture: 'benchmark-tool-side-effect-leakage.md', expectedLayer: 'tool_execution_safety' },
+    { fixture: 'benchmark-toolchain-isolation.md', expectedLayer: 'environment_toolchain_isolation' },
     { fixture: 'benchmark-ui-fatal-state.md', expectedLayer: 'ui_surface_contract' },
     { fixture: 'benchmark-uncertainty-dropped.md', expectedLayer: 'reasoning_integrity' },
+    { fixture: 'benchmark-vocabulary-authority.md', expectedLayer: 'ontology_vocabulary_governance' },
+    { fixture: 'benchmark-workflow-no-skip.md', expectedLayer: 'workflow_lifecycle_integrity' },
     { fixture: 'benchmark-world-state-atomicity.md', expectedLayer: 'world_state_governance' }
   ];
 
@@ -421,7 +450,7 @@ describe('Related Layers Validity', () => {
     });
   });
 
-  it('all 191 deep-spec detectors (L33-L45) have non-empty related_layers', () => {
+  it('all 191 core deep-spec detectors (L33-L45) have non-empty related_layers', () => {
     const deepSpecDetectors = Object.values(DETECTOR_METADATA).filter(d => {
       const layerNum = parseInt(d.id.match(/^L(\d+)/)[1]);
       return layerNum >= 33 && layerNum <= 45;
@@ -446,9 +475,9 @@ describe('Related Layers Validity', () => {
 });
 
 describe('Helper Report Related-Layer Coverage', () => {
-  it('relatedLayersSummary reports 191 detectors with related_layers', () => {
+  it('relatedLayersSummary reports 255 detectors with related_layers', () => {
     const report = generateTaxonomyQualityReport();
-    expect(report.relatedLayersSummary.totalDetectorsWithRelatedLayers).toBe(191);
+    expect(report.relatedLayersSummary.totalDetectorsWithRelatedLayers).toBe(255);
   });
 
   it('relatedLayersSummary reports 446 detectors without related_layers', () => {

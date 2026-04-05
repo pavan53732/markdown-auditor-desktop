@@ -95,6 +95,7 @@ Issue schema requirements:
 - analysis_agent must equal the active analysis mesh role for this pass
 
 Return only raw JSON. No markdown fences. No preamble. No explanatory text outside JSON.
+Use strict JSON syntax with double-quoted property names and string values. Do not emit JavaScript object literals, comments, or trailing commas.
 
 {
   "summary": {

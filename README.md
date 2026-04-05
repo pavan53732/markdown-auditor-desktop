@@ -15,13 +15,14 @@ The current build includes chunk-aware batching, deterministic multi-pass post-p
 - 701 code-defined micro-detectors across all 53 layers, including the deep-spec core plus 8 universal governance and reproducibility extensions
 - Full structured detector metadata for all detectors, including trigger patterns, evidence requirements, false-positive guards, and `related_layers` cross-references for 255 detectors across the specification-intensive layers
 - Taxonomy benchmark fixtures supporting deterministic evaluation of taxonomy validation, normalization, and detector mapping correctness
-- 29 deterministic benchmark fixtures inside a 157-test local suite across 11 test files, including deep-spec and universal-audit scenarios for authority bypass, workflow skips, artifact reproducibility, toolchain isolation, recovery loop collapse, and operational UX leakage
+- 29 deterministic benchmark fixtures inside a 163-test local suite across 13 test files, including deep-spec and universal-audit scenarios for authority bypass, workflow skips, artifact reproducibility, toolchain isolation, recovery loop collapse, and operational UX leakage
 - Programmatic system prompt generation from structured taxonomy and metadata
 - Agent-scoped prompt compaction for the 8-agent mesh: each pass receives a compact full-taxonomy detector index plus richer detector metadata for its focus layers
 - Taxonomy-driven runtime normalization: backfilling metadata and enforcing severity bounds
 - Advanced semantic validation enforcing category -> subcategory -> detector consistency
 - Local regression suite verifying taxonomy integrity and normalization logic
 - Runtime taxonomy diagnostics surfaced in UI, Markdown reports, and JSON exports for pipeline observability
+- Agent-pass malformed JSON resilience: invalid agent responses are retried per pass, captured in diagnostics with a raw response preview, and skipped in degraded mode if they remain malformed
 - Universal audit mode only: the app always applies the full taxonomy without document-type profile weighting
 - Deterministic 8-agent analysis mesh with bounded roles for specification absoluteness, architecture authority, UI/operational integrity, execution/simulation, memory/world state, tool/deployment safety, reasoning/evidence, and cross-layer synthesis
 ...

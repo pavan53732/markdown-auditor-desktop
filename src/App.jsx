@@ -22,11 +22,14 @@ import {
   MIN_CHUNK_CHARS,
   normalizeTokenBudget
 } from './lib/runtimeConfig';
-import { 
+import {
   TOTAL_DETECTOR_COUNT,
   normalizeIssueFromDetector, 
   getAvailableSubcategories,
   createInitialDiagnostics,
+  recordAgentFailure,
+  recordAgentRecovery,
+  recordAgentSkip,
   buildExportData,
   buildSessionData,
   normalizeLoadedSession,
@@ -38,6 +41,37 @@ import {
 const CHARS_PER_TOKEN = 4;
 const BRAND_NAME = 'Markdown Intelligence Auditor';
 const BRAND_TAGLINE = 'Deterministic Markdown specification auditing';
+const MAX_AGENT_RESPONSE_ATTEMPTS = 2;
+const MAX_DIAGNOSTIC_EVENTS_VISIBLE = 3;
+
+function getAgentFailureStage(error) {
+  const message = error?.message || '';
+  if (message.includes('Invalid JSON') || message.includes('No JSON object found')) {
+    return 'json_parse';
+  }
+  if (
+    message.includes('missing required') ||
+    message.includes('Response is not a JSON object') ||
+    message.includes('invalid')
+  ) {
+    return 'schema_validation';
+  }
+  return 'response_validation';
+}
+
+function buildAgentRetryMessage(baseUserMessage, agent, error, attempt) {
+  return `${baseUserMessage}
+
+=== FORMAT RETRY REQUIRED ===
+The previous ${agent.label} response for this same batch was rejected on attempt ${attempt}.
+Validator message: ${error.message}
+
+Return exactly one raw JSON object matching the required schema.
+- Use double quotes for every property name and string value
+- Do not return markdown fences
+- Do not return commentary before or after the JSON object
+- Keep the same audit scope and evidence discipline as the original request`;
+}
 
 function normalizeFileDisplayNames(fileList) {
   const totals = new Map();
@@ -322,7 +356,7 @@ export default function App() {
     return batches;
   };
 
-  const analyzeBatch = async (batch, batchIndex, totalBatches) => {
+  const analyzeBatch = async (batch, batchIndex, totalBatches, diagnostics) => {
     const userMessage = batch
       .map((f) => `=== FILE: ${f.name}${f.isChunked ? ` (Chunk ${f.chunkIndex}/${f.chunkCount})` : ''} ===\n\n${f.content}\n\n${'─'.repeat(60)}\n`)
       .join('');
@@ -331,26 +365,70 @@ export default function App() {
     let rawIssueCount = 0;
 
     for (const agent of agentPromptEntries) {
-      const response = await window.electronAPI.callAPI({
-        baseURL: config.baseURL,
-        apiKey: config.apiKey,
-        model: config.model,
-        systemPrompt: agent.systemPrompt,
-        userMessage,
-        timeout: config.timeout,
-        retries: config.retries
-      });
+      let parsed = null;
+      let lastValidationError = null;
 
-      if (!response.success) {
-        throw new Error(`Batch ${batchIndex + 1}/${totalBatches} failed during ${agent.label}: ${response.error}`);
-      }
+      for (let attempt = 1; attempt <= MAX_AGENT_RESPONSE_ATTEMPTS; attempt += 1) {
+        const response = await window.electronAPI.callAPI({
+          baseURL: config.baseURL,
+          apiKey: config.apiKey,
+          model: config.model,
+          systemPrompt: agent.systemPrompt,
+          userMessage: attempt === 1
+            ? userMessage
+            : buildAgentRetryMessage(userMessage, agent, lastValidationError, attempt - 1),
+          timeout: config.timeout,
+          retries: config.retries
+        });
 
-      let parsed;
-      try {
-        parsed = repairJSON(response.raw);
-        validateResults(parsed);
-      } catch (e) {
-        throw new Error(`Batch ${batchIndex + 1}/${totalBatches} (${agent.label}): ${e.message}`);
+        if (!response.success) {
+          throw new Error(`Batch ${batchIndex + 1}/${totalBatches} failed during ${agent.label}: ${response.error}`);
+        }
+
+        try {
+          parsed = repairJSON(response.raw);
+          validateResults(parsed);
+          if (attempt > 1) {
+            recordAgentRecovery(diagnostics, {
+              agent_id: agent.id,
+              agent_label: agent.label,
+              batch_index: batchIndex + 1,
+              batch_count: totalBatches,
+              attempt
+            });
+          }
+          break;
+        } catch (e) {
+          lastValidationError = e;
+          recordAgentFailure(diagnostics, {
+            batch_index: batchIndex + 1,
+            batch_count: totalBatches,
+            agent_id: agent.id,
+            agent_label: agent.label,
+            attempt,
+            stage: getAgentFailureStage(e),
+            message: e.message,
+            raw_response: response.raw
+          });
+
+          if (attempt < MAX_AGENT_RESPONSE_ATTEMPTS) {
+            diagnostics.malformed_agent_retry_count += 1;
+            continue;
+          }
+          recordAgentSkip(diagnostics, {
+            agent_id: agent.id,
+            agent_label: agent.label,
+            batch_index: batchIndex + 1,
+            batch_count: totalBatches,
+            attempt
+          });
+          parsed = {
+            summary: { total: 0, critical: 0, high: 0, medium: 0, low: 0 },
+            issues: [],
+            root_causes: []
+          };
+          break;
+        }
       }
 
       if (parsed.summary) {
@@ -366,6 +444,7 @@ export default function App() {
       }));
 
       rawIssueCount += normalizedIssues.length;
+      diagnostics.analysis_mesh_passes_completed += 1;
       agentResults.push({
         ...parsed,
         issues: normalizedIssues,
@@ -602,6 +681,8 @@ export default function App() {
     setActiveLayer('all');
     setSearchQuery('');
     setAnalysisStats({ reused: 0, reanalyzed: 0, agentPasses: 0 });
+    const diagnostics = createInitialDiagnostics();
+    diagnostics.analysis_mesh_agents_configured = ANALYSIS_AGENT_COUNT;
 
     try {
       const filesToAnalyze = [];
@@ -641,7 +722,7 @@ export default function App() {
         const batches = batchFiles(filesToAnalyze);
         
         for (let i = 0; i < batches.length; i++) {
-          const result = await analyzeBatch(batches[i], i, batches.length);
+          const result = await analyzeBatch(batches[i], i, batches.length, diagnostics);
           completedAgentPasses += result._agentPasses || 0;
           
           // Update cache for each file in this batch
@@ -710,11 +791,9 @@ export default function App() {
       merged.summary.analysis_agent_passes = completedAgentPasses;
 
       // Perform final taxonomy enrichment and collect diagnostics
-      const diagnostics = createInitialDiagnostics();
       if (merged.issues) {
         merged.issues = merged.issues.map(issue => normalizeIssueFromDetector(issue, diagnostics));
       }
-      diagnostics.analysis_mesh_agents_configured = ANALYSIS_AGENT_COUNT;
       diagnostics.analysis_mesh_passes_completed = completedAgentPasses;
       diagnostics.agent_findings_merged_count = Math.max(
         0,
@@ -747,7 +826,17 @@ export default function App() {
         setDiffSummary(null);
       }
     } catch (err) {
-      setError(`Analysis error: ${err.message}`);
+      if (
+        diagnostics.agent_failure_events.length > 0 ||
+        diagnostics.warnings.length > 0 ||
+        diagnostics.analysis_mesh_passes_completed > 0
+      ) {
+        setTaxonomyDiagnostics(diagnostics);
+      }
+      const diagnosticSuffix = diagnostics.last_agent_failure
+        ? ' See Analysis Diagnostics below for the captured malformed agent response preview.'
+        : '';
+      setError(`Analysis error: ${err.message}${diagnosticSuffix}`);
     }
 
     setAnalyzing(false);
@@ -757,6 +846,7 @@ export default function App() {
     setFiles([]);
     setResults(null);
     setError(null);
+    setTaxonomyDiagnostics(null);
     setActiveLayer('all');
     setSearchQuery('');
     setContextWarning(null);
@@ -815,6 +905,136 @@ export default function App() {
 
     return filtered;
   }, [results?.issues, diffMode, diffSummary, searchQuery, activeLayer, activeSubcategory]);
+
+  const renderDiagnosticsPanel = (mode = 'results') => {
+    if (!taxonomyDiagnostics) return null;
+
+    const failureEvents = Array.isArray(taxonomyDiagnostics.agent_failure_events)
+      ? taxonomyDiagnostics.agent_failure_events.slice(-MAX_DIAGNOSTIC_EVENTS_VISIBLE).reverse()
+      : [];
+    const hasFailures = failureEvents.length > 0;
+    const isErrorMode = mode === 'error';
+
+    return (
+      <div className={`${isErrorMode ? 'mt-4 bg-[#1F1111] border-[#7F1D1D]' : 'mb-6 bg-[#111827] border-[#374151]'} p-3 border rounded-xl`}>
+        <div className="flex items-center gap-2 mb-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isErrorMode ? '#FCA5A5' : '#6B7280'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <h3 className={`text-[10px] font-bold uppercase tracking-widest ${isErrorMode ? 'text-[#FCA5A5]' : 'text-[#6B7280]'}`}>
+            {isErrorMode ? 'Analysis Diagnostics' : 'Taxonomy Diagnostics'}
+          </h3>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
+          <div>
+            <p className="text-[10px] text-[#6B7280] mb-0.5">Enriched</p>
+            <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.normalized_from_detector_count}</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-[#6B7280] mb-0.5">Parsed IDs</p>
+            <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.detector_id_parsed_from_description_count}</p>
+          </div>
+          {taxonomyDiagnostics.unknown_detector_id_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#F87171] mb-0.5">Unknown IDs</p>
+              <p className="text-sm font-semibold text-[#F87171]">{taxonomyDiagnostics.unknown_detector_id_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.severity_clamped_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#60A5FA] mb-0.5">Clamped</p>
+              <p className="text-sm font-semibold text-[#60A5FA]">{taxonomyDiagnostics.severity_clamped_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.total_issues_loaded > 0 && (
+            <div>
+              <p className="text-[10px] text-[#9CA3AF] mb-0.5">Loaded</p>
+              <p className="text-sm font-semibold text-[#9CA3AF]">{taxonomyDiagnostics.total_issues_loaded}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.analysis_mesh_agents_configured > 0 && (
+            <div>
+              <p className="text-[10px] text-[#9CA3AF] mb-0.5">Agents</p>
+              <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.analysis_mesh_agents_configured}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.analysis_mesh_passes_completed > 0 && (
+            <div>
+              <p className="text-[10px] text-[#9CA3AF] mb-0.5">Agent Passes</p>
+              <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.analysis_mesh_passes_completed}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.agent_findings_merged_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#9CA3AF] mb-0.5">Merged</p>
+              <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.agent_findings_merged_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.malformed_agent_response_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#FCA5A5] mb-0.5">Malformed</p>
+              <p className="text-sm font-semibold text-[#FCA5A5]">{taxonomyDiagnostics.malformed_agent_response_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.malformed_agent_retry_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#FCD34D] mb-0.5">Retries</p>
+              <p className="text-sm font-semibold text-[#FCD34D]">{taxonomyDiagnostics.malformed_agent_retry_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.recovered_agent_response_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#86EFAC] mb-0.5">Recovered</p>
+              <p className="text-sm font-semibold text-[#86EFAC]">{taxonomyDiagnostics.recovered_agent_response_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.skipped_agent_pass_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#F59E0B] mb-0.5">Skipped Passes</p>
+              <p className="text-sm font-semibold text-[#F59E0B]">{taxonomyDiagnostics.skipped_agent_pass_count}</p>
+            </div>
+          )}
+        </div>
+
+        {taxonomyDiagnostics.warnings?.length > 0 && (
+          <div className="mt-3 space-y-1">
+            {taxonomyDiagnostics.warnings.slice(-2).map((warning, index) => (
+              <p key={`${warning}-${index}`} className="text-xs text-[#FCD34D]">
+                {warning}
+              </p>
+            ))}
+          </div>
+        )}
+
+        {hasFailures && (
+          <details className="mt-3 group">
+            <summary className="cursor-pointer text-xs font-semibold text-[#FCA5A5] list-none group-open:mb-3">
+              Captured malformed agent responses ({failureEvents.length})
+            </summary>
+            <div className="space-y-3">
+              {failureEvents.map((event, index) => (
+                <div key={`${event.agent_id}-${event.batch_index}-${event.attempt}-${index}`} className="p-3 bg-[#0F172A] border border-[#374151] rounded-lg">
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <span className="text-[10px] font-semibold text-[#FCA5A5] uppercase tracking-wide">{event.agent_label || event.agent_id}</span>
+                    <span className="text-[10px] text-[#9CA3AF]">Batch {event.batch_index || '?'}{event.batch_count ? `/${event.batch_count}` : ''}</span>
+                    <span className="text-[10px] text-[#9CA3AF]">Attempt {event.attempt}</span>
+                    <span className="text-[10px] text-[#93C5FD]">{event.stage}</span>
+                    {event.recovered && (
+                      <span className="text-[10px] text-[#86EFAC]">Recovered on attempt {event.recovered_on_attempt || event.attempt}</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-[#F9FAFB] mb-2">{event.message}</p>
+                  {event.raw_response_excerpt && (
+                    <pre className="text-[11px] leading-relaxed whitespace-pre-wrap break-words bg-[#020617] border border-[#1F2937] rounded-lg p-3 text-[#CBD5E1] max-h-56 overflow-auto">
+                      {event.raw_response_excerpt}
+                    </pre>
+                  )}
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
+      </div>
+    );
+  };
 
   const exportJSON = () => {
     if (!results) return;
@@ -930,10 +1150,33 @@ export default function App() {
       md += `- **Configured Analysis Agents:** ${taxonomyDiagnostics.analysis_mesh_agents_configured}\n`;
       md += `- **Completed Agent Passes:** ${taxonomyDiagnostics.analysis_mesh_passes_completed}\n`;
       md += `- **Merged Agent Findings:** ${taxonomyDiagnostics.agent_findings_merged_count}\n`;
+      md += `- **Malformed Agent Responses:** ${taxonomyDiagnostics.malformed_agent_response_count || 0}\n`;
+      md += `- **Malformed Response Retries:** ${taxonomyDiagnostics.malformed_agent_retry_count || 0}\n`;
+      md += `- **Recovered Agent Responses:** ${taxonomyDiagnostics.recovered_agent_response_count || 0}\n`;
+      md += `- **Skipped Agent Passes:** ${taxonomyDiagnostics.skipped_agent_pass_count || 0}\n`;
       if (taxonomyDiagnostics.total_issues_loaded > 0) {
         md += `- **Total Issues Loaded:** ${taxonomyDiagnostics.total_issues_loaded}\n`;
       }
       md += `\n`;
+
+      if (taxonomyDiagnostics.agent_failure_events?.length) {
+        md += `### Captured Malformed Agent Responses\n\n`;
+        taxonomyDiagnostics.agent_failure_events.forEach((event, index) => {
+          md += `#### ${index + 1}. ${event.agent_label || event.agent_id || 'Unknown Agent'}\n\n`;
+          md += `- **Batch:** ${event.batch_index || '?'}${event.batch_count ? `/${event.batch_count}` : ''}\n`;
+          md += `- **Attempt:** ${event.attempt}\n`;
+          md += `- **Stage:** ${event.stage}\n`;
+          md += `- **Message:** ${event.message}\n`;
+          if (event.recovered) {
+            md += `- **Recovered On Attempt:** ${event.recovered_on_attempt || event.attempt}\n`;
+          }
+          if (event.raw_response_excerpt) {
+            md += `\n\`\`\`text\n${event.raw_response_excerpt}\n\`\`\`\n\n`;
+          } else {
+            md += `\n`;
+          }
+        });
+      }
     }
     
     const blob = new Blob([md], { type: 'text/markdown' });
@@ -1192,6 +1435,7 @@ export default function App() {
                 </button>
               </div>
             )}
+            {error && taxonomyDiagnostics && renderDiagnosticsPanel('error')}
           </div>
         )}
 
@@ -1281,60 +1525,7 @@ export default function App() {
               </div>
             )}
 
-            {taxonomyDiagnostics && (
-              <div className="mb-6 p-3 bg-[#111827] border border-[#374151] rounded-xl">
-                <div className="flex items-center gap-2 mb-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                  <h3 className="text-[10px] font-bold text-[#6B7280] uppercase tracking-widest">Taxonomy Diagnostics</h3>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
-                  <div>
-                    <p className="text-[10px] text-[#6B7280] mb-0.5">Enriched</p>
-                    <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.normalized_from_detector_count}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-[#6B7280] mb-0.5">Parsed IDs</p>
-                    <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.detector_id_parsed_from_description_count}</p>
-                  </div>
-                  {taxonomyDiagnostics.unknown_detector_id_count > 0 && (
-                    <div>
-                      <p className="text-[10px] text-[#F87171] mb-0.5">Unknown IDs</p>
-                      <p className="text-sm font-semibold text-[#F87171]">{taxonomyDiagnostics.unknown_detector_id_count}</p>
-                    </div>
-                  )}
-                  {taxonomyDiagnostics.severity_clamped_count > 0 && (
-                    <div>
-                      <p className="text-[10px] text-[#60A5FA] mb-0.5">Clamped</p>
-                      <p className="text-sm font-semibold text-[#60A5FA]">{taxonomyDiagnostics.severity_clamped_count}</p>
-                    </div>
-                  )}
-                  {taxonomyDiagnostics.total_issues_loaded > 0 && (
-                    <div>
-                      <p className="text-[10px] text-[#9CA3AF] mb-0.5">Loaded</p>
-                      <p className="text-sm font-semibold text-[#9CA3AF]">{taxonomyDiagnostics.total_issues_loaded}</p>
-                    </div>
-                  )}
-                  {taxonomyDiagnostics.analysis_mesh_agents_configured > 0 && (
-                    <div>
-                      <p className="text-[10px] text-[#9CA3AF] mb-0.5">Agents</p>
-                      <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.analysis_mesh_agents_configured}</p>
-                    </div>
-                  )}
-                  {taxonomyDiagnostics.analysis_mesh_passes_completed > 0 && (
-                    <div>
-                      <p className="text-[10px] text-[#9CA3AF] mb-0.5">Agent Passes</p>
-                      <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.analysis_mesh_passes_completed}</p>
-                    </div>
-                  )}
-                  {taxonomyDiagnostics.agent_findings_merged_count > 0 && (
-                    <div>
-                      <p className="text-[10px] text-[#9CA3AF] mb-0.5">Merged</p>
-                      <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.agent_findings_merged_count}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+            {taxonomyDiagnostics && renderDiagnosticsPanel()}
 
             <div className="mb-4 flex flex-col gap-3">
               <div className="relative">

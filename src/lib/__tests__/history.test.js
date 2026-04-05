@@ -37,18 +37,36 @@ describe('History Metadata', () => {
 describe('History Normalization', () => {
   it('should normalize loaded history results', () => {
     const historySession = {
-      issues: [
-        { detector_id: 'L1-01', description: 'issue 1', severity: 'low' }
-      ]
+      taxonomyDiagnostics: {
+        malformed_agent_response_count: 1,
+        agent_failure_events: [
+          {
+            agent_id: 'reasoning_evidence_agent',
+            agent_label: 'Reasoning & Evidence Agent',
+            batch_index: 1,
+            attempt: 1,
+            stage: 'json_parse',
+            message: 'Invalid JSON: Expected property name',
+            raw_response_excerpt: '{summary: { total: 0 }}'
+          }
+        ]
+      },
+      results: {
+        issues: [
+          { detector_id: 'L1-01', description: 'issue 1', severity: 'low' }
+        ]
+      }
     };
 
-    const normalized = normalizeLoadedSession({ results: historySession });
+    const normalized = normalizeLoadedSession(historySession);
     
     // L1-01 has a floor of 'high'
     expect(normalized.results.issues[0].severity).toBe('high');
     expect(normalized.results.issues[0].detector_name).toBe('direct contradictions');
     expect(normalized.taxonomyDiagnostics.severity_clamped_count).toBe(1);
     expect(normalized.taxonomyDiagnostics.total_issues_loaded).toBe(1);
+    expect(normalized.taxonomyDiagnostics.agent_failure_events).toHaveLength(1);
+    expect(normalized.taxonomyDiagnostics.agent_failure_events[0].agent_id).toBe('reasoning_evidence_agent');
   });
 });
 

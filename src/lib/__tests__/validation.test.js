@@ -1,6 +1,24 @@
 import { describe, it, expect } from 'vitest';
-import { validateResults } from '../jsonRepair';
+import { repairJSON, validateResults } from '../jsonRepair';
 import { normalizeIssueFromDetector } from '../detectorMetadata';
+
+describe('JSON Repair', () => {
+  it('should repair unquoted property names and trailing commas', () => {
+    const raw = `{summary: {"total": 0,}, issues: [], root_causes: [],}`;
+    const parsed = repairJSON(raw);
+
+    expect(parsed.summary.total).toBe(0);
+    expect(parsed.issues).toEqual([]);
+  });
+
+  it('should repair single-quoted keys and Python booleans', () => {
+    const raw = `{'summary': {'total': 0}, 'issues': [{'severity': 'high', 'category': 'contradiction', 'description': 'x', 'assumption_detected': True, 'detector_id': 'L1-01'}]}`;
+    const parsed = repairJSON(raw);
+
+    expect(parsed.issues[0].assumption_detected).toBe(true);
+    expect(parsed.issues[0].detector_id).toBe('L1-01');
+  });
+});
 
 describe('Result Validation', () => {
   it('should accept valid results', () => {

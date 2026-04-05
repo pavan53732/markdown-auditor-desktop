@@ -23,7 +23,9 @@
       "output": "dist-electron-v4"
     },
     "win": {
-      "publisherName": "Prem V",
+      "signtoolOptions": {
+        "publisherName": "Prem V"
+      },
       "target": [
         {
           "target": "portable",

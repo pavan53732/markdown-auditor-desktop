@@ -1,7 +1,7 @@
-import { 
-  isValidSubcategory, 
-  getDetectorMetadata, 
-  isValidDetectorForLayer, 
+import {
+  isValidSubcategory,
+  getDetectorMetadata,
+  isValidDetectorForLayer,
   isValidDetectorForSubcategory,
   parseDetectorId,
   isKnownDetectorId
@@ -11,7 +11,7 @@ import {
  * Attempts to repair common JSON malformations from LLM outputs
  */
 export function repairJSON(raw) {
-  let text = raw.trim();
+  let text = String(raw || '').replace(/^\uFEFF/, '').trim();
 
   // Remove markdown code fences if present
   text = text.replace(/^```json\s*/, '').replace(/\s*```$/, '');
@@ -19,45 +19,62 @@ export function repairJSON(raw) {
   // Find the first '{' and last '}'
   const start = text.indexOf('{');
   const end = text.lastIndexOf('}');
-  
+
   if (start === -1 || end === -1) {
     throw new Error('No JSON object found in response');
   }
 
   text = text.substring(start, end + 1);
 
-  // Common repair: trailing commas
-  text = text.replace(/,\s*([}\]])/g, '$1');
+  const repairCandidates = [
+    text,
+    text
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/([{,]\s*)([A-Za-z0-9_]+)\s*:/g, '$1"$2":')
+      .replace(/([{,]\s*)'([^']+?)'\s*:/g, '$1"$2":')
+      .replace(/:\s*'([^'\\]*(?:\\.[^'\\]*)*)'/g, (_, value) => `:${JSON.stringify(value)}`)
+      .replace(/\bTrue\b/g, 'true')
+      .replace(/\bFalse\b/g, 'false')
+      .replace(/\bNone\b/g, 'null')
+      .replace(/,\s*([}\]])/g, '$1')
+  ];
 
-  // Common repair: unescaped newlines in strings
-  // This is risky, but often LLMs put raw newlines in evidence or description
-  // We'll only do it if the JSON is otherwise invalid
-  try {
-    return JSON.parse(text);
-  } catch (e) {
-    // Try to replace raw newlines within quotes
-    const fixedText = text.replace(/"([^"]*)"/g, (match, p1) => {
-      return '"' + p1.replace(/\n/g, '\\n').replace(/\r/g, '\\r') + '"';
-    });
-    
+  for (const candidate of repairCandidates) {
     try {
-      return JSON.parse(fixedText);
-    } catch (e2) {
-      console.error('JSON repair failed', text);
-      throw new Error(`Invalid JSON: ${e.message}`);
+      return JSON.parse(candidate);
+    } catch {
+      const fixedText = candidate.replace(/"([^"]*)"/g, (match, p1) => {
+        return '"' + p1.replace(/\n/g, '\\n').replace(/\r/g, '\\r') + '"';
+      });
+
+      try {
+        return JSON.parse(fixedText);
+      } catch {
+        // keep trying candidates
+      }
     }
   }
+
+  console.error('JSON repair failed', text);
+  try {
+    JSON.parse(text);
+  } catch (e) {
+    throw new Error(`Invalid JSON: ${e.message}`);
+  }
+
+  throw new Error('Invalid JSON: Unknown parsing failure');
 }
 
 export function validateResults(results) {
   if (!results || typeof results !== 'object') {
     throw new Error('Response is not a JSON object');
   }
-  
+
   if (!results.summary || typeof results.summary !== 'object') {
     throw new Error('Results missing required "summary" object');
   }
-  
+
   if (!Array.isArray(results.issues)) {
     throw new Error('Results missing required "issues" array');
   }
@@ -67,7 +84,7 @@ export function validateResults(results) {
     if (typeof issue.severity !== 'string' || !['critical', 'high', 'medium', 'low'].includes(issue.severity)) {
       throw new Error(`Issue at index ${index} has invalid severity: ${issue.severity}`);
     }
-    
+
     // 1. Detector ID Format & Existence
     const detectorId = issue.detector_id || parseDetectorId(issue.description);
     const isWellFormedDetector = detectorId && /L\d+-\d+/.test(detectorId);
@@ -91,7 +108,7 @@ export function validateResults(results) {
 
       if (isKnownDetectorId(detectorId)) {
         const meta = getDetectorMetadata(detectorId);
-        
+
         // 2. Layer/Category consistency (only if category is already present)
         if (issue.category && !isValidDetectorForLayer(detectorId, issue.category)) {
           throw new Error(`Issue at index ${index} detector "${detectorId}" does not belong to layer "${issue.category}" (expected "${meta.layer}")`);

@@ -1194,8 +1194,126 @@ export function createInitialDiagnostics() {
     analysis_mesh_agents_configured: 0,
     analysis_mesh_passes_completed: 0,
     agent_findings_merged_count: 0,
+    malformed_agent_response_count: 0,
+    malformed_agent_retry_count: 0,
+    recovered_agent_response_count: 0,
+    skipped_agent_pass_count: 0,
+    last_agent_failure: null,
+    agent_failure_events: [],
     warnings: []
   };
+}
+
+const MAX_DIAGNOSTIC_EVENT_COUNT = 6;
+const MAX_RAW_RESPONSE_EXCERPT_CHARS = 1200;
+
+function normalizeDiagnosticString(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function buildRawResponseExcerpt(value) {
+  const normalized = normalizeDiagnosticString(value).replace(/\u0000/g, '');
+  if (!normalized) return '';
+  return normalized.slice(0, MAX_RAW_RESPONSE_EXCERPT_CHARS);
+}
+
+function normalizeAgentFailureEvent(event = {}) {
+  const rawResponse = typeof event.raw_response === 'string'
+    ? event.raw_response
+    : (typeof event.raw_response_excerpt === 'string' ? event.raw_response_excerpt : '');
+
+  return {
+    batch_index: Number.isFinite(Number(event.batch_index)) ? Number(event.batch_index) : null,
+    batch_count: Number.isFinite(Number(event.batch_count)) ? Number(event.batch_count) : null,
+    agent_id: normalizeDiagnosticString(event.agent_id),
+    agent_label: normalizeDiagnosticString(event.agent_label),
+    attempt: Number.isFinite(Number(event.attempt)) ? Number(event.attempt) : 1,
+    stage: normalizeDiagnosticString(event.stage) || 'response_validation',
+    message: normalizeDiagnosticString(event.message),
+    recovered: Boolean(event.recovered),
+    recovered_on_attempt: Number.isFinite(Number(event.recovered_on_attempt)) ? Number(event.recovered_on_attempt) : null,
+    raw_response_excerpt: buildRawResponseExcerpt(rawResponse),
+    raw_response_length: Number.isFinite(Number(event.raw_response_length))
+      ? Number(event.raw_response_length)
+      : rawResponse.length
+  };
+}
+
+export function mergeDiagnostics(savedDiagnostics = {}) {
+  const base = createInitialDiagnostics();
+  return {
+    ...base,
+    ...savedDiagnostics,
+    warnings: Array.isArray(savedDiagnostics.warnings) ? savedDiagnostics.warnings.filter((warning) => typeof warning === 'string') : [],
+    last_agent_failure: savedDiagnostics.last_agent_failure
+      ? normalizeAgentFailureEvent(savedDiagnostics.last_agent_failure)
+      : null,
+    agent_failure_events: Array.isArray(savedDiagnostics.agent_failure_events)
+      ? savedDiagnostics.agent_failure_events
+          .map((event) => normalizeAgentFailureEvent(event))
+          .slice(-MAX_DIAGNOSTIC_EVENT_COUNT)
+      : []
+  };
+}
+
+export function recordAgentFailure(diagnostics, event = {}) {
+  if (!diagnostics || typeof diagnostics !== 'object') return null;
+
+  const normalizedEvent = normalizeAgentFailureEvent(event);
+  diagnostics.malformed_agent_response_count = (diagnostics.malformed_agent_response_count || 0) + 1;
+  diagnostics.agent_failure_events = [
+    ...(Array.isArray(diagnostics.agent_failure_events) ? diagnostics.agent_failure_events : []),
+    normalizedEvent
+  ].slice(-MAX_DIAGNOSTIC_EVENT_COUNT);
+  diagnostics.last_agent_failure = normalizedEvent;
+  return normalizedEvent;
+}
+
+export function recordAgentRecovery(diagnostics, recovery = {}) {
+  if (!diagnostics || typeof diagnostics !== 'object') return null;
+
+  diagnostics.recovered_agent_response_count = (diagnostics.recovered_agent_response_count || 0) + 1;
+
+  const events = Array.isArray(diagnostics.agent_failure_events) ? [...diagnostics.agent_failure_events] : [];
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    const event = events[index];
+    if (
+      event.agent_id === recovery.agent_id &&
+      event.batch_index === recovery.batch_index &&
+      !event.recovered
+    ) {
+      const updatedEvent = {
+        ...event,
+        recovered: true,
+        recovered_on_attempt: Number.isFinite(Number(recovery.attempt)) ? Number(recovery.attempt) : event.recovered_on_attempt
+      };
+      events[index] = updatedEvent;
+      diagnostics.agent_failure_events = events;
+      diagnostics.last_agent_failure = updatedEvent;
+      break;
+    }
+  }
+
+  const warning = `Recovered malformed ${recovery.agent_label || recovery.agent_id || 'agent'} response on attempt ${recovery.attempt || 2} for batch ${recovery.batch_index || '?'}${recovery.batch_count ? `/${recovery.batch_count}` : ''}.`;
+  diagnostics.warnings = [
+    ...(Array.isArray(diagnostics.warnings) ? diagnostics.warnings : []),
+    warning
+  ].slice(-MAX_DIAGNOSTIC_EVENT_COUNT);
+
+  return diagnostics.last_agent_failure;
+}
+
+export function recordAgentSkip(diagnostics, skip = {}) {
+  if (!diagnostics || typeof diagnostics !== 'object') return null;
+
+  diagnostics.skipped_agent_pass_count = (diagnostics.skipped_agent_pass_count || 0) + 1;
+  const warning = `Skipped ${skip.agent_label || skip.agent_id || 'agent'} after ${skip.attempt || '?'} invalid response attempt(s) for batch ${skip.batch_index || '?'}${skip.batch_count ? `/${skip.batch_count}` : ''}.`;
+  diagnostics.warnings = [
+    ...(Array.isArray(diagnostics.warnings) ? diagnostics.warnings : []),
+    warning
+  ].slice(-MAX_DIAGNOSTIC_EVENT_COUNT);
+
+  return warning;
 }
 
 export function isValidSubcategory(layer, subcategory) {
@@ -1370,7 +1488,13 @@ export const compareAudits = (current, previous) => {
 
 export function normalizeLoadedSession(session) {
   if (!session || !session.results) return session;
-  const diagnostics = createInitialDiagnostics();
+  const diagnostics = mergeDiagnostics(session.taxonomyDiagnostics);
+  diagnostics.normalized_from_detector_count = 0;
+  diagnostics.detector_id_parsed_from_description_count = 0;
+  diagnostics.unknown_detector_id_count = 0;
+  diagnostics.severity_clamped_count = 0;
+  diagnostics.missing_taxonomy_after_normalization_count = 0;
+  diagnostics.total_issues_loaded = 0;
   const normalized = { ...session };
   if (normalized.results.issues) {
     normalized.results.issues = normalized.results.issues.map(issue => {

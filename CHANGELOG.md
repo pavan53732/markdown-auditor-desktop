@@ -12,6 +12,7 @@ This changelog establishes the current production-ready baseline for the app as 
 - **Large Markdown Budget Wall**: Raised the minimum/default session token budget above 5 million and switched the old 6,000-token warning to a much higher batch target so large specs are chunked and batched instead of failing immediately on outdated defaults.
 - **Oversized Agent Prompt Payloads**: Switched the live 8-agent runtime from sending the full detailed 701-detector catalog on every pass to a scoped prompt format with a compact full-taxonomy detector index plus rich focus-layer detector metadata per agent, substantially reducing per-pass prompt size for large audits.
 - **Profile Drift in Universal Audits**: Removed document-type profiles from the runtime, prompt layer, pre-analysis UI, cache identity, and history workbench so the app now always runs in a single universal audit mode.
+- **Malformed Agent JSON Failures**: Added stronger JSON repair, per-agent malformed-response retry, degraded-mode skipped-pass continuation, and captured raw-response diagnostics so a single bad agent pass is less likely to abort the whole audit without actionable evidence.
 
 ## [1.13.0] - 2026-04-02
 ### Added

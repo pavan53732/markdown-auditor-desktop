@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { createInitialDiagnostics, normalizeIssueFromDetector } from '../detectorMetadata';
+import {
+  createInitialDiagnostics,
+  normalizeIssueFromDetector,
+  recordAgentFailure,
+  recordAgentRecovery,
+  recordAgentSkip
+} from '../detectorMetadata';
 
 describe('Taxonomy Diagnostics', () => {
   it('should initialize diagnostics correctly', () => {
@@ -48,5 +54,49 @@ describe('Taxonomy Diagnostics', () => {
     
     expect(diag.detector_id_parsed_from_description_count).toBe(1);
     expect(diag.normalized_from_detector_count).toBe(1);
+  });
+
+  it('should capture malformed agent response diagnostics and recovery', () => {
+    const diag = createInitialDiagnostics();
+
+    recordAgentFailure(diag, {
+      batch_index: 1,
+      batch_count: 2,
+      agent_id: 'reasoning_evidence_agent',
+      agent_label: 'Reasoning & Evidence Agent',
+      attempt: 1,
+      stage: 'json_parse',
+      message: 'Invalid JSON: Expected property name',
+      raw_response: '{summary: { total: 0 }}'
+    });
+    recordAgentRecovery(diag, {
+      batch_index: 1,
+      batch_count: 2,
+      agent_id: 'reasoning_evidence_agent',
+      agent_label: 'Reasoning & Evidence Agent',
+      attempt: 2
+    });
+
+    expect(diag.malformed_agent_response_count).toBe(1);
+    expect(diag.recovered_agent_response_count).toBe(1);
+    expect(diag.agent_failure_events).toHaveLength(1);
+    expect(diag.agent_failure_events[0].recovered).toBe(true);
+    expect(diag.agent_failure_events[0].raw_response_excerpt).toContain('{summary');
+    expect(diag.warnings[0]).toContain('Recovered malformed');
+  });
+
+  it('should track skipped agent passes after repeated malformed responses', () => {
+    const diag = createInitialDiagnostics();
+
+    recordAgentSkip(diag, {
+      batch_index: 1,
+      batch_count: 1,
+      agent_id: 'reasoning_evidence_agent',
+      agent_label: 'Reasoning & Evidence Agent',
+      attempt: 2
+    });
+
+    expect(diag.skipped_agent_pass_count).toBe(1);
+    expect(diag.warnings[0]).toContain('Skipped Reasoning & Evidence Agent');
   });
 });

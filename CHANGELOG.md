@@ -6,6 +6,10 @@ This changelog establishes the current production-ready baseline for the app as 
 
 ## [Unreleased]
 
+### Fixed
+
+- **Packaged Main-Process Startup Crash**: Replaced the ESM-only `uuid` import in `electron/historyService.js` with Node's built-in `crypto.randomUUID()` so the packaged Electron main process no longer crashes on startup with `ERR_REQUIRE_ESM`.
+
 ## [1.13.0] - 2026-04-02
 ### Added
 

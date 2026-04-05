@@ -1,13 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-const HistoryService = require('../../../electron/historyService');
 const fs = require('fs');
 const path = require('path');
 
 vi.mock('fs');
 vi.mock('path');
-vi.mock('uuid', () => ({
-  v4: () => 'mock-uuid-1234'
-}));
+
+const HistoryService = require('../../../electron/historyService');
 
 describe('HistoryService', () => {
   const mockBasePath = '/data/history';
@@ -50,7 +48,9 @@ describe('HistoryService', () => {
 
     expect(result.success).toBe(true);
     expect(result.id).toBeDefined();
-    expect(typeof result.id).toBe('string');
+    expect(result.id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    );
     expect(fs.mkdirSync).toHaveBeenCalledTimes(2);
     expect(fs.writeFileSync).toHaveBeenCalledTimes(2); // session and index
     expect(fs.renameSync).toHaveBeenCalledTimes(2); // atomic renames

@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 /**
  * Manages local audit history using a file-backed index and individual session files.
@@ -62,7 +62,7 @@ class HistoryService {
   add(metadata, session) {
     try {
       this.ensureDirs();
-      const id = uuidv4();
+      const id = randomUUID();
       const entry = { ...metadata, id };
 
       // 1. Write session file atomically

@@ -2,7 +2,6 @@
   "name": "markdown-intelligence-auditor",
   "version": "1.13.0",
   "description": "Markdown Document Intelligence Auditor - Windows Desktop App",
-
   "author": "Prem V",
   "main": "electron/main.js",
   "scripts": {
@@ -48,8 +47,7 @@
     ]
   },
   "dependencies": {
-    "openai": "^4.73.0",
-    "uuid": "^13.0.0"
+    "openai": "^4.73.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",

@@ -12,6 +12,31 @@ class HistoryService {
     this.sessionsDir = path.join(basePath, 'sessions');
   }
 
+  normalizeEntry(entry) {
+    if (!entry || typeof entry !== 'object') return entry;
+
+    const normalized = { ...entry };
+    let changed = false;
+
+    if (!normalized.auditMode) {
+      normalized.auditMode = 'universal';
+      changed = true;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(normalized, 'profile')) {
+      delete normalized.profile;
+      changed = true;
+    }
+
+    return { entry: normalized, changed };
+  }
+
+  writeIndex(index) {
+    const tempIndexPath = `${this.indexPath}.tmp`;
+    fs.writeFileSync(tempIndexPath, JSON.stringify(index, null, 2), 'utf-8');
+    fs.renameSync(tempIndexPath, this.indexPath);
+  }
+
   ensureDirs() {
     if (!fs.existsSync(this.basePath)) {
       fs.mkdirSync(this.basePath, { recursive: true });
@@ -30,7 +55,21 @@ class HistoryService {
         return [];
       }
       const data = fs.readFileSync(this.indexPath, 'utf-8');
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      if (!Array.isArray(parsed)) return [];
+
+      let changed = false;
+      const normalized = parsed.map((entry) => {
+        const result = this.normalizeEntry(entry);
+        changed = changed || result.changed;
+        return result.entry;
+      });
+
+      if (changed) {
+        this.writeIndex(normalized);
+      }
+
+      return normalized;
     } catch (err) {
       console.error(`[HistoryService] Failed to read history index:`, err.message);
       return [];
@@ -56,7 +95,7 @@ class HistoryService {
 
   /**
    * Adds a new session to history.
-   * metadata: { timestamp, title, fileCount, issuesCount: { critical, high, medium, low, total }, model, profile }
+   * metadata: { timestamp, title, fileCount, issuesCount: { critical, high, medium, low, total }, model, auditMode }
    * session: full results object
    */
   add(metadata, session) {
@@ -74,10 +113,8 @@ class HistoryService {
       // 2. Update index
       const index = this.list();
       index.unshift(entry); // Newest first
-      
-      const tempIndexPath = `${this.indexPath}.tmp`;
-      fs.writeFileSync(tempIndexPath, JSON.stringify(index, null, 2), 'utf-8');
-      fs.renameSync(tempIndexPath, this.indexPath);
+
+      this.writeIndex(index);
 
       return { success: true, id };
     } catch (err) {
@@ -125,10 +162,10 @@ class HistoryService {
       }
 
       index[entryIdx] = { ...index[entryIdx], ...updates };
-      
-      const tempIndexPath = `${this.indexPath}.tmp`;
-      fs.writeFileSync(tempIndexPath, JSON.stringify(index, null, 2), 'utf-8');
-      fs.renameSync(tempIndexPath, this.indexPath);
+
+      const normalized = this.normalizeEntry(index[entryIdx]);
+      index[entryIdx] = normalized.entry;
+      this.writeIndex(index);
 
       return { success: true };
     } catch (err) {
@@ -157,9 +194,7 @@ class HistoryService {
       }
 
       // 2. Update index
-      const tempIndexPath = `${this.indexPath}.tmp`;
-      fs.writeFileSync(tempIndexPath, JSON.stringify(toKeep, null, 2), 'utf-8');
-      fs.renameSync(tempIndexPath, this.indexPath);
+      this.writeIndex(toKeep);
 
       return { success: true, pruned: toDelete.length };
     } catch (err) {

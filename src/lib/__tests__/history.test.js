@@ -9,9 +9,8 @@ describe('History Metadata', () => {
     };
     const files = [{ name: 'file1.md' }, { name: 'file2.md' }];
     const config = { model: 'gpt-4o' };
-    const profile = 'api_docs';
 
-    const meta = buildHistoryMetadata(results, files, config, profile);
+    const meta = buildHistoryMetadata(results, files, config);
 
     expect(meta.title).toContain('Audit');
     expect(meta.note).toBe('');
@@ -21,12 +20,12 @@ describe('History Metadata', () => {
     expect(meta.issuesCount.total).toBe(10);
     expect(meta.issuesCount.critical).toBe(1);
     expect(meta.model).toBe('gpt-4o');
-    expect(meta.profile).toBe('api_docs');
+    expect(meta.auditMode).toBe('universal');
     expect(meta.timestamp).toBeDefined();
   });
 
   it('should support custom source types like imported_session', () => {
-    const meta = buildHistoryMetadata({ summary: {} }, [], {}, 'auto', 'imported_session');
+    const meta = buildHistoryMetadata({ summary: {} }, [], {}, 'imported_session');
     expect(meta.sourceType).toBe('imported_session');
   });
 

@@ -17,11 +17,12 @@ The current build includes chunk-aware batching, deterministic multi-pass post-p
 - Taxonomy benchmark fixtures supporting deterministic evaluation of taxonomy validation, normalization, and detector mapping correctness
 - 29 deterministic benchmark fixtures inside a 157-test local suite across 11 test files, including deep-spec and universal-audit scenarios for authority bypass, workflow skips, artifact reproducibility, toolchain isolation, recovery loop collapse, and operational UX leakage
 - Programmatic system prompt generation from structured taxonomy and metadata
+- Agent-scoped prompt compaction for the 8-agent mesh: each pass receives a compact full-taxonomy detector index plus richer detector metadata for its focus layers
 - Taxonomy-driven runtime normalization: backfilling metadata and enforcing severity bounds
 - Advanced semantic validation enforcing category -> subcategory -> detector consistency
 - Local regression suite verifying taxonomy integrity and normalization logic
 - Runtime taxonomy diagnostics surfaced in UI, Markdown reports, and JSON exports for pipeline observability
-- Seven domain profiles (e.g., API Docs, Runbooks, PRDs) adjusting detector emphasis
+- Universal audit mode only: the app always applies the full taxonomy without document-type profile weighting
 - Deterministic 8-agent analysis mesh with bounded roles for specification absoluteness, architecture authority, UI/operational integrity, execution/simulation, memory/world state, tool/deployment safety, reasoning/evidence, and cross-layer synthesis
 ...
 - `total_issues_loaded`: specifically tracks issues processed during session load or import
@@ -33,7 +34,7 @@ The current build includes chunk-aware batching, deterministic multi-pass post-p
 - Severity reporting: `critical`, `high`, `medium`, `low`
 - Incremental analysis using SHA-256 file hashing and local cached results
 - Session diffing with `new`, `resolved`, and `changed` issue states
-- **Local Audit History Workbench**: Search, filter by source/model/profile, sort, label, and compare past audits in a local archive
+- **Local Audit History Workbench**: Search, filter by source/model, sort, label, and compare past audits in a local archive
 - Root-cause grouping in addition to the flat issue list
 - Detector traceability fields such as `detector_id`, `why_triggered`, and `escalation_reason`
 - Strict issue schema fields including `failure_type`, `constraint_reference`, `violation_reference`, `contract_step`, `invariant_broken`, `authority_boundary`, `closed_world_status`, `analysis_agents`, and `deterministic_fix`
@@ -71,13 +72,15 @@ Example:
   "model": "gpt-4o",
   "timeout": 60,
   "retries": 2,
-  "tokenBudget": 100000
+  "tokenBudget": 10000000
 }
 ```
 
 Incremental analysis cache is stored in `analysis_cache.json` in the same directory. This file-backed storage ensures reliability for large projects and persists across app updates. The system uses **atomic writes** to prevent cache corruption.
 
 Users can clear this cache at any time through the **Clear Cache** button in the Settings modal.
+
+For large Markdown specifications, the app chunks and batches file content automatically. The default session token budget is intentionally high (`10,000,000`) so long-form audits can proceed instead of failing early on conservative defaults, and the runtime now uses scoped per-agent prompts so the same 701-detector taxonomy does not get re-sent in full detail on every pass.
 
 ## Provider Support
 
@@ -137,6 +140,7 @@ The runtime performs eight bounded analysis passes over each batch. Each pass us
 
 - Chunk-aware batching for large files
 - Eight sequential agent passes per batch with deterministic prompt construction
+- Scoped prompt construction for agent passes: compact global detector index plus full focus-layer detector metadata
 - Issue deduplication with stable identity keys
 - Agent-result merge with `analysis_agent` / `analysis_agents` provenance
 - Post-merge escalation across the combined result set

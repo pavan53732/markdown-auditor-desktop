@@ -34,7 +34,21 @@ describe('HistoryService', () => {
   it('list() should return parsed JSON if index exists', () => {
     fs.existsSync.mockReturnValue(true);
     fs.readFileSync.mockReturnValue('[{"id": "test-id"}]');
-    expect(service.list()).toEqual([{ id: 'test-id' }]);
+    expect(service.list()).toEqual([{ id: 'test-id', auditMode: 'universal' }]);
+  });
+
+  it('list() should migrate legacy profile metadata to universal audit mode', () => {
+    fs.existsSync.mockReturnValue(true);
+    fs.readFileSync.mockReturnValue('[{"id": "legacy-id", "profile": "api_docs", "title": "Old audit"}]');
+
+    const result = service.list();
+
+    expect(result).toEqual([{ id: 'legacy-id', title: 'Old audit', auditMode: 'universal' }]);
+    expect(fs.writeFileSync).toHaveBeenCalledWith(
+      expect.stringContaining('index.json.tmp'),
+      expect.not.stringContaining('"profile"'),
+      'utf-8'
+    );
   });
 
   it('add() should write session and update index', () => {

@@ -13,7 +13,15 @@ import brandIconDataUrl from './assets/brand-icon.png?inline';
 import { buildSystemPrompt } from './lib/systemPrompt';
 import { repairJSON, validateResults } from './lib/jsonRepair';
 import { ANALYSIS_AGENT_COUNT, ANALYSIS_AGENT_MESH, ANALYSIS_MESH_VERSION } from './lib/analysisAgents';
-import { DOMAIN_PROFILES } from './lib/domainProfiles';
+import {
+  DEFAULT_RETRIES,
+  DEFAULT_SESSION_TOKEN_BUDGET,
+  DEFAULT_TIMEOUT_SECONDS,
+  RECOMMENDED_BATCH_TARGET_TOKENS,
+  BATCH_TOKEN_BUFFER,
+  MIN_CHUNK_CHARS,
+  normalizeTokenBudget
+} from './lib/runtimeConfig';
 import { 
   TOTAL_DETECTOR_COUNT,
   normalizeIssueFromDetector, 
@@ -27,11 +35,7 @@ import {
   compareAudits,
   getIssueIdentity
 } from './lib/detectorMetadata';
-
-const MAX_SAFE_TOKENS = 6000;
 const CHARS_PER_TOKEN = 4;
-const BATCH_TOKEN_BUFFER = 1000;
-const MIN_CHUNK_CHARS = 1200;
 const BRAND_NAME = 'Markdown Intelligence Auditor';
 const BRAND_TAGLINE = 'Deterministic Markdown specification auditing';
 
@@ -69,7 +73,6 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [groupingMode, setGroupingMode] = useState('flat'); // flat, file, severity, layer, subcategory, root_cause
   const [diffMode, setDiffMode] = useState(false);
-  const [domainProfile, setDomainProfile] = useState('auto');
   const [previousResults, setPreviousResults] = useState(null);
   const [diffSummary, setDiffSummary] = useState(null);
   const [taxonomyDiagnostics, setTaxonomyDiagnostics] = useState(null);
@@ -84,8 +87,24 @@ export default function App() {
 
   useEffect(() => {
     window.electronAPI.readConfig().then((cfg) => {
-      setConfig(cfg);
+      const normalized = {
+        ...cfg,
+        timeout: Number.isFinite(Number(cfg.timeout)) ? Number(cfg.timeout) : DEFAULT_TIMEOUT_SECONDS,
+        retries: Number.isFinite(Number(cfg.retries)) ? Number(cfg.retries) : DEFAULT_RETRIES,
+        tokenBudget: normalizeTokenBudget(cfg.tokenBudget)
+      };
+
+      setConfig(normalized);
       setConfigLoaded(true);
+
+      const needsPersistence =
+        normalized.timeout !== cfg.timeout ||
+        normalized.retries !== cfg.retries ||
+        normalized.tokenBudget !== cfg.tokenBudget;
+
+      if (needsPersistence) {
+        window.electronAPI.writeConfig(normalized);
+      }
     });
     
     // Migration logic: Load from file first, fallback to localStorage if file is empty
@@ -122,7 +141,6 @@ export default function App() {
   const calculateHash = async (text) => {
     const cacheIdentity = [
       ANALYSIS_MESH_VERSION,
-      domainProfile,
       config.baseURL || 'no-base-url',
       config.model || 'no-model',
       text
@@ -135,10 +153,23 @@ export default function App() {
 
   const canAnalyze = !!(config.baseURL && config.model);
 
-  const estimateTokens = useCallback((fileList, profile = domainProfile) => {
-    const systemTokens = Math.max(
-      ...ANALYSIS_AGENT_MESH.map((agent) => Math.ceil(buildSystemPrompt(profile, agent.id).length / CHARS_PER_TOKEN))
-    );
+  const agentPromptEntries = useMemo(() => {
+    return ANALYSIS_AGENT_MESH.map((agent) => {
+      const systemPrompt = buildSystemPrompt(agent.id);
+      return {
+        ...agent,
+        systemPrompt,
+        systemTokens: Math.ceil(systemPrompt.length / CHARS_PER_TOKEN)
+      };
+    });
+  }, []);
+
+  const maxSystemTokens = useMemo(() => {
+    return Math.max(...agentPromptEntries.map((agent) => agent.systemTokens));
+  }, [agentPromptEntries]);
+
+  const estimateTokens = useCallback((fileList) => {
+    const systemTokens = maxSystemTokens;
     const userTokens = fileList.reduce((sum, f) => sum + Math.ceil(f.content.length / CHARS_PER_TOKEN), 0);
     const perPassTotal = systemTokens + userTokens;
     return {
@@ -147,13 +178,13 @@ export default function App() {
       perPassTotal,
       total: perPassTotal * ANALYSIS_AGENT_COUNT
     };
-  }, [domainProfile]);
+  }, [maxSystemTokens]);
 
   useEffect(() => {
     if (files.length > 0) {
       const { perPassTotal, total } = estimateTokens(files);
-      if (perPassTotal > MAX_SAFE_TOKENS) {
-        setContextWarning(`Warning: Estimated ${perPassTotal.toLocaleString()} tokens per agent pass exceeds the safe per-call limit (${MAX_SAFE_TOKENS.toLocaleString()}). Files will be batched, and the full ${ANALYSIS_AGENT_COUNT}-agent mesh is estimated at ${total.toLocaleString()} tokens.`);
+      if (perPassTotal > RECOMMENDED_BATCH_TARGET_TOKENS) {
+        setContextWarning(`Warning: Estimated ${perPassTotal.toLocaleString()} tokens per agent pass exceeds the recommended batch target (${RECOMMENDED_BATCH_TARGET_TOKENS.toLocaleString()}). Files will be chunked and batched automatically, and the full ${ANALYSIS_AGENT_COUNT}-agent mesh is estimated at ${total.toLocaleString()} tokens.`);
       } else {
         setContextWarning(null);
       }
@@ -171,11 +202,8 @@ export default function App() {
   }, []);
 
   const getAvailableTokens = useCallback(() => {
-    const systemTokens = Math.max(
-      ...ANALYSIS_AGENT_MESH.map((agent) => Math.ceil(buildSystemPrompt(domainProfile, agent.id).length / CHARS_PER_TOKEN))
-    );
-    return Math.max(1, MAX_SAFE_TOKENS - systemTokens - BATCH_TOKEN_BUFFER);
-  }, [domainProfile]);
+    return Math.max(1, RECOMMENDED_BATCH_TARGET_TOKENS - maxSystemTokens - BATCH_TOKEN_BUFFER);
+  }, [maxSystemTokens]);
 
   const splitOversizedFile = useCallback((file, maxTokens) => {
     const fileTokens = Math.ceil(file.content.length / CHARS_PER_TOKEN);
@@ -302,12 +330,12 @@ export default function App() {
     const agentResults = [];
     let rawIssueCount = 0;
 
-    for (const agent of ANALYSIS_AGENT_MESH) {
+    for (const agent of agentPromptEntries) {
       const response = await window.electronAPI.callAPI({
         baseURL: config.baseURL,
         apiKey: config.apiKey,
         model: config.model,
-        systemPrompt: buildSystemPrompt(domainProfile, agent.id),
+        systemPrompt: agent.systemPrompt,
         userMessage,
         timeout: config.timeout,
         retries: config.retries
@@ -605,8 +633,9 @@ export default function App() {
 
       if (filesToAnalyze.length > 0) {
         const { total } = estimateTokens(filesToAnalyze);
-        if (config.tokenBudget && total > config.tokenBudget) {
-          throw new Error(`Estimated ${total.toLocaleString()} tokens for new files exceeds session budget of ${config.tokenBudget.toLocaleString()}.`);
+        const sessionTokenBudget = normalizeTokenBudget(config.tokenBudget || DEFAULT_SESSION_TOKEN_BUDGET);
+        if (sessionTokenBudget && total > sessionTokenBudget) {
+          throw new Error(`Estimated ${total.toLocaleString()} tokens for new files exceeds session budget of ${sessionTokenBudget.toLocaleString()}.`);
         }
 
         const batches = batchFiles(filesToAnalyze);
@@ -706,7 +735,7 @@ export default function App() {
       setResults(merged);
       
       // Auto-save to history
-      const historyMetadata = buildHistoryMetadata(merged, files, config, domainProfile);
+      const historyMetadata = buildHistoryMetadata(merged, files, config);
       await window.electronAPI.addHistorySession({ metadata: historyMetadata, session: merged });
       await window.electronAPI.pruneHistory(50);
       const updatedHistory = await window.electronAPI.listHistory();
@@ -1079,7 +1108,7 @@ export default function App() {
 
   const saveToHistory = async () => {
     if (!results) return;
-    const historyMetadata = buildHistoryMetadata(results, files, config, domainProfile, 'imported_session');
+    const historyMetadata = buildHistoryMetadata(results, files, config, 'imported_session');
     await window.electronAPI.addHistorySession({ metadata: historyMetadata, session: results });
     
     // Prune history to keep only last 50 entries
@@ -1137,21 +1166,7 @@ export default function App() {
               </div>
             )}
             
-            <div className="mt-6 flex flex-col items-center gap-4">
-              <div className="flex items-center gap-3">
-                <label className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-widest">Profile:</label>
-                <select
-                  value={domainProfile}
-                  onChange={(e) => setDomainProfile(e.target.value)}
-                  className="bg-[#1F2937] border border-[#374151] rounded-lg text-sm text-[#F9FAFB] px-3 py-1.5 focus:outline-none focus:border-[#60A5FA] transition-colors"
-                >
-                  {Object.values(DOMAIN_PROFILES).map(p => (
-                    <option key={p.id} value={p.id} title={p.description}>{p.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex justify-center gap-3">
+            <div className="mt-6 flex justify-center gap-3">
                 <AnalyzeButton
                   fileCount={files.length}
                   providerConfigured={canAnalyze}
@@ -1165,7 +1180,6 @@ export default function App() {
                 >
                   📂 Load Session
                 </button>
-              </div>
             </div>
             {error && (
               <div className="mt-6 p-4 bg-[#3B1111] border border-[#A32D2D] rounded-lg">

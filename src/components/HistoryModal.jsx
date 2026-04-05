@@ -14,7 +14,6 @@ export default function HistoryModal({
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterModel, setFilterModel] = useState('all');
-  const [filterProfile, setFilterProfile] = useState('all');
   const [filterSource, setFilterSource] = useState('all');
   const [sortBy, setSortBy] = useState('newest'); // newest, oldest, total_issues
   const [editingId, setEditingId] = useState(null);
@@ -22,7 +21,6 @@ export default function HistoryModal({
   const [editNote, setEditingNote] = useState('');
 
   const models = useMemo(() => ['all', ...new Set(history.map(e => e.model).filter(Boolean))], [history]);
-  const profiles = useMemo(() => ['all', ...new Set(history.map(e => e.profile).filter(Boolean))], [history]);
   const sources = useMemo(() => ['all', ...new Set(history.map(e => e.sourceType).filter(Boolean))], [history]);
 
   const filteredAndSorted = useMemo(() => {
@@ -40,7 +38,6 @@ export default function HistoryModal({
 
     // Filters
     if (filterModel !== 'all') result = result.filter(e => e.model === filterModel);
-    if (filterProfile !== 'all') result = result.filter(e => e.profile === filterProfile);
     if (filterSource !== 'all') result = result.filter(e => e.sourceType === filterSource);
 
     // Sort
@@ -52,7 +49,7 @@ export default function HistoryModal({
     });
 
     return result;
-  }, [history, searchQuery, filterModel, filterProfile, filterSource, sortBy]);
+  }, [history, searchQuery, filterModel, filterSource, sortBy]);
 
   const startEdit = (entry) => {
     setEditingId(entry.id);
@@ -107,11 +104,6 @@ export default function HistoryModal({
           <select value={filterModel} onChange={(e) => setFilterModel(e.target.value)} className="bg-[#1F2937] border border-[#374151] rounded-lg text-xs text-[#9CA3AF] px-2 py-1.5">
             <option value="all">All Models</option>
             {models.filter(m => m !== 'all').map(m => <option key={m} value={m}>{m}</option>)}
-          </select>
-
-          <select value={filterProfile} onChange={(e) => setFilterProfile(e.target.value)} className="bg-[#1F2937] border border-[#374151] rounded-lg text-xs text-[#9CA3AF] px-2 py-1.5">
-            <option value="all">All Profiles</option>
-            {profiles.filter(p => p !== 'all').map(p => <option key={p} value={p}>{p}</option>)}
           </select>
 
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="bg-[#1F2937] border border-[#374151] rounded-lg text-xs text-[#9CA3AF] px-2 py-1.5">
@@ -237,10 +229,6 @@ export default function HistoryModal({
                       <div className="flex items-center gap-1">
                         <span className="font-semibold text-[#6B7280]">FILES:</span>
                         <span title={entry.fileNames?.join(', ')}>{entry.fileCount} files</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="font-semibold text-[#6B7280]">PROFILE:</span>
-                        <span>{entry.profile}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-[#6B7280]">ISSUES:</span>

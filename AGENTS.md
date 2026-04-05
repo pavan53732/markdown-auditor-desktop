@@ -31,7 +31,7 @@ Primary source-of-truth files:
 - `src/lib/detectorMetadata.js`
 - `src/lib/systemPrompt.js`
 - `src/lib/jsonRepair.js`
-- `src/lib/domainProfiles.js`
+- `src/lib/auditMode.js`
 - `src/lib/crossLayerBundles.js`
 - `src/lib/__tests__/taxonomy.test.js`
 - `src/lib/__tests__/taxonomyBenchmark.test.js`

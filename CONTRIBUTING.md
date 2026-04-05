@@ -51,7 +51,7 @@ Current packaged output:
 
 - 53 layers / 701 detectors
 - structured detector metadata catalog in `src/lib/detectorMetadata.js`
-- deterministic 8-agent prompt generation from the universal taxonomy, optional domain profiles, cross-layer bundles (31 total), and detector metadata
+- deterministic 8-agent prompt generation from the universal taxonomy, universal audit mode, cross-layer bundles (31 total), and detector metadata
 - detector-aware validation for known detector IDs
 - chunk-aware batching
 - deterministic normalization
@@ -60,7 +60,7 @@ Current packaged output:
 - incremental cached reuse
 - session diffing
 - root-cause grouping
-- 29 deterministic benchmark fixtures within a 157-test local suite across 11 files
+- 29 deterministic benchmark fixtures within a 163-test local suite across 13 files
 - enhanced taxonomy coverage helper with per-layer density, richness, subcategory, and bundle coverage analysis
 - strict issue schema enrichment including `failure_type`, `constraint_reference`, `contract_step`, `invariant_broken`, `authority_boundary`, `closed_world_status`, `analysis_agents`, and `deterministic_fix`
 
@@ -124,7 +124,7 @@ Be especially careful with:
 
 ### Analysis Prompt or Taxonomy Work
 
-The taxonomy is defined in `src/lib/detectorMetadata.js` (detectors and subcategories), `src/lib/layers.js` (top-level layer registry), `src/lib/domainProfiles.js` (optional domain-specific emphasis), `src/lib/crossLayerBundles.js` (logical groupings), and `src/lib/analysisAgents.js` (the fixed deterministic analysis mesh).
+The taxonomy is defined in `src/lib/detectorMetadata.js` (detectors and subcategories), `src/lib/layers.js` (top-level layer registry), `src/lib/auditMode.js` (single universal audit mode), `src/lib/crossLayerBundles.js` (logical groupings), and `src/lib/analysisAgents.js` (the fixed deterministic analysis mesh).
 
 The system prompt is dynamically generated in `src/lib/systemPrompt.js`.
 
@@ -295,7 +295,7 @@ Tests are located in `src/lib/__tests__` and cover:
 - **Prompt Generation**: Verifies the dynamic builder logic.
 - **Cache Service**: Verifies the file-backed persistence layer, atomic writes, and corruption handling.
 - **Diagnostics**: Verifies runtime observability metrics.
-- **Benchmark Suites**: `taxonomyBenchmark.test.js`, `deepSpecBenchmarks.test.js`, and `extendedUniversalBenchmarks.test.js` cover 29 benchmark fixtures, while the full local suite currently contains 157 tests across 11 files.
+- **Benchmark Suites**: `taxonomyBenchmark.test.js`, `deepSpecBenchmarks.test.js`, and `extendedUniversalBenchmarks.test.js` cover 29 benchmark fixtures, while the full local suite currently contains 163 tests across 13 files.
 - **Taxonomy Coverage Helper**: `taxonomyCoverageHelper.js` provides per-layer density analysis, richness metrics, subcategory coverage tracking, and bundle coverage analysis for comprehensive taxonomy observability.
 
 ALWAYS run tests before submitting changes to the taxonomy or prompt generation logic.

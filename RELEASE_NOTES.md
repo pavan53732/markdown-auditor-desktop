@@ -1,5 +1,11 @@
 # Release Notes
 
+## Unreleased
+
+- **Universal Audit Mode Only**: Removed document-type profiles from the prompt layer, pre-analysis UI, cache identity, and history workbench. The app now always runs the full universal taxonomy without profile-specific weighting.
+- **History Workbench Simplification**: History filtering now focuses on model and source, matching the new universal-mode runtime.
+- **Prompt Payload Efficiency**: The live 8-agent runtime continues to use scoped prompt compaction, and the local verification suite now covers 163 tests across 13 files.
+
 ## v1.13.0
 
 Release date: 2026-04-02

@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
+import {
+  DEFAULT_RETRIES,
+  DEFAULT_SESSION_TOKEN_BUDGET,
+  DEFAULT_TIMEOUT_SECONDS,
+  MIN_SESSION_TOKEN_BUDGET,
+  normalizeTokenBudget
+} from '../lib/runtimeConfig';
 
 export default function SettingsModal({ open, config, onSave, onCancel, onClearCache }) {
   const [baseURL, setBaseURL] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState('');
-  const [timeout, setTimeoutVal] = useState(60);
-  const [retries, setRetries] = useState(2);
-  const [tokenBudget, setTokenBudget] = useState(100000);
+  const [timeout, setTimeoutVal] = useState(DEFAULT_TIMEOUT_SECONDS);
+  const [retries, setRetries] = useState(DEFAULT_RETRIES);
+  const [tokenBudget, setTokenBudget] = useState(DEFAULT_SESSION_TOKEN_BUDGET);
   const [showKey, setShowKey] = useState(false);
   const [validating, setValidating] = useState(false);
   const [validationResult, setValidationResult] = useState(null);
@@ -25,9 +32,9 @@ export default function SettingsModal({ open, config, onSave, onCancel, onClearC
       setBaseURL(config.baseURL || '');
       setApiKey(config.apiKey || '');
       setModel(config.model || '');
-      setTimeoutVal(config.timeout || 60);
-      setRetries(config.retries || 2);
-      setTokenBudget(config.tokenBudget || 100000);
+      setTimeoutVal(config.timeout || DEFAULT_TIMEOUT_SECONDS);
+      setRetries(config.retries || DEFAULT_RETRIES);
+      setTokenBudget(normalizeTokenBudget(config.tokenBudget));
       setShowKey(false);
       setValidating(false);
       setValidationResult(null);
@@ -65,7 +72,14 @@ export default function SettingsModal({ open, config, onSave, onCancel, onClearC
   };
 
   const handleSave = () => {
-    onSave({ baseURL, apiKey, model, timeout, retries, tokenBudget });
+    onSave({
+      baseURL,
+      apiKey,
+      model,
+      timeout,
+      retries,
+      tokenBudget: normalizeTokenBudget(tokenBudget)
+    });
   };
 
   if (!open) return null;
@@ -189,12 +203,12 @@ export default function SettingsModal({ open, config, onSave, onCancel, onClearC
               <input
                 type="number"
                 value={tokenBudget}
-                onChange={(e) => setTokenBudget(parseInt(e.target.value))}
+                onChange={(e) => setTokenBudget(Number(e.target.value))}
                 step="5000"
                 className="w-full px-3 py-1.5 bg-[#111827] border border-[#374151] rounded text-[#F9FAFB] text-sm"
               />
               <p className="mt-1 text-[10px] text-[#6B7280]">
-                Stop analysis if estimated tokens exceed this value
+                Large markdown specs are chunked and batched automatically. Minimum budget is {MIN_SESSION_TOKEN_BUDGET.toLocaleString()} tokens; default is {DEFAULT_SESSION_TOKEN_BUDGET.toLocaleString()}.
               </p>
             </div>
           </div>

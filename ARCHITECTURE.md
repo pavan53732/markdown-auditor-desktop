@@ -10,7 +10,7 @@ The current architecture supports:
 - Full structured detector metadata (trigger patterns, evidence, FP guards)
 - Programmatic system prompt generation using a dynamic builder and fixed agent-role prompts
 - Detector-aware validation for known detector/category/subcategory combinations
-- Optional domain-aware profiles (e.g. API Docs, Runbooks) that adjust emphasis without replacing the universal taxonomy
+- A single universal audit mode that always applies the full taxonomy without document-type profile weighting
 - 31 cross-layer logical bundles
 - Deterministic 8-agent analysis mesh with bounded, mergeable passes
 - chunk-aware batching for large files
@@ -34,7 +34,7 @@ Electron Main Process
 Renderer Process (React)
 - file intake and local UI state
 - hashing, caching, batching, merging, diffing
-- taxonomy orchestration (layers, optional profiles, bundles, subcategories, detectors, agent mesh)
+- taxonomy orchestration (layers, universal audit mode, bundles, subcategories, detectors, agent mesh)
 - deterministic 8-pass agent execution and merge orchestration
 - taxonomy-driven normalization: metadata backfilling and severity clamping
 - result rendering with advanced subcategory filtering and grouping
@@ -54,7 +54,7 @@ Provider Layer
 .
 |-- GEMINI.md
 |-- package.json
-|-- vite.config.js
+|-- vite.config.mjs
 |-- tailwind.config.js
 |-- postcss.config.js
 |-- electron/
@@ -83,7 +83,7 @@ Provider Layer
 |       |-- analysisAgents.js
 |       |-- crossLayerBundles.js
 |       |-- detectorMetadata.js (Source of truth for 701 detectors)
-|       |-- domainProfiles.js
+|       |-- auditMode.js
 |       |-- jsonRepair.js (Advanced semantic validation)
 |       |-- layers.js
 |       |-- taxonomyCoverageHelper.js (Per-layer density, richness, subcategory, and bundle coverage analysis)
@@ -96,7 +96,7 @@ The system supports a local verification workflow with deepened 53-layer coverag
 1.  **Integrity Validation**: Local automated tests verify the 701-detector catalog against the 53-layer schema.
 2.  **Semantic Enforcement**: Validation logic ensures that AI-reported detector IDs, layers, and subcategories are mutually consistent.
 3.  **Benchmark Evaluation**: Canonical Markdown fixtures across `taxonomyBenchmark.test.js`, `deepSpecBenchmarks.test.js`, and `extendedUniversalBenchmarks.test.js` exercise deterministic taxonomy validation, normalization, and detector mapping behavior across 29 benchmark fixtures.
-4.  **Expanded Coverage**: The benchmark suites now cover deep-spec and universal-audit scenarios such as authority bypass, workflow skips, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty drops, artifact reproducibility gaps, toolchain leakage, recovery loop collapse, and operational UX leakage. The full local suite currently contains 157 tests across 11 files.
+4.  **Expanded Coverage**: The benchmark suites now cover deep-spec and universal-audit scenarios such as authority bypass, workflow skips, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty drops, artifact reproducibility gaps, toolchain leakage, recovery loop collapse, operational UX leakage, prompt compaction behavior, history metadata migration, and runtime budget normalization. The full local suite currently contains 163 tests across 13 files.
 5.  **Enhanced Taxonomy Coverage Helper**: `taxonomyCoverageHelper.js` provides per-layer density analysis, richness metrics, subcategory coverage tracking, bundle coverage analysis, and `related_layers` coverage reporting for comprehensive taxonomy observability.
 6.  **Runtime Diagnostics**: The application tracks enrichment, parsing, clamping, and multi-agent merge metrics during analysis and session loading.
 7.  **Observability**: Diagnostics are surfaced in the UI results summary and exports to ensure pipeline transparency, including configured agent count, completed passes, and merged findings.
@@ -203,7 +203,6 @@ App
 | `analyzing` | analysis in progress flag |
 | `results` | current audit result payload |
 | `error` | error string if API or parsing fails |
-| `domainProfile` | currently selected evaluation domain profile |
 | `activeLayer` | current layer filter |
 | `activeSubcategory` | current subcategory filter |
 | `searchQuery` | free-text issue search |

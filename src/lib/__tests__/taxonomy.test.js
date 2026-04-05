@@ -129,16 +129,16 @@ describe('Taxonomy Helpers', () => {
 
 describe('Prompt Generation', () => {
   it('buildSystemPrompt builds a valid string', () => {
-    const prompt = buildSystemPrompt('auto');
+    const prompt = buildSystemPrompt();
     expect(typeof prompt).toBe('string');
     expect(prompt.length).toBeGreaterThan(1000);
-    expect(prompt).toContain('DOMAIN PROFILE: Auto (Default)');
+    expect(prompt).toContain('AUDIT MODE: Universal Audit Mode');
     expect(prompt).toContain('CROSS-LAYER BUNDLES');
     expect(prompt).toContain(`--- DETECTOR CATALOG (${Object.keys(DETECTOR_METADATA).length} DETECTORS) ---`);
   });
 
   it('buildSystemPrompt includes detector details', () => {
-    const prompt = buildSystemPrompt('api_docs');
+    const prompt = buildSystemPrompt();
     expect(prompt).toContain('[L1-01] direct contradictions');
     expect(prompt).toContain('Trigger: Two statements explicitly negate each other');
     expect(prompt).toContain('Evidence: Conflict.');
@@ -157,7 +157,7 @@ describe('Prompt Generation', () => {
 
     it('agent-specific prompt includes the active mesh role', () => {
       const firstAgent = ANALYSIS_AGENT_MESH[0];
-      const prompt = buildSystemPrompt('auto', firstAgent.id);
+      const prompt = buildSystemPrompt(firstAgent.id);
       expect(prompt).toContain(`ANALYSIS MESH ROLE: ${firstAgent.label}`);
       expect(prompt).toContain(`analysis_agent="${firstAgent.id}"`);
     });

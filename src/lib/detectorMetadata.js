@@ -1213,25 +1213,88 @@ export function isValidDetectorForSubcategory(detectorId, subcategory) {
   return meta ? meta.subcategory === subcategory : true;
 }
 
-export function buildDetectorPrompt() {
-  const detectorCount = Object.keys(DETECTOR_METADATA).length;
-  let prompt = `--- DETECTOR CATALOG (${detectorCount} DETECTORS) ---\n\n`;
-  
-  for (const [layerSlug, subcats] of Object.entries(LAYER_SUBCATEGORIES)) {
-    const layerIdx = Object.keys(LAYER_SUBCATEGORIES).indexOf(layerSlug) + 1;
-    prompt += `LAYER ${layerIdx} [${layerSlug}]\n`;
-    const layerDetectors = Object.values(DETECTOR_METADATA).filter(d => d.layer === layerSlug);
-    layerDetectors.sort((a, b) => a.id.localeCompare(b.id));
-    layerDetectors.forEach(d => {
-      prompt += `[${d.id}] ${d.name}\n`;
-      prompt += `  - Subcategory: ${d.subcategory}\n`;
-      prompt += `  - Trigger: ${d.trigger_pattern}\n`;
-      prompt += `  - Evidence: ${d.required_evidence}\n`;
-      prompt += `  - FP Guard: ${d.false_positive_guards}\n`;
-      prompt += `  - Severity: ${d.severity_floor}+\n\n`;
-    });
+const ORDERED_LAYER_IDS = Object.keys(LAYER_SUBCATEGORIES);
+const ORDERED_DETECTORS = Object.values(DETECTOR_METADATA).sort((a, b) => a.id.localeCompare(b.id));
+const DETECTORS_BY_LAYER = ORDERED_LAYER_IDS.reduce((acc, layerId) => {
+  acc[layerId] = ORDERED_DETECTORS.filter((detector) => detector.layer === layerId);
+  return acc;
+}, {});
+
+function normalizePromptLayerIds(layerIds) {
+  if (!Array.isArray(layerIds) || layerIds.length === 0) return null;
+  const requested = new Set(layerIds.filter((layerId) => ORDERED_LAYER_IDS.includes(layerId)));
+  return ORDERED_LAYER_IDS.filter((layerId) => requested.has(layerId));
+}
+
+function getPromptDetectors(layerIds) {
+  const normalizedLayerIds = normalizePromptLayerIds(layerIds);
+  if (!normalizedLayerIds) {
+    return {
+      layerIds: ORDERED_LAYER_IDS,
+      detectors: ORDERED_DETECTORS,
+      isScoped: false
+    };
   }
+
+  return {
+    layerIds: normalizedLayerIds,
+    detectors: normalizedLayerIds.flatMap((layerId) => DETECTORS_BY_LAYER[layerId] || []),
+    isScoped: true
+  };
+}
+
+export function buildDetectorPrompt(options = {}) {
+  const {
+    layerIds = null,
+    mode = 'full',
+    headerTitle = 'DETECTOR CATALOG'
+  } = options;
+  const { layerIds: promptLayerIds, detectors, isScoped } = getPromptDetectors(layerIds);
+  const headerSuffix = isScoped ? ` / ${TOTAL_DETECTOR_COUNT} TOTAL` : '';
+  let prompt = `--- ${headerTitle} (${detectors.length} DETECTORS${headerSuffix}) ---\n\n`;
+
+  promptLayerIds.forEach((layerSlug) => {
+    const layerIdx = ORDERED_LAYER_IDS.indexOf(layerSlug) + 1;
+    prompt += `LAYER ${layerIdx} [${layerSlug}]\n`;
+    const layerDetectors = DETECTORS_BY_LAYER[layerSlug] || [];
+
+    layerDetectors.forEach((detector) => {
+      if (mode === 'compact') {
+        prompt += `[${detector.id}] ${detector.layer} :: ${detector.subcategory} :: ${detector.name} :: severity>=${detector.severity_floor}\n`;
+        return;
+      }
+
+      prompt += `[${detector.id}] ${detector.name}\n`;
+      prompt += `  - Subcategory: ${detector.subcategory}\n`;
+      prompt += `  - Trigger: ${detector.trigger_pattern}\n`;
+      prompt += `  - Evidence: ${detector.required_evidence}\n`;
+      prompt += `  - FP Guard: ${detector.false_positive_guards}\n`;
+      prompt += `  - Severity: ${detector.severity_floor}+`;
+      if (detector.severity_ceiling) {
+        prompt += ` up to ${detector.severity_ceiling}`;
+      }
+      prompt += `\n\n`;
+    });
+
+    if (mode === 'compact') {
+      prompt += '\n';
+    }
+  });
+
+  if (isScoped) {
+    const omittedCount = TOTAL_DETECTOR_COUNT - detectors.length;
+    prompt += `Scoped detail note: ${omittedCount} detectors remain outside this detailed slice and are expected to be covered via the compact global index.\n`;
+  }
+
   return prompt;
+}
+
+export function buildCompactDetectorIndexPrompt(options = {}) {
+  return buildDetectorPrompt({
+    ...options,
+    mode: 'compact',
+    headerTitle: options.headerTitle || 'DETECTOR INDEX'
+  });
 }
 
 export function getSubcategoryPrompt() { return buildDetectorPrompt(); }
@@ -1320,7 +1383,7 @@ export function normalizeLoadedSession(session) {
   return normalized;
 }
 
-export function buildHistoryMetadata(results, files, config, domainProfileId, sourceType = 'fresh_analysis') {
+export function buildHistoryMetadata(results, files, config, sourceType = 'fresh_analysis') {
   if (!results) return null;
   return {
     timestamp: new Date().toISOString(),
@@ -1338,6 +1401,6 @@ export function buildHistoryMetadata(results, files, config, domainProfileId, so
     },
     rootCauseCount: results.root_causes?.length || 0,
     model: config?.model || 'unknown',
-    profile: domainProfileId || 'auto'
+    auditMode: 'universal'
   };
 }

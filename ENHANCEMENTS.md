@@ -12,7 +12,7 @@ This document tracks the major product-level enhancements currently implemented 
 - taxonomy benchmark fixtures and evaluation suite
 - dynamic detector catalog generation for the system prompt
 - deterministic 8-agent analysis mesh defined in `src/lib/analysisAgents.js`
-- universal taxonomy plus optional domain profiles and cross-layer bundles (31 total) composed into prompt generation
+- universal taxonomy plus a single universal audit mode and cross-layer bundles (31 total) composed into prompt generation
 - chunk-aware batching for oversized files
 - deterministic post-merge normalization
 - four runtime escalation rules
@@ -21,7 +21,7 @@ This document tracks the major product-level enhancements currently implemented 
 - detector-aware validation for Lx-yy ID format, existence, and semantic consistency
 - taxonomy-driven normalization: automatic metadata backfilling, agent provenance merge, and severity bound clamping
 - automated test suite for taxonomy integrity, prompt generation, normalization, and session persistence
-- 29 deterministic benchmark fixtures within a 157-test local suite across 11 files
+- 29 deterministic benchmark fixtures within a 163-test local suite across 13 files
 - benchmark suites covering control plane override abuse, evidence-free escalation, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty dropped, world state atomicity, workflow skips, artifact reproducibility, toolchain isolation, recovery loop collapse, and operational UX leakage
 - enhanced taxonomy coverage helper (`taxonomyCoverageHelper.js`) with per-layer density analysis, richness metrics, subcategory coverage tracking, and bundle coverage analysis
 - universal audit layer expansion with 8 new layers covering ontology governance, workflow integrity, authority paths, artifact reproducibility, environment/toolchain isolation, knowledge-source authority, failure recovery, and operational UX contracts
@@ -58,7 +58,7 @@ This document tracks the major product-level enhancements currently implemented 
 
 - drag-and-drop Markdown intake
 - search across descriptions, evidence, tags, files, and detector metadata
-- domain profile selector in the pre-analysis UI
+- single universal audit mode with no document-type profile selector
 - layer and subcategory filtering
 - grouping by file, severity, layer, subcategory, and root cause
 - **audit history workbench modal** with advanced search, filter, and sort

@@ -1,23 +1,30 @@
-import { getDomainProfilePrompt } from './domainProfiles.js';
+import { getUniversalAuditModePrompt } from './auditMode.js';
 import { getCrossLayerBundlesPrompt } from './crossLayerBundles.js';
-import { buildDetectorPrompt, TOTAL_DETECTOR_COUNT } from './detectorMetadata.js';
-import { TOTAL_LAYER_COUNT } from './layers.js';
-import { ANALYSIS_AGENT_COUNT, buildAnalysisAgentPrompt } from './analysisAgents.js';
+import {
+  buildCompactDetectorIndexPrompt,
+  buildDetectorPrompt,
+  TOTAL_DETECTOR_COUNT
+} from './detectorMetadata.js';
+import { buildLayerRegistryPrompt, TOTAL_LAYER_COUNT } from './layers.js';
+import {
+  ANALYSIS_AGENT_COUNT,
+  buildAnalysisAgentPrompt,
+  getAnalysisAgent,
+  getAnalysisAgentFocusLayers
+} from './analysisAgents.js';
 
-export function buildSystemPrompt(domainProfileId = 'auto', analysisAgentId = null) {
-  return `${getDomainProfilePrompt(domainProfileId)}
+function buildSharedInstructionBlock({ scoped = false, focusLayerIds = [] } = {}) {
+  const focusLayerNote = scoped
+    ? `Your active role receives full detector metadata for ${focusLayerIds.length} focus layers and a compact global index for the rest of the taxonomy. Full coverage across all ${TOTAL_LAYER_COUNT} layers is still mandatory.`
+    : `You have the full detector catalog available in this pass and must evaluate the complete taxonomy across all ${TOTAL_LAYER_COUNT} layers.`;
 
-${buildAnalysisAgentPrompt(analysisAgentId)}
-
-${getCrossLayerBundlesPrompt()}
-
-${buildDetectorPrompt()}
-
-You are an elite documentation intelligence auditor.
+  return `You are an elite documentation intelligence auditor.
 
 Analyze markdown documentation files across **${TOTAL_LAYER_COUNT} analytical layers and ${TOTAL_DETECTOR_COUNT} micro-detectors** using a deterministic ${ANALYSIS_AGENT_COUNT}-agent audit mesh.
 
 Your job is to identify structural, logical, authority, reproducibility, governance, recovery, and operational UX gaps with zero-ambiguity findings that remain faithful to the live taxonomy.
+
+${focusLayerNote}
 
 Core priorities:
 - evaluate all ${TOTAL_DETECTOR_COUNT} detectors across all ${TOTAL_LAYER_COUNT} layers
@@ -52,6 +59,7 @@ STAGE 3 - deterministic escalation
 STAGE 4 - final synthesis
 - emit one raw JSON object only
 - make sure every issue includes the required schema fields below
+- Include detectors_evaluated count (must be <=${TOTAL_DETECTOR_COUNT})
 - Include detectors_evaluated count (must be ≤${TOTAL_DETECTOR_COUNT})
 - keep wording specific, deterministic, and evidence-bound
 
@@ -111,7 +119,7 @@ Return only raw JSON. No markdown fences. No preamble. No explanatory text outsi
       "detector_id": "L8-02",
       "detector_name": "missing component",
       "layer": "architectural",
-      "analysis_agent": "${analysisAgentId || 'spec_absoluteness_agent'}",
+      "analysis_agent": "spec_absoluteness_agent",
       "why_triggered": "The API gateway is treated as a required system boundary but is not defined in the text or diagrams.",
       "failure_type": "contract_incompleteness",
       "constraint_reference": "L8-02:architectural:missing_components",
@@ -159,4 +167,56 @@ Return only raw JSON. No markdown fences. No preamble. No explanatory text outsi
     }
   ]
 }`;
+}
+
+function buildScopedPrompt(analysisAgentId) {
+  const activeAgent = getAnalysisAgent(analysisAgentId);
+  const focusLayerIds = getAnalysisAgentFocusLayers(analysisAgentId);
+  const focusDetectorCatalog = buildDetectorPrompt({
+    layerIds: focusLayerIds,
+    headerTitle: `${activeAgent?.label || 'Active Agent'} FOCUS DETECTOR CATALOG`
+  });
+
+  return `${getUniversalAuditModePrompt()}
+
+${buildAnalysisAgentPrompt(analysisAgentId)}
+
+${buildLayerRegistryPrompt()}
+
+${getCrossLayerBundlesPrompt({ layerIds: focusLayerIds })}
+
+${buildCompactDetectorIndexPrompt()}
+
+${focusDetectorCatalog}
+
+SCOPED PROMPT STRATEGY:
+- The detector index above covers the full ${TOTAL_DETECTOR_COUNT}-detector taxonomy.
+- The focus detector catalog provides richer metadata for the active role's focus layers: ${focusLayerIds.join(', ')}.
+- You must still detect valid issues in any layer when the document evidence supports them.
+- Prefer focus-layer findings when multiple detector choices could describe the same evidence.
+- Use cross-layer bundles to escalate only when the evidence truly spans the participating layers.
+
+${buildSharedInstructionBlock({ scoped: true, focusLayerIds })}`;
+}
+
+function buildUnscopedPrompt(analysisAgentId) {
+  return `${getUniversalAuditModePrompt()}
+
+${buildAnalysisAgentPrompt(analysisAgentId)}
+
+${buildLayerRegistryPrompt()}
+
+${getCrossLayerBundlesPrompt()}
+
+${buildDetectorPrompt()}
+
+${buildSharedInstructionBlock()}`;
+}
+
+export function buildSystemPrompt(analysisAgentId = null) {
+  if (analysisAgentId) {
+    return buildScopedPrompt(analysisAgentId);
+  }
+
+  return buildUnscopedPrompt(analysisAgentId);
 }

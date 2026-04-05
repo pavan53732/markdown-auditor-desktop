@@ -66,3 +66,11 @@ export const SEVERITY_STYLE = {
 export function getLayerById(id) {
   return LAYERS.find((l) => l.id === id) || { id, label: id, icon: '?', color: '#888', bg: '#333', border: '#555' };
 }
+
+export function buildLayerRegistryPrompt(layerIds = null) {
+  const scopedIds = Array.isArray(layerIds) && layerIds.length > 0 ? new Set(layerIds) : null;
+  const scopedLayers = scopedIds ? LAYERS.filter((layer) => scopedIds.has(layer.id)) : LAYERS;
+  const lines = scopedLayers.map((layer, index) => `${index + 1}. ${layer.id} = ${layer.label}`);
+  const scopeSuffix = scopedIds ? ` (${scopedLayers.length}/${TOTAL_LAYER_COUNT} in scope)` : '';
+  return `LAYER REGISTRY${scopeSuffix}:\n${lines.join('\n')}`;
+}

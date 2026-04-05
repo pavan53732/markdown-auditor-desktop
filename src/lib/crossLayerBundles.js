@@ -218,10 +218,21 @@ export const CROSS_LAYER_BUNDLES = [
   }
 ];
 
-export function getCrossLayerBundlesPrompt() {
-  let prompt = `CROSS-LAYER BUNDLES (Use for correlation and escalation):\n`;
-  CROSS_LAYER_BUNDLES.forEach(bundle => {
+export function getCrossLayerBundlesPrompt(options = {}) {
+  const { layerIds = null } = options;
+  const scopedLayers = Array.isArray(layerIds) && layerIds.length > 0 ? new Set(layerIds) : null;
+  const bundles = scopedLayers
+    ? CROSS_LAYER_BUNDLES.filter((bundle) => bundle.layers.some((layerId) => scopedLayers.has(layerId)))
+    : CROSS_LAYER_BUNDLES;
+
+  let prompt = `CROSS-LAYER BUNDLES (Use for correlation and escalation): ${bundles.length}/${CROSS_LAYER_BUNDLES.length} bundles in scope.\n`;
+  bundles.forEach((bundle) => {
     prompt += `- ${bundle.name} (${bundle.layers.join(' + ')}): ${bundle.description} ${bundle.escalation_rule}\n`;
   });
+
+  if (scopedLayers) {
+    prompt += `Scoped bundle note: bundles outside the active focus layers are omitted here but still apply during final cross-layer synthesis when evidence supports them.\n`;
+  }
+
   return prompt;
 }

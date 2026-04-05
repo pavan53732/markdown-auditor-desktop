@@ -98,10 +98,15 @@ export const ANALYSIS_AGENT_MESH = [
 ];
 
 export const ANALYSIS_AGENT_COUNT = ANALYSIS_AGENT_MESH.length;
-export const ANALYSIS_MESH_VERSION = 'taxonomy-v2-53x701-a8';
+export const ANALYSIS_MESH_VERSION = 'taxonomy-v2-53x701-a8-universal';
 
 export function getAnalysisAgent(agentId) {
   return ANALYSIS_AGENT_MESH.find((agent) => agent.id === agentId) || null;
+}
+
+export function getAnalysisAgentFocusLayers(agentId) {
+  const agent = getAnalysisAgent(agentId);
+  return agent ? [...agent.focusLayers] : [];
 }
 
 export function buildAnalysisAgentPrompt(agentId) {

@@ -15,7 +15,7 @@ The current build includes chunk-aware batching, deterministic multi-pass post-p
 - 701 code-defined micro-detectors across all 53 layers, including the deep-spec core plus 8 universal governance and reproducibility extensions
 - Full structured detector metadata for all detectors, including trigger patterns, evidence requirements, false-positive guards, and `related_layers` cross-references for 255 detectors across the specification-intensive layers
 - Taxonomy benchmark fixtures supporting deterministic evaluation of taxonomy validation, normalization, and detector mapping correctness
-- 29 deterministic benchmark fixtures inside a 168-test local suite across 13 test files, including deep-spec and universal-audit scenarios for authority bypass, workflow skips, artifact reproducibility, toolchain isolation, recovery loop collapse, and operational UX leakage
+- 29 deterministic benchmark fixtures inside a 173-test local suite across 14 test files, including deep-spec and universal-audit scenarios for authority bypass, workflow skips, artifact reproducibility, toolchain isolation, recovery loop collapse, and operational UX leakage
 - Programmatic system prompt generation from structured taxonomy and metadata
 - Agent-scoped prompt compaction for the 8-agent mesh: each pass receives a compact full-taxonomy detector index plus richer detector metadata for its focus layers
 - Taxonomy-driven runtime normalization: backfilling metadata and enforcing severity bounds
@@ -81,7 +81,7 @@ Incremental analysis cache is stored in `analysis_cache.json` in the same direct
 
 Users can clear this cache at any time through the **Clear Cache** button in the Settings modal.
 
-For large Markdown specifications, the app chunks and batches file content automatically. The default session token budget is intentionally high (`10,000,000`) so long-form audits can proceed instead of failing early on conservative defaults, and the runtime now uses scoped per-agent prompts so the same 701-detector taxonomy does not get re-sent in full detail on every pass.
+For large Markdown specifications, the app chunks and batches file content automatically. The default session token budget is intentionally high (`10,000,000`) so long-form audits can proceed instead of failing early on conservative defaults, the runtime uses scoped per-agent prompts so the same 701-detector taxonomy does not get re-sent in full detail on every pass, and the Electron main process now uses an adaptive analysis output-token budget instead of a fixed `8000` cap.
 
 ## Provider Support
 
@@ -401,6 +401,6 @@ Current packaged output:
 
 - The app provides AI-generated remediation guidance, but it does not apply fixes automatically.
 - Local OpenAI-compatible endpoints such as Ollama are supported.
-- Known detector IDs are checked for taxonomy consistency; unknown detector IDs currently log warnings rather than being rejected outright.
+- Known detector IDs are checked for taxonomy consistency, and unknown detector IDs are now rejected during AI-result validation instead of being allowed through as soft warnings.
 - The packaged executable is currently unsigned, so Windows may show trust warnings on some systems.
 - A dedicated license file is not currently present in the repo; add one before public distribution if needed.

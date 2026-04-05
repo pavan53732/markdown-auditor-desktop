@@ -1,0 +1,45 @@
+import { describe, it, expect } from 'vitest';
+
+const {
+  MIN_ANALYSIS_OUTPUT_TOKENS,
+  DEFAULT_ANALYSIS_OUTPUT_TOKENS,
+  MAX_ANALYSIS_OUTPUT_TOKENS,
+  computeAdaptiveAnalysisMaxTokens,
+  expandAnalysisTokenBudget,
+  reduceAnalysisTokenBudget,
+  isOutputBudgetError
+} = require('../../../electron/apiRequestPolicy');
+
+describe('API Request Policy', () => {
+  it('should keep a sensible default floor for small prompts', () => {
+    const budget = computeAdaptiveAnalysisMaxTokens({
+      systemPrompt: 'short system prompt',
+      userMessage: 'short user message'
+    });
+
+    expect(budget).toBe(DEFAULT_ANALYSIS_OUTPUT_TOKENS);
+  });
+
+  it('should grow for larger prompts without exceeding the configured maximum', () => {
+    const largeText = 'x'.repeat(160000);
+    const budget = computeAdaptiveAnalysisMaxTokens({
+      systemPrompt: largeText,
+      userMessage: largeText
+    });
+
+    expect(budget).toBe(MAX_ANALYSIS_OUTPUT_TOKENS);
+  });
+
+  it('should expand and reduce within configured bounds', () => {
+    expect(expandAnalysisTokenBudget(DEFAULT_ANALYSIS_OUTPUT_TOKENS)).toBeGreaterThan(DEFAULT_ANALYSIS_OUTPUT_TOKENS);
+    expect(expandAnalysisTokenBudget(MAX_ANALYSIS_OUTPUT_TOKENS)).toBe(MAX_ANALYSIS_OUTPUT_TOKENS);
+    expect(reduceAnalysisTokenBudget(MIN_ANALYSIS_OUTPUT_TOKENS)).toBe(MIN_ANALYSIS_OUTPUT_TOKENS);
+    expect(reduceAnalysisTokenBudget(DEFAULT_ANALYSIS_OUTPUT_TOKENS)).toBeLessThan(DEFAULT_ANALYSIS_OUTPUT_TOKENS);
+  });
+
+  it('should classify provider output-budget errors', () => {
+    expect(isOutputBudgetError(new Error('maximum context length exceeded'))).toBe(true);
+    expect(isOutputBudgetError(new Error('Requested too many tokens'))).toBe(true);
+    expect(isOutputBudgetError(new Error('connection reset by peer'))).toBe(false);
+  });
+});

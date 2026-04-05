@@ -4,6 +4,13 @@ const fs = require('fs');
 const OpenAI = require('openai');
 const CacheService = require('./cacheService');
 const HistoryService = require('./historyService');
+const {
+  MAX_ANALYSIS_OUTPUT_ATTEMPTS,
+  computeAdaptiveAnalysisMaxTokens,
+  expandAnalysisTokenBudget,
+  reduceAnalysisTokenBudget,
+  isOutputBudgetError
+} = require('./apiRequestPolicy');
 
 let mainWindow;
 let cacheService;
@@ -160,17 +167,52 @@ ipcMain.handle('api:call', async (event, { baseURL, apiKey, model, systemPrompt,
       maxRetries: retries || 2
     });
 
-    const response = await client.chat.completions.create({
-      model: model,
-      max_tokens: 8000,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage }
-      ]
-    });
+    let outputTokenBudget = computeAdaptiveAnalysisMaxTokens({ systemPrompt, userMessage });
+    const seenBudgets = new Set();
+    let lastError = null;
 
-    const raw = response.choices[0]?.message?.content || '';
-    return { success: true, raw };
+    for (let attempt = 1; attempt <= MAX_ANALYSIS_OUTPUT_ATTEMPTS; attempt += 1) {
+      seenBudgets.add(outputTokenBudget);
+
+      try {
+        const response = await client.chat.completions.create({
+          model: model,
+          max_tokens: outputTokenBudget,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessage }
+          ]
+        });
+
+        const choice = response.choices[0] || {};
+        const raw = choice.message?.content || '';
+        const finishReason = choice.finish_reason || '';
+        const expandedBudget = expandAnalysisTokenBudget(outputTokenBudget);
+
+        if (
+          finishReason === 'length' &&
+          expandedBudget > outputTokenBudget &&
+          !seenBudgets.has(expandedBudget)
+        ) {
+          outputTokenBudget = expandedBudget;
+          continue;
+        }
+
+        return { success: true, raw, finishReason, outputTokenBudget };
+      } catch (err) {
+        lastError = err;
+        if (isOutputBudgetError(err)) {
+          const reducedBudget = reduceAnalysisTokenBudget(outputTokenBudget);
+          if (reducedBudget < outputTokenBudget && !seenBudgets.has(reducedBudget)) {
+            outputTokenBudget = reducedBudget;
+            continue;
+          }
+        }
+        break;
+      }
+    }
+
+    return { success: false, error: lastError?.message || 'Analysis request failed' };
   } catch (err) {
     return { success: false, error: err.message };
   }

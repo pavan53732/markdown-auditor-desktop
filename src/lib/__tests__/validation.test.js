@@ -74,6 +74,14 @@ describe('Result Validation', () => {
     };
     expect(validateResults(results)).toBe(true);
   });
+
+  it('should reject unknown detector IDs', () => {
+    const results = {
+      summary: { total: 1 },
+      issues: [{ severity: 'high', category: 'contradiction', description: 'x', detector_id: 'L99-99' }]
+    };
+    expect(() => validateResults(results)).toThrow('unknown detector_id');
+  });
 });
 
 describe('Taxonomy Normalization', () => {
@@ -104,7 +112,7 @@ describe('Taxonomy Normalization', () => {
     expect(enriched.category).toBe('contradiction');
   });
 
-  it('should remain graceful for unknown detectors', () => {
+  it('should remain graceful for unknown detectors during non-validation enrichment', () => {
     const issue = {
       detector_id: 'L99-99',
       category: 'any',

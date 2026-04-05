@@ -15,6 +15,8 @@ This changelog establishes the current production-ready baseline for the app as 
 - **Malformed Agent JSON Failures**: Added stronger JSON repair, per-agent malformed-response retry, degraded-mode skipped-pass continuation, and captured raw-response diagnostics so a single bad agent pass is less likely to abort the whole audit without actionable evidence.
 - **History Diagnostics Loss**: Local history now preserves taxonomy diagnostics and malformed-agent trace data when reopening or comparing saved audits, instead of dropping them by saving only the bare results object.
 - **Stale Filter State Across Audits**: Starting a new audit or resetting the workbench now clears stale subcategory and comparison state so earlier filters do not silently hide issues from the next run.
+- **Fixed 8000 Output-Token Cap**: Replaced the fixed `max_tokens: 8000` analysis request cap in `electron/main.js` with an adaptive output-budget policy that expands on `finish_reason: "length"` and backs off when a provider rejects larger budgets.
+- **Unknown Detector Soft-Warning**: AI-result validation now rejects unknown detector IDs instead of only logging warnings, preventing unsupported detector IDs from entering runtime results.
 
 ## [1.13.0] - 2026-04-02
 ### Added

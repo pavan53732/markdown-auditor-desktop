@@ -185,7 +185,7 @@ describe('Taxonomy Pipeline Benchmark (Deterministic)', () => {
     expect(normalized[5].layer).toBe('specification_formalism');
   });
 
-  it('handles unknown but well-formed detectors gracefully when category is provided', () => {
+  it('rejects unknown detector IDs during result validation', () => {
     const mockedResponse = `
     {
       "summary": { "total": 1 },
@@ -200,8 +200,7 @@ describe('Taxonomy Pipeline Benchmark (Deterministic)', () => {
     }
     `;
     const parsed = repairJSON(mockedResponse);
-    // Should not throw because category is provided for unknown L99-99
-    expect(() => validateResults(parsed)).not.toThrow();
+    expect(() => validateResults(parsed)).toThrow('unknown detector_id');
   });
 
   it('processes governance and tool safety issues correctly', () => {

@@ -119,12 +119,7 @@ export function validateResults(results) {
           throw new Error(`Issue at index ${index} detector "${detectorId}" does not belong to subcategory "${issue.subcategory}" (expected "${meta.subcategory}")`);
         }
       } else {
-        // Unknown but well-formed detector ID
-        console.warn(`Issue at index ${index} has unknown detector_id: ${detectorId}`);
-        // If unknown, we still need category
-        if (typeof issue.category !== 'string') {
-          throw new Error(`Issue at index ${index} has unknown detector_id and is missing category`);
-        }
+        throw new Error(`Issue at index ${index} has unknown detector_id: ${detectorId}`);
       }
     }
 

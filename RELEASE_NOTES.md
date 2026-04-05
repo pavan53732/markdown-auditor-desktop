@@ -4,8 +4,10 @@
 
 - **Universal Audit Mode Only**: Removed document-type profiles from the prompt layer, pre-analysis UI, cache identity, and history workbench. The app now always runs the full universal taxonomy without profile-specific weighting.
 - **History Workbench Simplification**: History filtering now focuses on model and source, matching the new universal-mode runtime.
-- **Prompt Payload Efficiency**: The live 8-agent runtime continues to use scoped prompt compaction, and the local verification suite now covers 168 tests across 13 files.
+- **Prompt Payload Efficiency**: The live 8-agent runtime continues to use scoped prompt compaction, and the local verification suite now covers 173 tests across 14 files.
 - **Malformed Agent Response Recovery**: The runtime now retries malformed agent JSON per pass, hardens JSON repair for common object-literal mistakes, surfaces captured bad-response previews in diagnostics, and degrades gracefully by skipping a still-malformed agent pass instead of aborting the entire audit.
+- **Adaptive Analysis Output Budgeting**: The Electron main-process analysis call now uses an adaptive output-token budget instead of a fixed `8000` cap, reducing truncation risk for issue-dense audits while still backing off when providers reject higher output budgets.
+- **Strict Unknown Detector Rejection**: AI-result validation now rejects unknown detector IDs outright instead of allowing them through as soft warnings.
 
 ## v1.13.0
 

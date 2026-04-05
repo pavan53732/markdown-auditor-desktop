@@ -45,4 +45,37 @@ describe('Session Load Normalization', () => {
     const session = normalizeLoadedSession(rawSession);
     expect(session.taxonomyDiagnostics.total_issues_loaded).toBe(0);
   });
+
+  it('should preserve saved malformed-agent diagnostics when loading a wrapped session', () => {
+    const rawSession = {
+      taxonomyDiagnostics: {
+        malformed_agent_response_count: 2,
+        skipped_agent_pass_count: 1,
+        agent_failure_events: [
+          {
+            agent_id: 'reasoning_evidence_agent',
+            agent_label: 'Reasoning & Evidence Agent',
+            batch_index: 1,
+            batch_count: 1,
+            attempt: 2,
+            stage: 'json_parse',
+            message: 'Invalid JSON: Expected property name',
+            raw_response_excerpt: '{summary: { total: 0 }}'
+          }
+        ]
+      },
+      results: {
+        issues: [
+          { detector_id: 'L1-01', description: 'legacy issue', severity: 'high' }
+        ]
+      }
+    };
+
+    const session = normalizeLoadedSession(rawSession);
+
+    expect(session.taxonomyDiagnostics.malformed_agent_response_count).toBe(2);
+    expect(session.taxonomyDiagnostics.skipped_agent_pass_count).toBe(1);
+    expect(session.taxonomyDiagnostics.agent_failure_events).toHaveLength(1);
+    expect(session.taxonomyDiagnostics.agent_failure_events[0].agent_id).toBe('reasoning_evidence_agent');
+  });
 });

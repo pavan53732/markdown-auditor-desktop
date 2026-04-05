@@ -94,6 +94,11 @@ function normalizeFileDisplayNames(fileList) {
   });
 }
 
+function normalizeHistorySessionPayload(session) {
+  if (!session) return null;
+  return session.results ? session : { results: session };
+}
+
 export default function App() {
   const [config, setConfig] = useState({ baseURL: '', apiKey: '', model: '' });
   const [configLoaded, setConfigLoaded] = useState(false);
@@ -679,7 +684,11 @@ export default function App() {
     setResults(null);
     setTaxonomyDiagnostics(null);
     setActiveLayer('all');
+    setActiveSubcategory('all');
     setSearchQuery('');
+    setDiffMode(false);
+    setDiffSummary(null);
+    setContextWarning(null);
     setAnalysisStats({ reused: 0, reanalyzed: 0, agentPasses: 0 });
     const diagnostics = createInitialDiagnostics();
     diagnostics.analysis_mesh_agents_configured = ANALYSIS_AGENT_COUNT;
@@ -815,7 +824,8 @@ export default function App() {
       
       // Auto-save to history
       const historyMetadata = buildHistoryMetadata(merged, files, config);
-      await window.electronAPI.addHistorySession({ metadata: historyMetadata, session: merged });
+      const historySession = buildSessionData({ results: merged, taxonomyDiagnostics: diagnostics, files, config });
+      await window.electronAPI.addHistorySession({ metadata: historyMetadata, session: historySession });
       await window.electronAPI.pruneHistory(50);
       const updatedHistory = await window.electronAPI.listHistory();
       setHistoryList(updatedHistory);
@@ -848,7 +858,11 @@ export default function App() {
     setError(null);
     setTaxonomyDiagnostics(null);
     setActiveLayer('all');
+    setActiveSubcategory('all');
     setSearchQuery('');
+    setDiffMode(false);
+    setDiffSummary(null);
+    setPreviousResults(null);
     setContextWarning(null);
   };
 
@@ -1306,7 +1320,7 @@ export default function App() {
     const session = await window.electronAPI.readHistorySession(id);
     if (session) {
       const meta = historyList.find(e => e.id === id);
-      const normalized = normalizeLoadedSession({ results: session });
+      const normalized = normalizeLoadedSession(normalizeHistorySessionPayload(session));
       setBaselineEntry({ id, results: normalized.results, title: meta?.title || 'Selected Baseline' });
     }
   };
@@ -1315,7 +1329,7 @@ export default function App() {
     const session = await window.electronAPI.readHistorySession(id);
     if (!session) return;
 
-    const targetNormalized = normalizeLoadedSession({ results: session });
+    const targetNormalized = normalizeLoadedSession(normalizeHistorySessionPayload(session));
     const targetMeta = historyList.find(e => e.id === id);
     const targetTitle = targetMeta?.title || 'Selected Audit';
 
@@ -1339,7 +1353,7 @@ export default function App() {
   const handleOpenHistoryEntry = async (id) => {
     const session = await window.electronAPI.readHistorySession(id);
     if (session) {
-      const normalized = normalizeLoadedSession({ results: session });
+      const normalized = normalizeLoadedSession(normalizeHistorySessionPayload(session));
       setResults(normalized.results);
       setTaxonomyDiagnostics(normalized.taxonomyDiagnostics);
       setError(null);
@@ -1352,7 +1366,8 @@ export default function App() {
   const saveToHistory = async () => {
     if (!results) return;
     const historyMetadata = buildHistoryMetadata(results, files, config, 'imported_session');
-    await window.electronAPI.addHistorySession({ metadata: historyMetadata, session: results });
+    const historySession = buildSessionData({ results, taxonomyDiagnostics, files, config });
+    await window.electronAPI.addHistorySession({ metadata: historyMetadata, session: historySession });
     
     // Prune history to keep only last 50 entries
     await window.electronAPI.pruneHistory(50);

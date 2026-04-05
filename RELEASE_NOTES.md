@@ -4,7 +4,7 @@
 
 - **Universal Audit Mode Only**: Removed document-type profiles from the prompt layer, pre-analysis UI, cache identity, and history workbench. The app now always runs the full universal taxonomy without profile-specific weighting.
 - **History Workbench Simplification**: History filtering now focuses on model and source, matching the new universal-mode runtime.
-- **Prompt Payload Efficiency**: The live 8-agent runtime continues to use scoped prompt compaction, and the local verification suite now covers 163 tests across 13 files.
+- **Prompt Payload Efficiency**: The live 8-agent runtime continues to use scoped prompt compaction, and the local verification suite now covers 168 tests across 13 files.
 - **Malformed Agent Response Recovery**: The runtime now retries malformed agent JSON per pass, hardens JSON repair for common object-literal mistakes, surfaces captured bad-response previews in diagnostics, and degrades gracefully by skipping a still-malformed agent pass instead of aborting the entire audit.
 
 ## v1.13.0

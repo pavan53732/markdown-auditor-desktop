@@ -13,6 +13,8 @@ This changelog establishes the current production-ready baseline for the app as 
 - **Oversized Agent Prompt Payloads**: Switched the live 8-agent runtime from sending the full detailed 701-detector catalog on every pass to a scoped prompt format with a compact full-taxonomy detector index plus rich focus-layer detector metadata per agent, substantially reducing per-pass prompt size for large audits.
 - **Profile Drift in Universal Audits**: Removed document-type profiles from the runtime, prompt layer, pre-analysis UI, cache identity, and history workbench so the app now always runs in a single universal audit mode.
 - **Malformed Agent JSON Failures**: Added stronger JSON repair, per-agent malformed-response retry, degraded-mode skipped-pass continuation, and captured raw-response diagnostics so a single bad agent pass is less likely to abort the whole audit without actionable evidence.
+- **History Diagnostics Loss**: Local history now preserves taxonomy diagnostics and malformed-agent trace data when reopening or comparing saved audits, instead of dropping them by saving only the bare results object.
+- **Stale Filter State Across Audits**: Starting a new audit or resetting the workbench now clears stale subcategory and comparison state so earlier filters do not silently hide issues from the next run.
 
 ## [1.13.0] - 2026-04-02
 ### Added

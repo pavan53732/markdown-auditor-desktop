@@ -13,8 +13,14 @@ import brandIconDataUrl from './assets/brand-icon.png?inline';
 import { buildSystemPrompt } from './lib/systemPrompt';
 import { repairJSON, validateResults } from './lib/jsonRepair';
 import { ANALYSIS_AGENT_COUNT, ANALYSIS_AGENT_MESH, ANALYSIS_MESH_VERSION } from './lib/analysisAgents';
-import { buildMarkdownProjectIndex, enrichIssueWithMarkdownIndex } from './lib/markdownIndex';
+import {
+  buildMarkdownProjectIndex,
+  enrichIssueWithMarkdownIndex,
+  enrichIssueWithEvidenceSpans,
+  normalizeEvidenceSpans
+} from './lib/markdownIndex';
 import { buildMarkdownProjectGraph, enrichIssueWithProjectGraph } from './lib/projectGraph';
+import { runDeterministicRuleEngine } from './lib/ruleEngine/index';
 import {
   DEFAULT_RETRIES,
   DEFAULT_SESSION_TOKEN_BUDGET,
@@ -103,8 +109,8 @@ function normalizeHistorySessionPayload(session) {
 
 const DETECTION_SOURCE_PRIORITY = {
   model: 0,
-  hybrid_anchor: 1,
-  hybrid_graph: 2
+  rule: 1,
+  hybrid: 2
 };
 
 function normalizeCrossFileLinks(links = []) {
@@ -131,9 +137,25 @@ function normalizeCrossFileLinks(links = []) {
 }
 
 function mergeDetectionSource(existingSource, nextSource) {
-  const existingPriority = DETECTION_SOURCE_PRIORITY[existingSource] ?? -1;
-  const nextPriority = DETECTION_SOURCE_PRIORITY[nextSource] ?? -1;
-  return nextPriority > existingPriority ? nextSource : existingSource;
+  const normalize = (value) => {
+    const source = typeof value === 'string' ? value.trim().toLowerCase() : '';
+    if (!source) return '';
+    if (source === 'rule') return 'rule';
+    if (source === 'model') return 'model';
+    if (source === 'hybrid' || source === 'hybrid_anchor' || source === 'hybrid_graph') return 'hybrid';
+    return source;
+  };
+
+  const normalizedExisting = normalize(existingSource);
+  const normalizedNext = normalize(nextSource);
+  const sources = new Set([normalizedExisting, normalizedNext].filter(Boolean));
+
+  if (sources.has('hybrid')) return 'hybrid';
+  if (sources.has('rule') && sources.has('model')) return 'hybrid';
+
+  const existingPriority = DETECTION_SOURCE_PRIORITY[normalizedExisting] ?? -1;
+  const nextPriority = DETECTION_SOURCE_PRIORITY[normalizedNext] ?? -1;
+  return nextPriority > existingPriority ? normalizedNext : normalizedExisting;
 }
 
 export default function App() {
@@ -675,6 +697,10 @@ export default function App() {
         if (!existing.anchor_source && issue.anchor_source) {
           existing.anchor_source = issue.anchor_source;
         }
+        existing.evidence_spans = normalizeEvidenceSpans([
+          ...(existing.evidence_spans || []),
+          ...(issue.evidence_spans || [])
+        ]);
         existing.cross_file_links = normalizeCrossFileLinks([
           ...(existing.cross_file_links || []),
           ...(issue.cross_file_links || [])
@@ -708,6 +734,8 @@ export default function App() {
       } else {
         const normalizedIssue = {
           ...issue,
+          detection_source: mergeDetectionSource('', issue.detection_source) || issue.detection_source,
+          evidence_spans: normalizeEvidenceSpans(issue.evidence_spans),
           cross_file_links: normalizeCrossFileLinks(issue.cross_file_links),
           analysis_agents: Array.isArray(issue.analysis_agents)
             ? Array.from(new Set(issue.analysis_agents))
@@ -761,6 +789,7 @@ export default function App() {
       const reusedBatchResults = [];
       let reusedCount = 0;
       let reanalyzedCount = 0;
+      const deterministicRuleResult = runDeterministicRuleEngine({ files, projectGraph, diagnostics });
 
       const currentHashes = {};
       for (const file of files) {
@@ -856,6 +885,8 @@ export default function App() {
         }
       }
 
+      finalBatchResults = [...finalBatchResults, deterministicRuleResult];
+
       const merged = mergeResults(finalBatchResults);
       merged.summary.detectors_evaluated = TOTAL_DETECTOR_COUNT;
       merged.summary.detectors_skipped = 0;
@@ -867,7 +898,8 @@ export default function App() {
         merged.issues = merged.issues.map((issue) => {
           const taxonomyNormalized = normalizeIssueFromDetector(issue, diagnostics);
           const anchoredIssue = enrichIssueWithMarkdownIndex(taxonomyNormalized, markdownIndex, diagnostics);
-          return enrichIssueWithProjectGraph(anchoredIssue, projectGraph, diagnostics);
+          const graphEnrichedIssue = enrichIssueWithProjectGraph(anchoredIssue, projectGraph, diagnostics);
+          return enrichIssueWithEvidenceSpans(graphEnrichedIssue, markdownIndex, diagnostics);
         });
         merged.issues = deduplicateIssues(merged.issues);
         merged.summary.total = merged.issues.length;
@@ -876,6 +908,7 @@ export default function App() {
         merged.summary.medium = merged.issues.filter((issue) => issue.severity === 'medium').length;
         merged.summary.low = merged.issues.filter((issue) => issue.severity === 'low').length;
       }
+      merged.summary.deterministic_rule_issues = deterministicRuleResult.issues.length;
       diagnostics.analysis_mesh_passes_completed = completedAgentPasses;
       diagnostics.agent_findings_merged_count = Math.max(
         0,
@@ -987,6 +1020,11 @@ export default function App() {
           (issue.violation_reference || '').toLowerCase().includes(query) ||
           (issue.analysis_agent || '').toLowerCase().includes(query) ||
           (issue.analysis_agents || []).some((agent) => agent.toLowerCase().includes(query)) ||
+          (issue.evidence_spans || []).some((span) =>
+            [span.file, span.section, span.anchor, span.excerpt, span.role, span.source]
+              .filter(Boolean)
+              .some((value) => value.toLowerCase().includes(query))
+          ) ||
           (issue.cross_file_links || []).some((link) =>
             [link.type, link.label, link.file, link.section, link.target]
               .filter(Boolean)
@@ -1109,6 +1147,18 @@ export default function App() {
             <div>
               <p className="text-[10px] text-[#F9A8D4] mb-0.5">Graph Links</p>
               <p className="text-sm font-semibold text-[#F9A8D4]">{taxonomyDiagnostics.deterministic_graph_link_enrichment_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.evidence_span_enrichment_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#A5F3FC] mb-0.5">Evidence Spans</p>
+              <p className="text-sm font-semibold text-[#A5F3FC]">{taxonomyDiagnostics.evidence_span_enrichment_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.deterministic_rule_issue_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#FDE68A] mb-0.5">Rule Issues</p>
+              <p className="text-sm font-semibold text-[#FDE68A]">{taxonomyDiagnostics.deterministic_rule_issue_count}</p>
             </div>
           )}
           {taxonomyDiagnostics.deterministic_section_assignment_count > 0 && (
@@ -1280,6 +1330,15 @@ export default function App() {
         });
         md += `\n`;
       }
+
+      if (issue.evidence_spans?.length > 0) {
+        md += `**Evidence Spans:**\n`;
+        issue.evidence_spans.forEach((span) => {
+          const parts = [span.role, span.file, span.section, span.anchor].filter(Boolean);
+          md += `- ${parts.join(' · ')}${span.excerpt ? ` — ${span.excerpt}` : ''}\n`;
+        });
+        md += `\n`;
+      }
       
       if (issue.why_triggered) {
         md += `**Why Triggered:** ${issue.why_triggered}\n\n`;
@@ -1348,6 +1407,8 @@ export default function App() {
       md += `- **Deterministic Multi-Anchor Assignments:** ${taxonomyDiagnostics.deterministic_multi_anchor_count || 0}\n`;
       md += `- **Deterministic Fallback Anchors:** ${taxonomyDiagnostics.deterministic_fallback_anchor_count || 0}\n`;
       md += `- **Deterministic Graph Link Enrichments:** ${taxonomyDiagnostics.deterministic_graph_link_enrichment_count || 0}\n`;
+      md += `- **Evidence Span Enrichments:** ${taxonomyDiagnostics.evidence_span_enrichment_count || 0}\n`;
+      md += `- **Deterministic Rule Issues:** ${taxonomyDiagnostics.deterministic_rule_issue_count || 0}\n`;
       md += `- **Configured Analysis Agents:** ${taxonomyDiagnostics.analysis_mesh_agents_configured}\n`;
       md += `- **Completed Agent Passes:** ${taxonomyDiagnostics.analysis_mesh_passes_completed}\n`;
       md += `- **Merged Agent Findings:** ${taxonomyDiagnostics.agent_findings_merged_count}\n`;
@@ -1392,7 +1453,7 @@ export default function App() {
 
   const exportCSV = () => {
     if (!results) return;
-    const headers = ['ID', 'DetectorID', 'DetectorName', 'Severity', 'Category', 'Subcategory', 'FailureType', 'ContractStep', 'InvariantBroken', 'AuthorityBoundary', 'ConstraintReference', 'ViolationReference', 'ClosedWorldStatus', 'AnalysisAgents', 'Section', 'SectionSlug', 'Line', 'LineEnd', 'DocumentAnchor', 'DocumentAnchors', 'AnchorSource', 'DetectionSource', 'CrossFileLinks', 'RootCauseID', 'Description', 'WhyTriggered', 'EscalationReason', 'DeterministicFix', 'RecommendedFix', 'FixSteps', 'VerificationSteps', 'Effort', 'Evidence', 'Confidence', 'Impact', 'Difficulty', 'Files', 'Tags'];
+    const headers = ['ID', 'DetectorID', 'DetectorName', 'Severity', 'Category', 'Subcategory', 'FailureType', 'ContractStep', 'InvariantBroken', 'AuthorityBoundary', 'ConstraintReference', 'ViolationReference', 'ClosedWorldStatus', 'AnalysisAgents', 'Section', 'SectionSlug', 'Line', 'LineEnd', 'DocumentAnchor', 'DocumentAnchors', 'AnchorSource', 'DetectionSource', 'EvidenceSpans', 'CrossFileLinks', 'RootCauseID', 'Description', 'WhyTriggered', 'EscalationReason', 'DeterministicFix', 'RecommendedFix', 'FixSteps', 'VerificationSteps', 'Effort', 'Evidence', 'Confidence', 'Impact', 'Difficulty', 'Files', 'Tags'];
     const rows = (results.issues || []).map((issue) => [
       issue.id || '',
       issue.detector_id || '',
@@ -1416,6 +1477,7 @@ export default function App() {
       `"${(issue.document_anchors || []).join(' | ').replace(/"/g, '""')}"`,
       issue.anchor_source || '',
       issue.detection_source || '',
+      `"${(issue.evidence_spans || []).map((span) => [span.role, span.anchor || span.file, span.excerpt].filter(Boolean).join(' -> ')).join(' | ').replace(/"/g, '""')}"`,
       `"${(issue.cross_file_links || []).map((link) => [link.label, link.target].filter(Boolean).join(' -> ')).join(' | ').replace(/"/g, '""')}"`,
       issue.root_cause_id || '',
       `"${(issue.description || '').replace(/"/g, '""')}"`,

@@ -6,6 +6,11 @@ This changelog establishes the current production-ready baseline for the app as 
 
 ## [Unreleased]
 
+### Added
+
+- **Deterministic Local Rule Engine**: Added `src/lib/ruleEngine/index.js` and integrated it into the staged audit pipeline so duplicate headings, broken cross-references, RFC2119 misuse, rollback gaps, workflow ordering/terminal-state issues, undefined reused identifiers, and unresolved glossary bindings can be caught locally before agent synthesis.
+- **Evidence-First Schema Enrichment**: Findings now preserve structured `evidence_spans` alongside `document_anchor` / `document_anchors`, making exports, history reloads, and UI rendering less dependent on free-text evidence alone.
+
 ### Fixed
 
 - **Packaged Main-Process Startup Crash**: Replaced the ESM-only `uuid` import in `electron/historyService.js` with Node's built-in `crypto.randomUUID()` so the packaged Electron main process no longer crashes on startup with `ERR_REQUIRE_ESM`.
@@ -19,7 +24,12 @@ This changelog establishes the current production-ready baseline for the app as 
 - **Unknown Detector Soft-Warning**: AI-result validation now rejects unknown detector IDs instead of only logging warnings, preventing unsupported detector IDs from entering runtime results.
 - **Weak Document Anchoring**: Added a deterministic Markdown indexing layer that parses headings, resolves section ranges, and enriches findings with file, section, line, and anchor metadata from the actual Markdown source before export, history save, and session reload.
 - **Single-Anchor Cross-File Findings**: Deterministic anchoring now preserves multiple resolved anchors for cross-file findings and uses heading-inference fallback when evidence is too weak for a direct line match but the Markdown structure still yields a unique deterministic section.
-- **Missing Cross-File Evidence Graph**: Added a deterministic cross-file Markdown project graph that groups shared headings, glossary terms, identifiers, and workflow steps across loaded files, enriches findings with `detection_source` and `cross_file_links`, and preserves the new evidence across UI rendering, exports, history reloads, and session normalization.
+- **Shallow Cross-File Graphing**: Expanded the deterministic cross-file Markdown project graph so it now models headings, glossary terms, identifiers, workflows, requirements, states, APIs, actors, and document references across loaded files, enriches findings with canonical `detection_source` values plus `cross_file_links`, and preserves the new evidence across UI rendering, exports, history reloads, and session normalization.
+
+### Changed
+
+- **Hybrid Staged Pipeline**: The live runtime now follows a deeper staged flow of Markdown indexing -> deterministic rule evaluation -> cross-file project-graph analysis -> agent synthesis -> merge/severity calibration -> export/history persistence.
+- **Verification Coverage**: The local suite now covers 184 tests across 17 files, including dedicated rule-engine coverage and richer validation/history expectations for evidence spans and hybrid detection sources.
 
 ## [1.13.0] - 2026-04-02
 ### Added

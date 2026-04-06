@@ -1,7 +1,8 @@
 import {
   buildIssueDocumentAnchor,
   buildMarkdownProjectIndex,
-  enrichIssueWithMarkdownIndex
+  enrichIssueWithMarkdownIndex,
+  enrichIssueWithEvidenceSpans
 } from './markdownIndex.js';
 import { buildMarkdownProjectGraph, enrichIssueWithProjectGraph } from './projectGraph.js';
 
@@ -1220,6 +1221,9 @@ export function createInitialDiagnostics() {
     deterministic_multi_anchor_count: 0,
     deterministic_fallback_anchor_count: 0,
     deterministic_graph_link_enrichment_count: 0,
+    evidence_span_enrichment_count: 0,
+    deterministic_rule_issue_count: 0,
+    deterministic_rule_runs: 0,
     last_agent_failure: null,
     agent_failure_events: [],
     warnings: []
@@ -1527,6 +1531,9 @@ export function normalizeLoadedSession(session) {
   diagnostics.deterministic_multi_anchor_count = 0;
   diagnostics.deterministic_fallback_anchor_count = 0;
   diagnostics.deterministic_graph_link_enrichment_count = 0;
+  diagnostics.evidence_span_enrichment_count = 0;
+  diagnostics.deterministic_rule_issue_count = 0;
+  diagnostics.deterministic_rule_runs = 0;
   const normalized = { ...session };
   const markdownIndex = buildMarkdownProjectIndex(normalized.files || []);
   const projectGraph = buildMarkdownProjectGraph(normalized.files || []);
@@ -1542,8 +1549,10 @@ export function normalizeLoadedSession(session) {
       const enriched = normalizeIssueFromDetector(issue, diagnostics);
       diagnostics.total_issues_loaded++;
       const anchored = enrichIssueWithMarkdownIndex(enriched, markdownIndex, diagnostics);
-      return enrichIssueWithProjectGraph(anchored, projectGraph, diagnostics);
+      const graphEnriched = enrichIssueWithProjectGraph(anchored, projectGraph, diagnostics);
+      return enrichIssueWithEvidenceSpans(graphEnriched, markdownIndex, diagnostics);
     });
+    diagnostics.deterministic_rule_issue_count = normalized.results.issues.filter((issue) => issue.detection_source === 'rule').length;
   }
   normalized.taxonomyDiagnostics = diagnostics;
   return normalized;

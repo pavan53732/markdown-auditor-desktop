@@ -179,8 +179,33 @@ export function validateResults(results) {
     if (issue.anchor_source && typeof issue.anchor_source !== 'string') {
       throw new Error(`Issue at index ${index} has invalid anchor_source type`);
     }
-    if (issue.detection_source && typeof issue.detection_source !== 'string') {
-      throw new Error(`Issue at index ${index} has invalid detection_source type`);
+    if (issue.detection_source !== undefined) {
+      if (typeof issue.detection_source !== 'string') {
+        throw new Error(`Issue at index ${index} has invalid detection_source type`);
+      }
+      if (!['model', 'rule', 'hybrid', 'hybrid_anchor', 'hybrid_graph'].includes(issue.detection_source)) {
+        throw new Error(`Issue at index ${index} has invalid detection_source value`);
+      }
+    }
+    if (issue.evidence_spans !== undefined) {
+      if (!Array.isArray(issue.evidence_spans)) {
+        throw new Error(`Issue at index ${index} has invalid evidence_spans type`);
+      }
+      issue.evidence_spans.forEach((span, spanIndex) => {
+        if (!span || typeof span !== 'object') {
+          throw new Error(`Issue at index ${index} has invalid evidence_spans[${spanIndex}] entry`);
+        }
+        ['file', 'section', 'section_slug', 'anchor', 'role', 'source', 'excerpt'].forEach((field) => {
+          if (span[field] !== undefined && typeof span[field] !== 'string') {
+            throw new Error(`Issue at index ${index} has invalid evidence_spans[${spanIndex}].${field}`);
+          }
+        });
+        ['line_start', 'line_end'].forEach((field) => {
+          if (span[field] !== undefined && !Number.isFinite(Number(span[field]))) {
+            throw new Error(`Issue at index ${index} has invalid evidence_spans[${spanIndex}].${field}`);
+          }
+        });
+      });
     }
     if (issue.cross_file_links !== undefined) {
       if (!Array.isArray(issue.cross_file_links)) {

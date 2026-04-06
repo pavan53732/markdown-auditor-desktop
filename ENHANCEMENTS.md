@@ -15,19 +15,23 @@ This document tracks the major product-level enhancements currently implemented 
 - universal taxonomy plus a single universal audit mode and cross-layer bundles (31 total) composed into prompt generation
 - chunk-aware batching for oversized files
 - deterministic post-merge normalization
+- deterministic Markdown indexing with anchor enrichment and evidence-span construction
+- deterministic cross-file project graph over headings, glossary terms, identifiers, workflows, requirements, states, APIs, actors, and document references
+- deterministic local rule engine for duplicate headings, broken cross-references, RFC2119 misuse, rollback gaps, workflow ordering gaps, missing workflow terminal states, undefined reused identifiers, and unresolved glossary bindings
 - four runtime escalation rules
 - cross-layer validation after escalation
 - JSON repair before validation
 - detector-aware validation for Lx-yy ID format, existence, and semantic consistency
 - taxonomy-driven normalization: automatic metadata backfilling, agent provenance merge, and severity bound clamping
 - automated test suite for taxonomy integrity, prompt generation, normalization, and session persistence
-- 29 deterministic benchmark fixtures within a 163-test local suite across 13 files
+- 29 deterministic benchmark fixtures within a 184-test local suite across 17 files
 - benchmark suites covering control plane override abuse, evidence-free escalation, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty dropped, world state atomicity, workflow skips, artifact reproducibility, toolchain isolation, recovery loop collapse, and operational UX leakage
 - enhanced taxonomy coverage helper (`taxonomyCoverageHelper.js`) with per-layer density analysis, richness metrics, subcategory coverage tracking, and bundle coverage analysis
 - universal audit layer expansion with 8 new layers covering ontology governance, workflow integrity, authority paths, artifact reproducibility, environment/toolchain isolation, knowledge-source authority, failure recovery, and operational UX contracts
 - related_layers metadata populated for 255 detectors across the deep-spec core and universal extension layers to support cross-layer traceability
 - runtime taxonomy diagnostics surfaced in UI, Markdown, and JSON/Session exports
 - strict issue schema enrichment for `failure_type`, `constraint_reference`, `violation_reference`, `contract_step`, `invariant_broken`, `authority_boundary`, `closed_world_status`, `analysis_agents`, and `deterministic_fix`
+- evidence-first schema enrichment for `document_anchors`, `detection_source`, `cross_file_links`, and `evidence_spans`
 - basic response validation before rendering
 - file-backed incremental analysis cache (`analysis_cache.json`)
 
@@ -86,24 +90,24 @@ This document tracks the major product-level enhancements currently implemented 
 - Chunk overlap improves context retention, but line range reporting for overlapped chunks is still best-effort.
 - Validation is stronger than before, but it is still not a full strict schema validator for every optional field.
 - The deterministic 8-agent mesh materially increases latency and token usage compared with the earlier single-pass flow.
-- Unknown detector IDs currently produce warnings during validation instead of failing hard.
+- The cross-file graph currently models related locations and shared entities, but it is not yet a fully typed causal evidence graph.
 - The packaged executable is unsigned.
 
 ## Recommended Next Enhancements
 
 ### High Value
 
-- Add stricter runtime validation for optional traceability fields that are now displayed but not all hard-required
+- Add a first-class typed evidence graph on top of the current multi-anchor/cross-file link model
 - Add explicit cost / token usage reporting per run and per agent pass
 - Add automated regression tests for caching, diffing, export behavior, and per-agent merge stability
-- Deepen the new universal layers with sharper detectors and benchmark fixtures before adding another top-level expansion
+- Deepen the new universal layers with sharper detectors, deterministic rules, and benchmark fixtures before adding another top-level expansion
 - Add richer UI surfacing for analysis-mesh diagnostics, such as per-agent timing and per-pass findings deltas
-- Add stronger handling for unknown detector IDs if hard-fail validation becomes a product goal
+- Add staged rule-engine coverage for glossary/requirement/state/API drift beyond the current first set of deterministic checks
 
 ### Quality of Life
 
 - Add export of root-cause summaries to a dedicated structured file
-- Add better chunk-to-source line remapping
+- Add better chunk-to-source line remapping for very large overlapping batches
 - Add dismissal / suppression rules for accepted findings
 - Add signed Windows release builds
 - Add release automation or CI build verification

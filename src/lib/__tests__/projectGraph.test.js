@@ -10,6 +10,12 @@ describe('Markdown Project Graph', () => {
         content: [
           '# Overview',
           '',
+          'User: submits the request.',
+          'GET /api/projects',
+          'STATE_A -> STATE_B',
+          'The system MUST record the transition.',
+          'See [Workflow](beta.md#execution-flow).',
+          '',
           '## Glossary',
           '- **Project State Graph**: Shared world model.',
           '',
@@ -24,6 +30,11 @@ describe('Markdown Project Graph', () => {
         name: 'beta.md',
         content: [
           '# Overview',
+          '',
+          'Operator: validates the change.',
+          'GET /api/projects',
+          'STATE_A -> STATE_B',
+          'The system MUST record the transition.',
           '',
           '## Terminology Registry',
           '**Project State Graph**: Canonical state model.',
@@ -42,6 +53,10 @@ describe('Markdown Project Graph', () => {
     expect(graph.summary.glossaryTermGroupCount).toBeGreaterThanOrEqual(1);
     expect(graph.summary.identifierGroupCount).toBeGreaterThanOrEqual(1);
     expect(graph.summary.workflowGroupCount).toBeGreaterThanOrEqual(2);
+    expect(graph.summary.requirementGroupCount).toBeGreaterThanOrEqual(1);
+    expect(graph.summary.stateGroupCount).toBeGreaterThanOrEqual(1);
+    expect(graph.summary.apiGroupCount).toBeGreaterThanOrEqual(1);
+    expect(graph.summary.referenceCount).toBeGreaterThanOrEqual(1);
   });
 
   it('enriches issues with cross-file links and hybrid graph detection source', () => {
@@ -86,7 +101,7 @@ describe('Markdown Project Graph', () => {
       diagnostics
     );
 
-    expect(enriched.detection_source).toBe('hybrid_graph');
+    expect(enriched.detection_source).toBe('hybrid');
     expect(enriched.cross_file_links).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

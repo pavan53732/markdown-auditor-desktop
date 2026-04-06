@@ -367,6 +367,189 @@ export function buildIssueDocumentAnchor(issue = {}) {
   return anchor;
 }
 
+export function parseDocumentAnchor(anchor = '') {
+  const value = String(anchor || '').trim();
+  if (!value) return null;
+
+  const match = value.match(/^(?<file>[^#:]+)(?:#(?<section_slug>[^:]+))?(?::L(?<line_start>\d+)(?:-L(?<line_end>\d+))?)?$/);
+  if (!match?.groups?.file) return null;
+
+  return {
+    file: match.groups.file,
+    section_slug: match.groups.section_slug || '',
+    line_start: match.groups.line_start ? Number(match.groups.line_start) : undefined,
+    line_end: match.groups.line_end ? Number(match.groups.line_end) : undefined,
+    anchor: value
+  };
+}
+
+function buildEvidenceSpanExcerpt(documentIndex, lineStart, lineEnd) {
+  if (!documentIndex || !Number.isFinite(Number(lineStart))) return '';
+
+  const start = Math.max(1, Number(lineStart));
+  const end = Math.max(start, Number.isFinite(Number(lineEnd)) ? Number(lineEnd) : start);
+  return documentIndex.lines
+    .slice(start - 1, end)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join(' ')
+    .slice(0, 280);
+}
+
+function buildEvidenceSpanIdentity(span = {}) {
+  return [
+    span.anchor || '',
+    span.file || '',
+    span.section_slug || '',
+    span.line_start || '',
+    span.line_end || '',
+    span.role || '',
+    span.source || ''
+  ].join('::');
+}
+
+export function normalizeEvidenceSpans(spans = []) {
+  if (!Array.isArray(spans)) return [];
+
+  const rolePriority = { primary: 0, supporting: 1, related: 2 };
+  const byIdentity = new Map();
+
+  spans.forEach((span) => {
+    if (!span || typeof span !== 'object') return;
+
+    const normalized = {
+      file: typeof span.file === 'string' ? span.file.trim() : '',
+      section: typeof span.section === 'string' ? span.section.trim() : '',
+      section_slug: typeof span.section_slug === 'string' ? span.section_slug.trim() : '',
+      line_start: Number.isFinite(Number(span.line_start)) ? Number(span.line_start) : undefined,
+      line_end: Number.isFinite(Number(span.line_end)) ? Number(span.line_end) : undefined,
+      anchor: typeof span.anchor === 'string' ? span.anchor.trim() : '',
+      role: typeof span.role === 'string' ? span.role.trim() : 'supporting',
+      source: typeof span.source === 'string' ? span.source.trim() : 'derived',
+      excerpt: typeof span.excerpt === 'string' ? span.excerpt.trim() : ''
+    };
+
+    if (!normalized.file && normalized.anchor) {
+      const parsed = parseDocumentAnchor(normalized.anchor);
+      if (parsed?.file) {
+        normalized.file = parsed.file;
+        normalized.section_slug ||= parsed.section_slug;
+        normalized.line_start ??= parsed.line_start;
+        normalized.line_end ??= parsed.line_end;
+      }
+    }
+
+    if (!normalized.file && !normalized.anchor) return;
+
+    const identity = buildEvidenceSpanIdentity(normalized);
+    const existing = byIdentity.get(identity);
+    if (!existing) {
+      byIdentity.set(identity, normalized);
+      return;
+    }
+
+    existing.excerpt ||= normalized.excerpt;
+    existing.section ||= normalized.section;
+    existing.section_slug ||= normalized.section_slug;
+    existing.line_start ??= normalized.line_start;
+    existing.line_end ??= normalized.line_end;
+    if ((rolePriority[normalized.role] ?? 10) < (rolePriority[existing.role] ?? 10)) {
+      existing.role = normalized.role;
+    }
+  });
+
+  return Array.from(byIdentity.values()).sort((a, b) => {
+    const roleDiff = (rolePriority[a.role] ?? 10) - (rolePriority[b.role] ?? 10);
+    if (roleDiff !== 0) return roleDiff;
+    return (a.anchor || a.file).localeCompare(b.anchor || b.file);
+  });
+}
+
+export function enrichIssueWithEvidenceSpans(issue, projectIndex, diagnostics = null) {
+  if (!issue || !projectIndex || projectIndex.documents.length === 0) {
+    return issue;
+  }
+
+  const documentByName = new Map(projectIndex.documents.map((documentIndex) => [documentIndex.name.toLowerCase(), documentIndex]));
+  const spans = [...(Array.isArray(issue.evidence_spans) ? issue.evidence_spans : [])];
+
+  const pushSpan = (span) => {
+    if (!span) return;
+    spans.push(span);
+  };
+
+  if (issue.document_anchor) {
+    const parsedPrimary = parseDocumentAnchor(issue.document_anchor);
+    const documentIndex = parsedPrimary?.file ? documentByName.get(parsedPrimary.file.toLowerCase()) : null;
+    pushSpan({
+      file: parsedPrimary?.file || issue.files?.[0] || '',
+      section: issue.section || '',
+      section_slug: parsedPrimary?.section_slug || issue.section_slug || '',
+      line_start: parsedPrimary?.line_start || issue.line_number,
+      line_end: parsedPrimary?.line_end || issue.line_end,
+      anchor: issue.document_anchor,
+      role: 'primary',
+      source: issue.anchor_source || 'anchor',
+      excerpt: buildEvidenceSpanExcerpt(documentIndex, parsedPrimary?.line_start || issue.line_number, parsedPrimary?.line_end || issue.line_end)
+    });
+  }
+
+  if (Array.isArray(issue.document_anchors)) {
+    issue.document_anchors.slice(1).forEach((anchor) => {
+      const parsed = parseDocumentAnchor(anchor);
+      const documentIndex = parsed?.file ? documentByName.get(parsed.file.toLowerCase()) : null;
+      pushSpan({
+        file: parsed?.file || '',
+        section: '',
+        section_slug: parsed?.section_slug || '',
+        line_start: parsed?.line_start,
+        line_end: parsed?.line_end,
+        anchor,
+        role: 'supporting',
+        source: issue.anchor_source || 'anchor',
+        excerpt: buildEvidenceSpanExcerpt(documentIndex, parsed?.line_start, parsed?.line_end)
+      });
+    });
+  }
+
+  if (Array.isArray(issue.cross_file_links)) {
+    issue.cross_file_links.forEach((link) => {
+      const parsed = parseDocumentAnchor(link.target);
+      const documentIndex = parsed?.file ? documentByName.get(parsed.file.toLowerCase()) : null;
+      pushSpan({
+        file: link.file || parsed?.file || '',
+        section: link.section || '',
+        section_slug: parsed?.section_slug || '',
+        line_start: parsed?.line_start,
+        line_end: parsed?.line_end,
+        anchor: link.target,
+        role: 'related',
+        source: link.type || 'cross_file_link',
+        excerpt: buildEvidenceSpanExcerpt(documentIndex, parsed?.line_start, parsed?.line_end)
+      });
+    });
+  }
+
+  const normalizedSpans = normalizeEvidenceSpans(spans);
+  if (normalizedSpans.length === 0) {
+    return issue;
+  }
+
+  const spanChanged = JSON.stringify(issue.evidence_spans || []) !== JSON.stringify(normalizedSpans);
+  if (!spanChanged) {
+    return issue;
+  }
+
+  if (diagnostics) {
+    diagnostics.evidence_span_enrichment_count = (diagnostics.evidence_span_enrichment_count || 0) + 1;
+  }
+
+  return {
+    ...issue,
+    evidence_spans: normalizedSpans
+  };
+}
+
 export function buildMarkdownDocumentIndex(file = {}) {
   const content = String(file.content || '');
   const lines = content.split(/\r?\n/);

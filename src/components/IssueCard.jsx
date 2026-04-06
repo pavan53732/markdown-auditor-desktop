@@ -182,7 +182,7 @@ export default function IssueCard({ issue }) {
                 )}
               </div>
             )}
-            {(issue.invariant_broken || issue.authority_boundary || issue.constraint_reference || issue.violation_reference || issue.closed_world_status || issue.analysis_agents?.length || issue.document_anchor || issue.anchor_source || issue.detection_source || issue.cross_file_links?.length) && (
+            {(issue.invariant_broken || issue.authority_boundary || issue.constraint_reference || issue.violation_reference || issue.closed_world_status || issue.analysis_agents?.length || issue.document_anchor || issue.anchor_source || issue.detection_source || issue.evidence_spans?.length || issue.cross_file_links?.length) && (
               <div className="grid gap-2 border-t border-[#374151] pt-2">
                 {issue.document_anchor && (
                   <div>
@@ -250,6 +250,23 @@ export default function IssueCard({ issue }) {
                         <span key={agentId} className="px-2 py-0.5 bg-[#1F2937] border border-[#4B5563] rounded-full text-[10px] text-[#D1D5DB]">
                           {agentId}
                         </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {issue.evidence_spans?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-[#9CA3AF] mb-1">Evidence spans:</p>
+                    <div className="space-y-2">
+                      {issue.evidence_spans.map((span) => (
+                        <div key={`${span.role}-${span.anchor || span.file}-${span.line_start || ''}`} className="rounded-lg border border-[#374151] bg-[#0B1220] px-2.5 py-2">
+                          <p className="text-[11px] text-[#F9FAFB] break-all">
+                            {[span.role, span.file, span.section, span.anchor].filter(Boolean).join(' · ')}
+                          </p>
+                          {span.excerpt && (
+                            <p className="text-[11px] text-[#9CA3AF] mt-1 leading-relaxed">{span.excerpt}</p>
+                          )}
+                        </div>
                       ))}
                     </div>
                   </div>

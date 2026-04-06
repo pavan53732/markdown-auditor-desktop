@@ -35,7 +35,20 @@ describe('Result Validation', () => {
           document_anchor: 'file.md#overview:L12-L14',
           document_anchors: ['file.md#overview:L12-L14', 'file-b.md#overview:L12-L14'],
           anchor_source: 'evidence_match',
-          detection_source: 'hybrid_graph',
+          detection_source: 'hybrid',
+          evidence_spans: [
+            {
+              file: 'file.md',
+              section: 'Overview',
+              section_slug: 'overview',
+              line_start: 12,
+              line_end: 14,
+              anchor: 'file.md#overview:L12-L14',
+              role: 'primary',
+              source: 'evidence_match',
+              excerpt: 'Primary anchored excerpt'
+            }
+          ],
           cross_file_links: [
             {
               type: 'shared_heading',
@@ -114,6 +127,22 @@ describe('Result Validation', () => {
       ]
     };
     expect(() => validateResults(results)).toThrow('cross_file_links[0].target');
+  });
+
+  it('should reject malformed evidence span payloads', () => {
+    const results = {
+      summary: { total: 1 },
+      issues: [
+        {
+          severity: 'high',
+          category: 'contradiction',
+          description: 'x',
+          detector_id: 'L1-01',
+          evidence_spans: [{ file: 'spec.md', line_start: 'bad-line' }]
+        }
+      ]
+    };
+    expect(() => validateResults(results)).toThrow('evidence_spans[0].line_start');
   });
 });
 

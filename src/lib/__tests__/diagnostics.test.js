@@ -14,6 +14,8 @@ describe('Taxonomy Diagnostics', () => {
     expect(diag.severity_clamped_count).toBe(0);
     expect(diag.indexed_document_count).toBe(0);
     expect(diag.deterministic_anchor_enrichment_count).toBe(0);
+    expect(diag.evidence_span_enrichment_count).toBe(0);
+    expect(diag.deterministic_rule_issue_count).toBe(0);
   });
 
   it('should track enrichment and clamping', () => {

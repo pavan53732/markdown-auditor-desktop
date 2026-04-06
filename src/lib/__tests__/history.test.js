@@ -94,11 +94,19 @@ describe('History Normalization', () => {
     expect(normalized.results.issues[0].section).toBe('Execution Flow');
     expect(normalized.results.issues[0].line_number).toBe(5);
     expect(normalized.results.issues[0].document_anchor).toBe('plan.md#execution-flow:L5');
-    expect(normalized.results.issues[0].detection_source).toBe('hybrid_graph');
+    expect(normalized.results.issues[0].detection_source).toBe('hybrid');
     expect(normalized.results.issues[0].cross_file_links).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           file: 'reference.md'
+        })
+      ])
+    );
+    expect(normalized.results.issues[0].evidence_spans).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          file: 'plan.md',
+          anchor: 'plan.md#execution-flow:L5'
         })
       ])
     );

@@ -8,6 +8,11 @@ import {
 const GLOSSARY_HEADING_PATTERN = /\b(glossary|terminology|definitions|terms|symbols|terminology registry|vocabulary)\b/i;
 const WORKFLOW_HEADING_PATTERN = /\b(flow|workflow|steps|process|pipeline|sequence|lifecycle|procedure)\b/i;
 const IDENTIFIER_PATTERN = /\b[A-Z]{2,12}[-_][A-Z0-9][A-Z0-9_-]{0,24}\b/g;
+const REQUIREMENT_PATTERN = /\b(MUST|SHALL|REQUIRED|SHOULD|RECOMMENDED|MAY|OPTIONAL)\b/g;
+const API_PATTERN = /\b(GET|POST|PUT|PATCH|DELETE)\s+(\/[A-Za-z0-9._~:/?#[\]@!$&'()*+,;=%-]*)/g;
+const ACTOR_PATTERN = /^\s*(?:[-*+]\s+|\d+\.\s+)?(User|Users|System|Operator|Admin|Client|Server|Host|Runtime|Agent|Agents)\b[:\s-]/i;
+const STATE_TRANSITION_PATTERN = /\b([A-Z][A-Z0-9_]{1,31})\b/g;
+const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\(([^)]+)\)/g;
 
 function createOccurrence({ documentIndex, section, lineNumber, label, type, key, description = '' }) {
   const sectionSlug = section?.slug || buildHeadingSlug(section?.title || '');
@@ -44,6 +49,14 @@ function addGroupOccurrence(store, key, occurrence) {
   if (!current.some((entry) => entry.target === occurrence.target)) {
     current.push(occurrence);
   }
+}
+
+function getSectionForLine(documentIndex, lineNumber) {
+  return documentIndex.headings.find((heading) => heading.lineStart <= lineNumber && lineNumber <= heading.lineEnd) || null;
+}
+
+function normalizeRequirementKey(line) {
+  return normalizeComparableText(String(line || '').replace(REQUIREMENT_PATTERN, ' '));
 }
 
 function extractGlossaryOccurrences(documentIndex) {
@@ -140,6 +153,131 @@ function extractWorkflowOccurrences(documentIndex) {
   return occurrences;
 }
 
+function extractRequirementOccurrences(documentIndex) {
+  const occurrences = [];
+
+  documentIndex.lines.forEach((line, index) => {
+    const matches = line.match(REQUIREMENT_PATTERN) || [];
+    if (matches.length === 0) return;
+
+    const normalizedKey = normalizeRequirementKey(line);
+    if (!normalizedKey) return;
+
+    const section = getSectionForLine(documentIndex, index + 1);
+    occurrences.push(createOccurrence({
+      documentIndex,
+      section,
+      lineNumber: index + 1,
+      label: line.trim(),
+      description: line.trim(),
+      type: 'requirement_clause',
+      key: normalizedKey
+    }));
+  });
+
+  return occurrences;
+}
+
+function extractStateOccurrences(documentIndex) {
+  const occurrences = [];
+
+  documentIndex.lines.forEach((line, index) => {
+    if (!/(->|→)/.test(line)) return;
+
+    const tokens = Array.from(line.matchAll(STATE_TRANSITION_PATTERN))
+      .map((match) => match[1])
+      .filter((token) => token.length >= 3);
+
+    if (tokens.length < 2) return;
+
+    const section = getSectionForLine(documentIndex, index + 1);
+    tokens.forEach((token) => {
+      occurrences.push(createOccurrence({
+        documentIndex,
+        section,
+        lineNumber: index + 1,
+        label: token,
+        description: line.trim(),
+        type: 'state_symbol',
+        key: token.toUpperCase()
+      }));
+    });
+  });
+
+  return occurrences;
+}
+
+function extractApiOccurrences(documentIndex) {
+  const occurrences = [];
+
+  documentIndex.lines.forEach((line, index) => {
+    const section = getSectionForLine(documentIndex, index + 1);
+    Array.from(line.matchAll(API_PATTERN)).forEach((match) => {
+      const method = match[1].toUpperCase();
+      const path = match[2];
+      occurrences.push(createOccurrence({
+        documentIndex,
+        section,
+        lineNumber: index + 1,
+        label: `${method} ${path}`,
+        description: line.trim(),
+        type: 'api_surface',
+        key: `${method} ${path}`
+      }));
+    });
+  });
+
+  return occurrences;
+}
+
+function extractActorOccurrences(documentIndex) {
+  const occurrences = [];
+
+  documentIndex.lines.forEach((line, index) => {
+    const match = line.match(ACTOR_PATTERN);
+    if (!match) return;
+
+    const actor = match[1].toLowerCase();
+    const section = getSectionForLine(documentIndex, index + 1);
+    occurrences.push(createOccurrence({
+      documentIndex,
+      section,
+      lineNumber: index + 1,
+      label: match[1],
+      description: line.trim(),
+      type: 'actor_role',
+      key: actor.endsWith('s') ? actor.slice(0, -1) : actor
+    }));
+  });
+
+  return occurrences;
+}
+
+function extractReferenceOccurrences(documentIndex) {
+  const occurrences = [];
+
+  documentIndex.lines.forEach((line, index) => {
+    const section = getSectionForLine(documentIndex, index + 1);
+    Array.from(line.matchAll(MARKDOWN_LINK_PATTERN)).forEach((match) => {
+      const label = match[1].trim();
+      const target = match[2].trim();
+      if (!target) return;
+
+      occurrences.push(createOccurrence({
+        documentIndex,
+        section,
+        lineNumber: index + 1,
+        label,
+        description: target,
+        type: 'document_reference',
+        key: target
+      }));
+    });
+  });
+
+  return occurrences;
+}
+
 function buildHeadingOccurrences(projectIndex) {
   const occurrences = [];
 
@@ -184,6 +322,10 @@ function buildCrossFileLinkScore(link) {
     shared_identifier: 90,
     shared_term: 80,
     workflow_step: 75,
+    requirement_clause: 85,
+    api_surface: 82,
+    state_symbol: 78,
+    actor_role: 70,
     shared_heading: 65
   };
 
@@ -250,13 +392,17 @@ function buildGroupLinks({ groups, issueText, excludeFiles, primaryAnchors }) {
 }
 
 function determineDetectionSource(issue) {
+  const current = typeof issue.detection_source === 'string' ? issue.detection_source.trim().toLowerCase() : '';
+  if (current === 'rule') {
+    return Array.isArray(issue.cross_file_links) && issue.cross_file_links.length > 0 ? 'hybrid' : 'rule';
+  }
   if (Array.isArray(issue.cross_file_links) && issue.cross_file_links.length > 0) {
-    return 'hybrid_graph';
+    return 'hybrid';
   }
   if (issue.document_anchor || issue.anchor_source) {
-    return 'hybrid_anchor';
+    return 'hybrid';
   }
-  return 'model';
+  return current === 'hybrid' ? 'hybrid' : 'model';
 }
 
 export function buildMarkdownProjectGraph(files = []) {
@@ -265,31 +411,89 @@ export function buildMarkdownProjectGraph(files = []) {
   const glossaryStore = { byKey: new Map() };
   const identifierStore = { byKey: new Map() };
   const workflowStore = { byKey: new Map() };
+  const requirementStore = { byKey: new Map() };
+  const stateStore = { byKey: new Map() };
+  const apiStore = { byKey: new Map() };
+  const actorStore = { byKey: new Map() };
 
-  buildHeadingOccurrences(projectIndex).forEach((occurrence) => addGroupOccurrence(headingStore, occurrence.key, occurrence));
+  const headingOccurrences = buildHeadingOccurrences(projectIndex);
+  const glossaryOccurrences = [];
+  const identifierOccurrences = [];
+  const workflowOccurrences = [];
+  const requirementOccurrences = [];
+  const stateOccurrences = [];
+  const apiOccurrences = [];
+  const actorOccurrences = [];
+  const referenceOccurrences = [];
+
+  headingOccurrences.forEach((occurrence) => addGroupOccurrence(headingStore, occurrence.key, occurrence));
   projectIndex.documents.forEach((documentIndex) => {
-    extractGlossaryOccurrences(documentIndex).forEach((occurrence) => addGroupOccurrence(glossaryStore, occurrence.key, occurrence));
-    extractIdentifierOccurrences(documentIndex).forEach((occurrence) => addGroupOccurrence(identifierStore, occurrence.key, occurrence));
-    extractWorkflowOccurrences(documentIndex).forEach((occurrence) => addGroupOccurrence(workflowStore, occurrence.key, occurrence));
+    const glossaryResults = extractGlossaryOccurrences(documentIndex);
+    const identifierResults = extractIdentifierOccurrences(documentIndex);
+    const workflowResults = extractWorkflowOccurrences(documentIndex);
+    const requirementResults = extractRequirementOccurrences(documentIndex);
+    const stateResults = extractStateOccurrences(documentIndex);
+    const apiResults = extractApiOccurrences(documentIndex);
+    const actorResults = extractActorOccurrences(documentIndex);
+    const referenceResults = extractReferenceOccurrences(documentIndex);
+
+    glossaryOccurrences.push(...glossaryResults);
+    identifierOccurrences.push(...identifierResults);
+    workflowOccurrences.push(...workflowResults);
+    requirementOccurrences.push(...requirementResults);
+    stateOccurrences.push(...stateResults);
+    apiOccurrences.push(...apiResults);
+    actorOccurrences.push(...actorResults);
+    referenceOccurrences.push(...referenceResults);
+
+    glossaryResults.forEach((occurrence) => addGroupOccurrence(glossaryStore, occurrence.key, occurrence));
+    identifierResults.forEach((occurrence) => addGroupOccurrence(identifierStore, occurrence.key, occurrence));
+    workflowResults.forEach((occurrence) => addGroupOccurrence(workflowStore, occurrence.key, occurrence));
+    requirementResults.forEach((occurrence) => addGroupOccurrence(requirementStore, occurrence.key, occurrence));
+    stateResults.forEach((occurrence) => addGroupOccurrence(stateStore, occurrence.key, occurrence));
+    apiResults.forEach((occurrence) => addGroupOccurrence(apiStore, occurrence.key, occurrence));
+    actorResults.forEach((occurrence) => addGroupOccurrence(actorStore, occurrence.key, occurrence));
   });
 
   const headingGroups = buildGroupSummary(headingStore);
   const glossaryGroups = buildGroupSummary(glossaryStore);
   const identifierGroups = buildGroupSummary(identifierStore);
   const workflowGroups = buildGroupSummary(workflowStore);
+  const requirementGroups = buildGroupSummary(requirementStore);
+  const stateGroups = buildGroupSummary(stateStore);
+  const apiGroups = buildGroupSummary(apiStore);
+  const actorGroups = buildGroupSummary(actorStore);
 
   return {
     projectIndex,
+    headingOccurrences,
+    glossaryOccurrences,
+    identifierOccurrences,
+    workflowOccurrences,
+    requirementOccurrences,
+    stateOccurrences,
+    apiOccurrences,
+    actorOccurrences,
+    referenceOccurrences,
     headingGroups,
     glossaryGroups,
     identifierGroups,
     workflowGroups,
+    requirementGroups,
+    stateGroups,
+    apiGroups,
+    actorGroups,
     summary: {
       documentCount: projectIndex.summary.documentCount,
       headingGroupCount: headingGroups.length,
       glossaryTermGroupCount: glossaryGroups.length,
       identifierGroupCount: identifierGroups.length,
-      workflowGroupCount: workflowGroups.length
+      workflowGroupCount: workflowGroups.length,
+      requirementGroupCount: requirementGroups.length,
+      stateGroupCount: stateGroups.length,
+      apiGroupCount: apiGroups.length,
+      actorGroupCount: actorGroups.length,
+      referenceCount: referenceOccurrences.length
     }
   };
 }
@@ -330,6 +534,30 @@ export function enrichIssueWithProjectGraph(issue, projectGraph, diagnostics = n
     }),
     buildGroupLinks({
       groups: projectGraph.workflowGroups,
+      issueText,
+      excludeFiles,
+      primaryAnchors
+    }),
+    buildGroupLinks({
+      groups: projectGraph.requirementGroups,
+      issueText,
+      excludeFiles,
+      primaryAnchors
+    }),
+    buildGroupLinks({
+      groups: projectGraph.stateGroups,
+      issueText,
+      excludeFiles,
+      primaryAnchors
+    }),
+    buildGroupLinks({
+      groups: projectGraph.apiGroups,
+      issueText,
+      excludeFiles,
+      primaryAnchors
+    }),
+    buildGroupLinks({
+      groups: projectGraph.actorGroups,
       issueText,
       excludeFiles,
       primaryAnchors

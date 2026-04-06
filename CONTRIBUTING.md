@@ -54,15 +54,18 @@ Current packaged output:
 - deterministic 8-agent prompt generation from the universal taxonomy, universal audit mode, cross-layer bundles (31 total), and detector metadata
 - detector-aware validation for known detector IDs
 - chunk-aware batching
+- deterministic Markdown indexing, evidence-span enrichment, and cross-file project graph analysis
+- deterministic local rule engine before agent synthesis
 - deterministic normalization
 - four escalation rules
 - cross-layer validation
 - incremental cached reuse
 - session diffing
 - root-cause grouping
-- 29 deterministic benchmark fixtures within a 163-test local suite across 13 files
+- 29 deterministic benchmark fixtures within a 184-test local suite across 17 files
 - enhanced taxonomy coverage helper with per-layer density, richness, subcategory, and bundle coverage analysis
 - strict issue schema enrichment including `failure_type`, `constraint_reference`, `contract_step`, `invariant_broken`, `authority_boundary`, `closed_world_status`, `analysis_agents`, and `deterministic_fix`
+- evidence-first issue fields including `document_anchors`, `detection_source`, `cross_file_links`, and `evidence_spans`
 
 ### UI
 
@@ -126,6 +129,11 @@ Be especially careful with:
 
 The taxonomy is defined in `src/lib/detectorMetadata.js` (detectors and subcategories), `src/lib/layers.js` (top-level layer registry), `src/lib/auditMode.js` (single universal audit mode), `src/lib/crossLayerBundles.js` (logical groupings), and `src/lib/analysisAgents.js` (the fixed deterministic analysis mesh).
 
+The staged analysis pipeline also relies on:
+- `src/lib/markdownIndex.js` for deterministic heading/anchor/evidence-span indexing
+- `src/lib/projectGraph.js` for deterministic cross-file entity grouping
+- `src/lib/ruleEngine/index.js` for local deterministic rule evaluation before agent synthesis
+
 The system prompt is dynamically generated in `src/lib/systemPrompt.js`.
 
 To add or update a detector:
@@ -140,7 +148,7 @@ The prompt should stay aligned with runtime behavior:
 - do not promise rules that runtime logic does not implement
 - keep field names consistent with the UI and exports
 - update sample schema in `src/lib/systemPrompt.js` when fields change
-- remember that unknown detector IDs are currently soft-warned, not hard-failed
+- remember that unknown detector IDs are rejected during validation, so prompt/schema drift must be fixed at the source
 
 ### Adding a New Analysis Layer
 
@@ -174,18 +182,20 @@ Run through the relevant subset before closing a change:
 5. Markdown drag-and-drop works
 6. Invalid file types are ignored
 7. Analyze button enable/disable states are correct
-8. Build succeeds with `npm run build`
-9. Packaging succeeds with `npm run dist` when packaging-related changes are touched
-10. Results render correctly
-11. Layer filters work
-12. Grouping modes work
-13. Diff mode renders correctly when previous results exist
-14. Issue cards show new traceability/remediation fields when present
-15. JSON / Markdown / CSV exports still open and contain expected fields
-16. Session save/load still works
-17. Cached reuse does not break multi-file analysis
-18. Known detector/category/subcategory combinations validate correctly
-19. Older sessions without newer taxonomy fields still load safely
+8. Deterministic rule-engine findings render correctly when local rules trigger
+9. Cross-file findings preserve `detection_source`, `cross_file_links`, and `evidence_spans`
+10. Build succeeds with `npm run build`
+11. Packaging succeeds with `npm run dist` when packaging-related changes are touched
+12. Results render correctly
+13. Layer filters work
+14. Grouping modes work
+15. Diff mode renders correctly when previous results exist
+16. Issue cards show new traceability/remediation fields when present
+17. JSON / Markdown / CSV exports still open and contain expected fields
+18. Session save/load still works
+19. Cached reuse does not break multi-file analysis
+20. Known detector/category/subcategory combinations validate correctly
+21. Older sessions without newer taxonomy fields still load safely
 
 ## Build Notes
 
@@ -295,7 +305,7 @@ Tests are located in `src/lib/__tests__` and cover:
 - **Prompt Generation**: Verifies the dynamic builder logic.
 - **Cache Service**: Verifies the file-backed persistence layer, atomic writes, and corruption handling.
 - **Diagnostics**: Verifies runtime observability metrics.
-- **Benchmark Suites**: `taxonomyBenchmark.test.js`, `deepSpecBenchmarks.test.js`, and `extendedUniversalBenchmarks.test.js` cover 29 benchmark fixtures, while the full local suite currently contains 163 tests across 13 files.
+- **Benchmark Suites**: `taxonomyBenchmark.test.js`, `deepSpecBenchmarks.test.js`, and `extendedUniversalBenchmarks.test.js` cover 29 benchmark fixtures, while the full local suite currently contains 184 tests across 17 files.
 - **Taxonomy Coverage Helper**: `taxonomyCoverageHelper.js` provides per-layer density analysis, richness metrics, subcategory coverage tracking, and bundle coverage analysis for comprehensive taxonomy observability.
 
 ALWAYS run tests before submitting changes to the taxonomy or prompt generation logic.

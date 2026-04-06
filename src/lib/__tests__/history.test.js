@@ -110,6 +110,19 @@ describe('History Normalization', () => {
         })
       ])
     );
+    expect(normalized.results.issues[0].proof_chains).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          relation: 'contradicts',
+          source_span: expect.objectContaining({
+            anchor: 'plan.md#execution-flow:L5'
+          }),
+          target_span: expect.objectContaining({
+            file: 'reference.md'
+          })
+        })
+      ])
+    );
     expect(normalized.taxonomyDiagnostics.severity_clamped_count).toBe(1);
     expect(normalized.taxonomyDiagnostics.total_issues_loaded).toBe(1);
     expect(normalized.taxonomyDiagnostics.indexed_document_count).toBe(2);
@@ -118,6 +131,8 @@ describe('History Normalization', () => {
     expect(normalized.taxonomyDiagnostics.project_graph_workflow_group_count).toBeGreaterThanOrEqual(1);
     expect(normalized.taxonomyDiagnostics.deterministic_anchor_enrichment_count).toBe(1);
     expect(normalized.taxonomyDiagnostics.deterministic_graph_link_enrichment_count).toBe(1);
+    expect(normalized.taxonomyDiagnostics.deterministic_proof_chain_enrichment_count).toBe(1);
+    expect(normalized.taxonomyDiagnostics.proof_chain_edge_count).toBeGreaterThanOrEqual(1);
     expect(normalized.taxonomyDiagnostics.agent_failure_events).toHaveLength(1);
     expect(normalized.taxonomyDiagnostics.agent_failure_events[0].agent_id).toBe('reasoning_evidence_agent');
   });

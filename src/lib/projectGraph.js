@@ -182,7 +182,7 @@ function extractStateOccurrences(documentIndex) {
   const occurrences = [];
 
   documentIndex.lines.forEach((line, index) => {
-    if (!/(->|→)/.test(line)) return;
+    if (!/(->|\u2192)/.test(line)) return;
 
     const tokens = Array.from(line.matchAll(STATE_TRANSITION_PATTERN))
       .map((match) => match[1])
@@ -369,7 +369,17 @@ function buildGroupLinks({ groups, issueText, excludeFiles, primaryAnchors }) {
     const normalizedKey = normalizeComparableText(representative.key);
     if (!normalizedKey) return;
 
-    const isRelevant = issueText.some((text) => normalizeComparableText(text).includes(normalizedKey));
+    const isRelevant = issueText.some((text) => {
+      const normalizedText = normalizeComparableText(text);
+      if (normalizedText.includes(normalizedKey)) return true;
+
+      if (representative.type === 'requirement_clause') {
+        const normalizedRequirementText = normalizeRequirementKey(text);
+        return Boolean(normalizedRequirementText && normalizedRequirementText.includes(normalizedKey));
+      }
+
+      return false;
+    });
     if (!isRelevant) return;
 
     occurrences.forEach((occurrence) => {

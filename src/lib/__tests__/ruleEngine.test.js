@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildMarkdownProjectGraph } from '../projectGraph';
-import { runDeterministicRuleEngine } from '../ruleEngine/index';
+import { DETERMINISTIC_RULE_DEFINITIONS, runDeterministicRuleEngine } from '../ruleEngine/index';
 
 describe('Deterministic Rule Engine', () => {
   it('emits deterministic rule-backed issues with rule evidence and spans', () => {
@@ -10,6 +10,7 @@ describe('Deterministic Rule Engine', () => {
         name: 'spec.md',
         content: [
           '# Overview',
+          '### Deep Skip',
           'See [Missing](#missing-anchor).',
           '',
           '## Execution Flow',
@@ -25,7 +26,9 @@ describe('Deterministic Rule Engine', () => {
           'Repeated section.',
           '',
           '## Glossary',
-          '- **Project State Graph**: Shared world model.'
+          '- **Project State Graph**: Shared world model.',
+          '',
+          '### Empty Section'
         ].join('\n')
       },
       {
@@ -43,6 +46,8 @@ describe('Deterministic Rule Engine', () => {
     const detectorIds = result.issues.map((issue) => issue.detector_id);
 
     expect(detectorIds).toEqual(expect.arrayContaining([
+      'L3-01',
+      'L3-02',
       'L3-03',
       'L13-05',
       'L47-01',
@@ -56,8 +61,14 @@ describe('Deterministic Rule Engine', () => {
     expect(result.issues.every((issue) => issue.detection_source === 'rule')).toBe(true);
     expect(result.issues.every((issue) => issue.analysis_agent === 'deterministic_rule_engine')).toBe(true);
     expect(result.issues.every((issue) => Array.isArray(issue.evidence_spans) && issue.evidence_spans.length > 0)).toBe(true);
+    expect(result.summary.detectors_checked).toBe(DETERMINISTIC_RULE_DEFINITIONS.length);
+    expect(result.summary.detectors_clean + result.summary.detectors_hit).toBe(result.summary.detectors_checked);
+    expect(result.summary.detector_execution_receipts).toHaveLength(DETERMINISTIC_RULE_DEFINITIONS.length);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L3-01' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L3-02' && receipt.status === 'hit')).toBe(true);
     expect(diagnostics.deterministic_rule_runs).toBe(1);
     expect(diagnostics.deterministic_rule_issue_count).toBe(result.issues.length);
+    expect(diagnostics.deterministic_rule_checked_detector_count).toBe(DETERMINISTIC_RULE_DEFINITIONS.length);
   });
 
   it('returns an empty deterministic result when no documents are available', () => {

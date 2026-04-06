@@ -10,13 +10,18 @@ import {
   ANALYSIS_AGENT_COUNT,
   buildAnalysisAgentPrompt,
   getAnalysisAgent,
-  getAnalysisAgentFocusLayers
+  getAnalysisAgentFocusLayers,
+  getAnalysisAgentFocusSubcategories
 } from './analysisAgents.js';
 
-function buildSharedInstructionBlock({ scoped = false, focusLayerIds = [] } = {}) {
+function buildSharedInstructionBlock({ scoped = false, focusLayerIds = [], focusSubcategories = [] } = {}) {
   const focusLayerNote = scoped
     ? `Your active role receives full detector metadata for ${focusLayerIds.length} focus layers and a compact global index for the rest of the taxonomy. Full coverage across all ${TOTAL_LAYER_COUNT} layers is still mandatory.`
     : `You have the full detector catalog available in this pass and must evaluate the complete taxonomy across all ${TOTAL_LAYER_COUNT} layers.`;
+
+  const focusSubcategoryNote = scoped && focusSubcategories.length > 0
+    ? `Treat these subcategories as first-class runtime focus targets for this pass: ${focusSubcategories.join(', ')}.`
+    : '';
 
   return `You are an elite documentation intelligence auditor.
 
@@ -25,6 +30,7 @@ Analyze markdown documentation files across **${TOTAL_LAYER_COUNT} analytical la
 Your job is to identify structural, logical, authority, reproducibility, governance, recovery, and operational UX gaps with zero-ambiguity findings that remain faithful to the live taxonomy.
 
 ${focusLayerNote}
+${focusSubcategoryNote}
 
 Core priorities:
 - evaluate all ${TOTAL_DETECTOR_COUNT} detectors across all ${TOTAL_LAYER_COUNT} layers
@@ -59,8 +65,7 @@ STAGE 3 - deterministic escalation
 STAGE 4 - final synthesis
 - emit one raw JSON object only
 - make sure every issue includes the required schema fields below
-- Include detectors_evaluated count (must be <=${TOTAL_DETECTOR_COUNT})
-- Include detectors_evaluated count (must be ≤${TOTAL_DETECTOR_COUNT})
+- include detectors_evaluated count (must be <=${TOTAL_DETECTOR_COUNT})
 - keep wording specific, deterministic, and evidence-bound
 
 Severity rules:
@@ -91,6 +96,7 @@ Issue schema requirements:
 - closed_world_status must be one of: strict_required, evidence_required, bounded_inference
 - assumption_detected must be true when an unsupported assumption materially affects the finding
 - deterministic_fix must describe the smallest deterministic correction path
+- proof_chains may be included when exact span-to-span evidence exists; each proof chain must use one of: supports, contradicts, defines, depends_on, references, violates
 - recommended_fix, fix_steps, estimated_effort, and verification_steps should be included when practical
 - analysis_agent must equal the active analysis mesh role for this pass
 
@@ -138,6 +144,7 @@ Use strict JSON syntax with double-quoted property names and string values. Do n
       "line_number": 42,
       "description": "[L8-02] Missing component: API gateway not defined in architecture",
       "evidence": "The component list names UI, backend service, and database, but never defines an API gateway despite later routing references.",
+      "proof_chains": [],
       "confidence": 0.95,
       "impact_score": 8,
       "fix_difficulty": "moderate",
@@ -173,6 +180,7 @@ Use strict JSON syntax with double-quoted property names and string values. Do n
 function buildScopedPrompt(analysisAgentId) {
   const activeAgent = getAnalysisAgent(analysisAgentId);
   const focusLayerIds = getAnalysisAgentFocusLayers(analysisAgentId);
+  const focusSubcategories = getAnalysisAgentFocusSubcategories(analysisAgentId);
   const focusDetectorCatalog = buildDetectorPrompt({
     layerIds: focusLayerIds,
     headerTitle: `${activeAgent?.label || 'Active Agent'} FOCUS DETECTOR CATALOG`
@@ -193,11 +201,12 @@ ${focusDetectorCatalog}
 SCOPED PROMPT STRATEGY:
 - The detector index above covers the full ${TOTAL_DETECTOR_COUNT}-detector taxonomy.
 - The focus detector catalog provides richer metadata for the active role's focus layers: ${focusLayerIds.join(', ')}.
+- The active role also has first-class focus subcategories: ${focusSubcategories.join(', ')}.
 - You must still detect valid issues in any layer when the document evidence supports them.
 - Prefer focus-layer findings when multiple detector choices could describe the same evidence.
 - Use cross-layer bundles to escalate only when the evidence truly spans the participating layers.
 
-${buildSharedInstructionBlock({ scoped: true, focusLayerIds })}`;
+${buildSharedInstructionBlock({ scoped: true, focusLayerIds, focusSubcategories })}`;
 }
 
 function buildUnscopedPrompt(analysisAgentId) {

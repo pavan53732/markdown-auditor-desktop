@@ -12,13 +12,21 @@ import HistoryModal from './components/HistoryModal';
 import brandIconDataUrl from './assets/brand-icon.png?inline';
 import { buildSystemPrompt } from './lib/systemPrompt';
 import { repairJSON, validateResults } from './lib/jsonRepair';
-import { ANALYSIS_AGENT_COUNT, ANALYSIS_AGENT_MESH, ANALYSIS_MESH_VERSION } from './lib/analysisAgents';
+import {
+  ANALYSIS_AGENT_COUNT,
+  ANALYSIS_AGENT_MESH,
+  ANALYSIS_MESH_VERSION,
+  validateAnalysisAgentResult,
+  createEmptyAnalysisMeshSummary,
+  mergeAnalysisMeshRuns
+} from './lib/analysisAgents';
 import {
   buildMarkdownProjectIndex,
   enrichIssueWithMarkdownIndex,
   enrichIssueWithEvidenceSpans,
   normalizeEvidenceSpans
 } from './lib/markdownIndex';
+import { enrichIssueWithProofChains, normalizeProofChains } from './lib/evidenceGraph';
 import { buildMarkdownProjectGraph, enrichIssueWithProjectGraph } from './lib/projectGraph';
 import { runDeterministicRuleEngine } from './lib/ruleEngine/index';
 import {
@@ -28,7 +36,8 @@ import {
   RECOMMENDED_BATCH_TARGET_TOKENS,
   BATCH_TOKEN_BUFFER,
   MIN_CHUNK_CHARS,
-  normalizeTokenBudget
+  normalizeTokenBudget,
+  normalizeTimeoutSeconds
 } from './lib/runtimeConfig';
 import {
   TOTAL_DETECTOR_COUNT,
@@ -51,9 +60,84 @@ const BRAND_NAME = 'Markdown Intelligence Auditor';
 const BRAND_TAGLINE = 'Deterministic Markdown specification auditing';
 const MAX_AGENT_RESPONSE_ATTEMPTS = 2;
 const MAX_DIAGNOSTIC_EVENTS_VISIBLE = 3;
+const ANALYSIS_STAGES = [
+  { id: 'indexing', label: 'Indexing Markdown' },
+  { id: 'project_graph', label: 'Building Project Graph' },
+  { id: 'rule_engine', label: 'Running Deterministic Rules' },
+  { id: 'agent_mesh', label: 'Running Analysis Mesh' },
+  { id: 'merge', label: 'Merging Findings' },
+  { id: 'finalize', label: 'Finalizing Results' }
+];
+
+function getProgressStage(stageId) {
+  const index = ANALYSIS_STAGES.findIndex((stage) => stage.id === stageId);
+  if (index === -1) {
+    return {
+      id: stageId || 'idle',
+      label: 'Idle',
+      stageIndex: 0,
+      stageCount: ANALYSIS_STAGES.length
+    };
+  }
+
+  const stage = ANALYSIS_STAGES[index];
+  return {
+    ...stage,
+    stageIndex: index + 1,
+    stageCount: ANALYSIS_STAGES.length
+  };
+}
+
+function createProgressState(overrides = {}) {
+  const stage = getProgressStage(overrides.stage || 'idle');
+  const baseState = {
+    stage: stage.id,
+    stageLabel: stage.label,
+    stageIndex: stage.stageIndex,
+    stageCount: stage.stageCount,
+    totalFiles: 0,
+    indexedFiles: 0,
+    currentBatch: 0,
+    totalBatches: 0,
+    filesInCurrentBatch: 0,
+    currentAgentId: '',
+    currentAgentLabel: '',
+    currentAgentOwnedLayers: 0,
+    currentAgentOwnedSubcategories: 0,
+    currentAgentOwnedDetectors: 0,
+    currentAttempt: 0,
+    maxAttempts: MAX_AGENT_RESPONSE_ATTEMPTS,
+    completedAgentPasses: 0,
+    totalAgentPasses: 0,
+    deterministicRuleIssues: 0,
+    deterministicRuleRuns: 0,
+    proofChainEdges: 0,
+    ownedDetectorHits: 0,
+    checkedOwnedDetectors: 0,
+    cleanOwnedDetectors: 0,
+    untouchedOwnedDetectors: 0,
+    outOfOwnedScopeIssues: 0,
+    graphGroups: 0,
+    graphDocuments: 0,
+    graphReferences: 0,
+    message: ''
+  };
+
+  return {
+    ...baseState,
+    ...overrides,
+    stage: stage.id,
+    stageLabel: stage.label,
+    stageIndex: stage.stageIndex,
+    stageCount: stage.stageCount
+  };
+}
 
 function getAgentFailureStage(error) {
   const message = error?.message || '';
+  if (message.toLowerCase().includes('timed out') || message.toLowerCase().includes('timeout')) {
+    return 'provider_timeout';
+  }
   if (message.includes('Invalid JSON') || message.includes('No JSON object found')) {
     return 'json_parse';
   }
@@ -65,6 +149,11 @@ function getAgentFailureStage(error) {
     return 'schema_validation';
   }
   return 'response_validation';
+}
+
+function isTimeoutErrorMessage(message) {
+  const normalized = typeof message === 'string' ? message.toLowerCase() : '';
+  return normalized.includes('timed out') || normalized.includes('timeout');
 }
 
 function buildAgentRetryMessage(baseUserMessage, agent, error, attempt) {
@@ -182,12 +271,13 @@ export default function App() {
   const [fileHashes, setFileHashes] = useState({});
   const [cachedResults, setCachedResults] = useState({}); // { hash: { issues, summary } }
   const [analysisStats, setAnalysisStats] = useState({ reused: 0, reanalyzed: 0, agentPasses: 0 });
+  const [progressState, setProgressState] = useState(createProgressState());
 
   useEffect(() => {
     window.electronAPI.readConfig().then((cfg) => {
       const normalized = {
         ...cfg,
-        timeout: Number.isFinite(Number(cfg.timeout)) ? Number(cfg.timeout) : DEFAULT_TIMEOUT_SECONDS,
+        timeout: normalizeTimeoutSeconds(cfg.timeout),
         retries: Number.isFinite(Number(cfg.retries)) ? Number(cfg.retries) : DEFAULT_RETRIES,
         tokenBudget: normalizeTokenBudget(cfg.tokenBudget)
       };
@@ -227,6 +317,13 @@ export default function App() {
   const saveCache = useCallback((newCache) => {
     setCachedResults(newCache);
     window.electronAPI.writeCache(newCache);
+  }, []);
+
+  const updateProgressState = useCallback((patch) => {
+    setProgressState((prev) => createProgressState({
+      ...prev,
+      ...patch
+    }));
   }, []);
 
   const handleClearCache = async () => {
@@ -420,12 +517,13 @@ export default function App() {
     return batches;
   };
 
-  const analyzeBatch = async (batch, batchIndex, totalBatches, diagnostics) => {
+  const analyzeBatch = async (batch, batchIndex, totalBatches, diagnostics, detectorExecutionReceipts = []) => {
     const userMessage = batch
       .map((f) => `=== FILE: ${f.name}${f.isChunked ? ` (Chunk ${f.chunkIndex}/${f.chunkCount})` : ''} ===\n\n${f.content}\n\n${'─'.repeat(60)}\n`)
       .join('');
 
     const agentResults = [];
+    const agentRuns = [];
     let rawIssueCount = 0;
 
     for (const agent of agentPromptEntries) {
@@ -433,6 +531,21 @@ export default function App() {
       let lastValidationError = null;
 
       for (let attempt = 1; attempt <= MAX_AGENT_RESPONSE_ATTEMPTS; attempt += 1) {
+        updateProgressState({
+          stage: 'agent_mesh',
+          currentBatch: batchIndex + 1,
+          totalBatches,
+          filesInCurrentBatch: batch.length,
+          currentAgentId: agent.id,
+          currentAgentLabel: agent.label,
+          currentAgentOwnedLayers: agent.ownedLayers?.length || 0,
+          currentAgentOwnedSubcategories: agent.ownedSubcategoryCount || 0,
+          currentAgentOwnedDetectors: agent.ownedDetectorCount || 0,
+          currentAttempt: attempt,
+          maxAttempts: MAX_AGENT_RESPONSE_ATTEMPTS,
+          message: `Running ${agent.label} on batch ${batchIndex + 1}/${totalBatches}`
+        });
+
         const response = await window.electronAPI.callAPI({
           baseURL: config.baseURL,
           apiKey: config.apiKey,
@@ -446,6 +559,34 @@ export default function App() {
         });
 
         if (!response.success) {
+          if (isTimeoutErrorMessage(response.error)) {
+            recordAgentSkip(diagnostics, {
+              agent_id: agent.id,
+              agent_label: agent.label,
+              batch_index: batchIndex + 1,
+              batch_count: totalBatches,
+              attempt: response.timeoutAttempts || 1,
+              reason: 'timeout',
+              timeout_seconds: response.requestTimeoutSeconds
+            });
+            updateProgressState({
+              stage: 'agent_mesh',
+              completedAgentPasses: diagnostics.analysis_mesh_passes_completed,
+              totalAgentPasses: totalBatches * ANALYSIS_AGENT_COUNT,
+              currentAgentId: agent.id,
+              currentAgentLabel: agent.label,
+              currentAgentOwnedLayers: agent.ownedLayers?.length || 0,
+              currentAgentOwnedSubcategories: agent.ownedSubcategoryCount || 0,
+              currentAgentOwnedDetectors: agent.ownedDetectorCount || 0,
+              message: `${agent.label} timed out after ${response.requestTimeoutSeconds || config.timeout || 60}s; continuing in degraded mode`
+            });
+            parsed = {
+              summary: { total: 0, critical: 0, high: 0, medium: 0, low: 0 },
+              issues: [],
+              root_causes: []
+            };
+            break;
+          }
           throw new Error(`Batch ${batchIndex + 1}/${totalBatches} failed during ${agent.label}: ${response.error}`);
         }
 
@@ -506,9 +647,44 @@ export default function App() {
           ? Array.from(new Set([...issue.analysis_agents, agent.id]))
           : [agent.id]
       }));
+      const agentRun = validateAnalysisAgentResult(agent.id, normalizedIssues, parsed.summary, {
+        detectorExecutionReceipts
+      });
+      agentRuns.push(agentRun);
+      diagnostics.analysis_mesh_focus_layer_hit_count += agentRun.focus_layer_hits || 0;
+      diagnostics.analysis_mesh_focus_subcategory_hit_count += agentRun.focus_subcategory_hits || 0;
+      diagnostics.analysis_mesh_owned_layer_hit_count += agentRun.owned_layer_hits || 0;
+      diagnostics.analysis_mesh_owned_subcategory_hit_count += agentRun.owned_subcategory_hits || 0;
+      diagnostics.analysis_mesh_owned_detector_hit_count += agentRun.owned_detector_hits || 0;
+      diagnostics.analysis_mesh_out_of_focus_issue_count += agentRun.out_of_focus_issue_count || 0;
+      diagnostics.analysis_mesh_out_of_owned_scope_issue_count += agentRun.out_of_owned_scope_issue_count || 0;
+      diagnostics.analysis_mesh_validation_warning_count += Array.isArray(agentRun.warnings) ? agentRun.warnings.length : 0;
+      diagnostics.analysis_mesh_agent_runs = [
+        ...(Array.isArray(diagnostics.analysis_mesh_agent_runs) ? diagnostics.analysis_mesh_agent_runs : []),
+        agentRun
+      ];
+      if (Array.isArray(agentRun.warnings) && agentRun.warnings.length > 0) {
+        diagnostics.warnings.push(...agentRun.warnings);
+      }
 
       rawIssueCount += normalizedIssues.length;
       diagnostics.analysis_mesh_passes_completed += 1;
+      updateProgressState({
+        stage: 'agent_mesh',
+        completedAgentPasses: diagnostics.analysis_mesh_passes_completed,
+        totalAgentPasses: totalBatches * ANALYSIS_AGENT_COUNT,
+        ownedDetectorHits: diagnostics.analysis_mesh_owned_detector_hit_count,
+        checkedOwnedDetectors: agentRun.receipt_checked_owned_detector_count || 0,
+        cleanOwnedDetectors: agentRun.receipt_clean_owned_detector_count || 0,
+        untouchedOwnedDetectors: agentRun.untouched_owned_detector_count || 0,
+        outOfOwnedScopeIssues: diagnostics.analysis_mesh_out_of_owned_scope_issue_count,
+        currentAgentId: agent.id,
+        currentAgentLabel: agent.label,
+        currentAgentOwnedLayers: agent.ownedLayers?.length || 0,
+        currentAgentOwnedSubcategories: agent.ownedSubcategoryCount || 0,
+        currentAgentOwnedDetectors: agent.ownedDetectorCount || 0,
+        message: `${agent.label} completed batch ${batchIndex + 1}/${totalBatches}`
+      });
       agentResults.push({
         ...parsed,
         issues: normalizedIssues,
@@ -526,7 +702,8 @@ export default function App() {
       ...mergedAgentResult,
       _sourceFiles: Array.from(new Set(batch.map((file) => file.sourceName || file.name))),
       _rawIssueCount: rawIssueCount,
-      _agentPasses: agentResults.length
+      _agentPasses: agentResults.length,
+      _analysisMeshRuns: agentRuns
     };
   };
 
@@ -585,7 +762,7 @@ export default function App() {
   const applyPostMergeEscalation = (issues) => {
     const severityOrder = { critical: 3, high: 2, medium: 1, low: 0 };
 
-    // Rule 1: ≥3 medium issues in same section → high
+    // Rule 1: 3 or more medium issues in same section -> high
     const sectionMediumCounts = {};
     issues.forEach(issue => {
       if (issue.severity === 'medium' && issue.section) {
@@ -599,12 +776,12 @@ export default function App() {
       if (group.length >= 3) {
         group.forEach(issue => {
           issue.severity = 'high';
-          issue.escalation_reason = `Escalated to high because ≥3 medium issues (${group.length}) were found in the same section: ${issue.section}`;
+          issue.escalation_reason = `Escalated to high because 3 or more medium issues (${group.length}) were found in the same section: ${issue.section}`;
         });
       }
     });
 
-    // Rule 2: Security (L23) + Performance (L24) same component → escalate to critical
+    // Rule 2: Security (L23) + Performance (L24) same component -> escalate to critical
     const componentIssues = {};
     issues.forEach(issue => {
       const component = issue.files?.[0] || 'unknown';
@@ -626,7 +803,7 @@ export default function App() {
       }
     });
 
-    // Rule 3: Completeness (L9) + Functional (L6) missing steps → escalate to high
+    // Rule 3: Completeness (L9) + Functional (L6) missing steps -> escalate to high
     const sectionIssues = {};
     issues.forEach(issue => {
       if (issue.section) {
@@ -649,7 +826,7 @@ export default function App() {
       }
     });
 
-    // Rule 4: Contradiction (L1) + Intent (L10) same content → escalate to high
+    // Rule 4: Contradiction (L1) + Intent (L10) same content -> escalate to high
     Object.values(sectionIssues).forEach(sectionIssueList => {
       const hasContradiction = sectionIssueList.some(i => i.category === 'contradiction');
       const hasIntent = sectionIssueList.some(i => i.category === 'intent');
@@ -701,6 +878,10 @@ export default function App() {
           ...(existing.evidence_spans || []),
           ...(issue.evidence_spans || [])
         ]);
+        existing.proof_chains = normalizeProofChains([
+          ...(existing.proof_chains || []),
+          ...(issue.proof_chains || [])
+        ]);
         existing.cross_file_links = normalizeCrossFileLinks([
           ...(existing.cross_file_links || []),
           ...(issue.cross_file_links || [])
@@ -736,6 +917,7 @@ export default function App() {
           ...issue,
           detection_source: mergeDetectionSource('', issue.detection_source) || issue.detection_source,
           evidence_spans: normalizeEvidenceSpans(issue.evidence_spans),
+          proof_chains: normalizeProofChains(issue.proof_chains),
           cross_file_links: normalizeCrossFileLinks(issue.cross_file_links),
           analysis_agents: Array.isArray(issue.analysis_agents)
             ? Array.from(new Set(issue.analysis_agents))
@@ -754,13 +936,12 @@ export default function App() {
 
   const handleAnalyze = async () => {
     if (files.length === 0 || !canAnalyze) return;
-    
-    // Capture current results for comparison before we clear them
+
     const capturedPrevious = results;
     if (results) {
       setPreviousResults(results);
     }
-    
+
     setAnalyzing(true);
     setError(null);
     setResults(null);
@@ -772,24 +953,92 @@ export default function App() {
     setDiffSummary(null);
     setContextWarning(null);
     setAnalysisStats({ reused: 0, reanalyzed: 0, agentPasses: 0 });
+    setProgressState(createProgressState({
+      stage: 'indexing',
+      totalFiles: files.length,
+      indexedFiles: 0,
+      message: 'Building deterministic Markdown index'
+    }));
+
     const diagnostics = createInitialDiagnostics();
     diagnostics.analysis_mesh_agents_configured = ANALYSIS_AGENT_COUNT;
-    const markdownIndex = buildMarkdownProjectIndex(files);
-    const projectGraph = buildMarkdownProjectGraph(files);
-    diagnostics.indexed_document_count = markdownIndex.summary.documentCount;
-    diagnostics.indexed_heading_count = markdownIndex.summary.headingCount;
-    diagnostics.project_graph_document_count = projectGraph.summary.documentCount;
-    diagnostics.project_graph_heading_group_count = projectGraph.summary.headingGroupCount;
-    diagnostics.project_graph_glossary_term_group_count = projectGraph.summary.glossaryTermGroupCount;
-    diagnostics.project_graph_identifier_group_count = projectGraph.summary.identifierGroupCount;
-    diagnostics.project_graph_workflow_group_count = projectGraph.summary.workflowGroupCount;
 
     try {
+      const markdownIndex = buildMarkdownProjectIndex(files);
+      diagnostics.indexed_document_count = markdownIndex.summary.documentCount;
+      diagnostics.indexed_heading_count = markdownIndex.summary.headingCount;
+      updateProgressState({
+        stage: 'indexing',
+        totalFiles: files.length,
+        indexedFiles: markdownIndex.summary.documentCount,
+        message: `Indexed ${markdownIndex.summary.documentCount} documents and ${markdownIndex.summary.headingCount} headings`
+      });
+
+      updateProgressState({
+        stage: 'project_graph',
+        totalFiles: files.length,
+        indexedFiles: markdownIndex.summary.documentCount,
+        graphDocuments: markdownIndex.summary.documentCount,
+        message: 'Building cross-file Markdown project graph'
+      });
+
+      const projectGraph = buildMarkdownProjectGraph(files);
+      diagnostics.project_graph_document_count = projectGraph.summary.documentCount;
+      diagnostics.project_graph_heading_group_count = projectGraph.summary.headingGroupCount;
+      diagnostics.project_graph_glossary_term_group_count = projectGraph.summary.glossaryTermGroupCount;
+      diagnostics.project_graph_identifier_group_count = projectGraph.summary.identifierGroupCount;
+      diagnostics.project_graph_workflow_group_count = projectGraph.summary.workflowGroupCount;
+      diagnostics.project_graph_requirement_group_count = projectGraph.summary.requirementGroupCount || 0;
+      diagnostics.project_graph_state_group_count = projectGraph.summary.stateGroupCount || 0;
+      diagnostics.project_graph_api_group_count = projectGraph.summary.apiGroupCount || 0;
+      diagnostics.project_graph_actor_group_count = projectGraph.summary.actorGroupCount || 0;
+      diagnostics.project_graph_reference_count = projectGraph.summary.referenceCount || 0;
+      diagnostics.project_graph_total_group_count =
+        diagnostics.project_graph_heading_group_count
+        + diagnostics.project_graph_glossary_term_group_count
+        + diagnostics.project_graph_identifier_group_count
+        + diagnostics.project_graph_workflow_group_count
+        + diagnostics.project_graph_requirement_group_count
+        + diagnostics.project_graph_state_group_count
+        + diagnostics.project_graph_api_group_count
+        + diagnostics.project_graph_actor_group_count;
+      updateProgressState({
+        stage: 'project_graph',
+        totalFiles: files.length,
+        indexedFiles: markdownIndex.summary.documentCount,
+        graphDocuments: projectGraph.summary.documentCount,
+        graphGroups: diagnostics.project_graph_total_group_count,
+        graphReferences: diagnostics.project_graph_reference_count,
+        message: `Resolved ${diagnostics.project_graph_total_group_count} graph groups across ${projectGraph.summary.documentCount} documents`
+      });
+
       const filesToAnalyze = [];
       const reusedBatchResults = [];
       let reusedCount = 0;
       let reanalyzedCount = 0;
+
+      updateProgressState({
+        stage: 'rule_engine',
+        totalFiles: files.length,
+        indexedFiles: markdownIndex.summary.documentCount,
+        graphDocuments: projectGraph.summary.documentCount,
+        graphGroups: diagnostics.project_graph_total_group_count,
+        graphReferences: diagnostics.project_graph_reference_count,
+        message: 'Running deterministic subcategory-aware rules'
+      });
+
       const deterministicRuleResult = runDeterministicRuleEngine({ files, projectGraph, diagnostics });
+      updateProgressState({
+        stage: 'rule_engine',
+        totalFiles: files.length,
+        indexedFiles: markdownIndex.summary.documentCount,
+        graphDocuments: projectGraph.summary.documentCount,
+        graphGroups: diagnostics.project_graph_total_group_count,
+        graphReferences: diagnostics.project_graph_reference_count,
+        deterministicRuleIssues: deterministicRuleResult.issues.length,
+        deterministicRuleRuns: diagnostics.deterministic_rule_runs || 1,
+        message: `Deterministic rules emitted ${deterministicRuleResult.issues.length} findings`
+      });
 
       const currentHashes = {};
       for (const file of files) {
@@ -812,6 +1061,8 @@ export default function App() {
       let finalBatchResults = [...reusedBatchResults];
       let currentCache = { ...cachedResults };
       let completedAgentPasses = 0;
+      const analysisMeshRuns = [];
+      const totalAgentPasses = Math.max(filesToAnalyze.length > 0 ? batchFiles(filesToAnalyze).length * ANALYSIS_AGENT_COUNT : 0, 0);
 
       if (filesToAnalyze.length > 0) {
         const { total } = estimateTokens(filesToAnalyze);
@@ -821,14 +1072,51 @@ export default function App() {
         }
 
         const batches = batchFiles(filesToAnalyze);
-        
+
+        updateProgressState({
+          stage: 'agent_mesh',
+          totalFiles: files.length,
+          indexedFiles: markdownIndex.summary.documentCount,
+          totalBatches: batches.length,
+          currentBatch: batches.length > 0 ? 1 : 0,
+          totalAgentPasses,
+          completedAgentPasses: 0,
+          deterministicRuleIssues: deterministicRuleResult.issues.length,
+          deterministicRuleRuns: diagnostics.deterministic_rule_runs || 1,
+          graphDocuments: projectGraph.summary.documentCount,
+          graphGroups: diagnostics.project_graph_total_group_count,
+          graphReferences: diagnostics.project_graph_reference_count,
+          message: 'Running analysis mesh'
+        });
+
         for (let i = 0; i < batches.length; i++) {
-          const result = await analyzeBatch(batches[i], i, batches.length, diagnostics);
+          const result = await analyzeBatch(
+            batches[i],
+            i,
+            batches.length,
+            diagnostics,
+            deterministicRuleResult.summary?.detector_execution_receipts || []
+          );
           completedAgentPasses += result._agentPasses || 0;
-          
-          // Update cache for each file in this batch
+          analysisMeshRuns.push(...(result._analysisMeshRuns || []));
+          updateProgressState({
+            stage: 'agent_mesh',
+            totalFiles: files.length,
+            indexedFiles: markdownIndex.summary.documentCount,
+            totalBatches: batches.length,
+            currentBatch: i + 1,
+            totalAgentPasses,
+            completedAgentPasses,
+            deterministicRuleIssues: deterministicRuleResult.issues.length,
+            deterministicRuleRuns: diagnostics.deterministic_rule_runs || 1,
+            graphDocuments: projectGraph.summary.documentCount,
+            graphGroups: diagnostics.project_graph_total_group_count,
+            graphReferences: diagnostics.project_graph_reference_count,
+            message: `Completed batch ${i + 1}/${batches.length}`
+          });
+
           const perFileResults = {};
-          batches[i].forEach(f => {
+          batches[i].forEach((f) => {
             perFileResults[f.sourceName || f.name] = {
               _sourceFiles: [f.sourceName || f.name],
               summary: { ...result.summary, total: 0, critical: 0, high: 0, medium: 0, low: 0 },
@@ -872,7 +1160,6 @@ export default function App() {
             });
           }
 
-          // Accumulate to current session cache
           for (const fileName in perFileResults) {
             const hash = currentHashes[fileName];
             if (hash) {
@@ -886,34 +1173,117 @@ export default function App() {
       }
 
       finalBatchResults = [...finalBatchResults, deterministicRuleResult];
+      updateProgressState({
+        stage: 'merge',
+        totalFiles: files.length,
+        indexedFiles: markdownIndex.summary.documentCount,
+        totalAgentPasses,
+        completedAgentPasses,
+        deterministicRuleIssues: deterministicRuleResult.issues.length,
+        deterministicRuleRuns: diagnostics.deterministic_rule_runs || 1,
+        graphDocuments: projectGraph.summary.documentCount,
+        graphGroups: diagnostics.project_graph_total_group_count,
+        graphReferences: diagnostics.project_graph_reference_count,
+        message: 'Merging deterministic rules, cached findings, and agent results'
+      });
 
       const merged = mergeResults(finalBatchResults);
+      merged.analysis_mesh = mergeAnalysisMeshRuns(analysisMeshRuns);
       merged.summary.detectors_evaluated = TOTAL_DETECTOR_COUNT;
       merged.summary.detectors_skipped = 0;
       merged.summary.analysis_agents_run = ANALYSIS_AGENT_COUNT;
       merged.summary.analysis_agent_passes = completedAgentPasses;
+      merged.summary.analysis_mesh_focus_layer_hits = merged.analysis_mesh.focus_layer_hits || 0;
+      merged.summary.analysis_mesh_focus_subcategory_hits = merged.analysis_mesh.focus_subcategory_hits || 0;
+      merged.summary.analysis_mesh_owned_layer_hits = merged.analysis_mesh.owned_layer_hits || 0;
+      merged.summary.analysis_mesh_owned_subcategory_hits = merged.analysis_mesh.owned_subcategory_hits || 0;
+      merged.summary.analysis_mesh_owned_detector_hits = merged.analysis_mesh.owned_detector_hits || 0;
+      merged.summary.analysis_mesh_out_of_owned_scope_issues = merged.analysis_mesh.out_of_owned_scope_issue_count || 0;
+      merged.summary.analysis_mesh_owned_detector_finding_coverage = merged.analysis_mesh.coverage_reconciliation?.finding_backed_detector_count || 0;
+      merged.summary.analysis_mesh_owned_detector_checked_count = merged.analysis_mesh.coverage_reconciliation?.checked_detector_count || 0;
+      merged.summary.analysis_mesh_owned_detector_clean_count = merged.analysis_mesh.coverage_reconciliation?.checked_clean_detector_count || 0;
+      merged.summary.analysis_mesh_owned_detector_untouched_count = merged.analysis_mesh.coverage_reconciliation?.untouched_detector_count || 0;
+      merged.summary.analysis_mesh_owned_detector_quiet_count = merged.analysis_mesh.coverage_reconciliation?.quiet_detector_count || 0;
+      merged.summary.analysis_mesh_validation_warnings = Number.isFinite(Number(merged.analysis_mesh.validation_warnings))
+        ? Number(merged.analysis_mesh.validation_warnings)
+        : 0;
+      merged.summary.project_graph_total_groups = diagnostics.project_graph_total_group_count;
+      merged.summary.project_graph_reference_count = diagnostics.project_graph_reference_count;
+      merged.summary.deterministic_rule_runs = diagnostics.deterministic_rule_runs || 0;
+      merged.summary.deterministic_rule_issues = deterministicRuleResult.issues.length;
+      merged.summary.deterministic_rule_checked_detectors = deterministicRuleResult.summary?.detectors_checked || 0;
+      merged.summary.deterministic_rule_clean_detectors = deterministicRuleResult.summary?.detectors_clean || 0;
+      merged.summary.deterministic_rule_hit_detectors = deterministicRuleResult.summary?.detectors_hit || 0;
+      merged.summary.detector_execution_receipts = Array.isArray(deterministicRuleResult.summary?.detector_execution_receipts)
+        ? deterministicRuleResult.summary.detector_execution_receipts
+        : [];
+      merged.summary.timeout_agent_passes = diagnostics.timeout_agent_pass_count || 0;
 
-      // Perform final taxonomy enrichment and collect diagnostics
       if (merged.issues) {
         merged.issues = merged.issues.map((issue) => {
           const taxonomyNormalized = normalizeIssueFromDetector(issue, diagnostics);
           const anchoredIssue = enrichIssueWithMarkdownIndex(taxonomyNormalized, markdownIndex, diagnostics);
           const graphEnrichedIssue = enrichIssueWithProjectGraph(anchoredIssue, projectGraph, diagnostics);
-          return enrichIssueWithEvidenceSpans(graphEnrichedIssue, markdownIndex, diagnostics);
+          const spannedIssue = enrichIssueWithEvidenceSpans(graphEnrichedIssue, markdownIndex, diagnostics);
+          return enrichIssueWithProofChains(spannedIssue, markdownIndex, diagnostics);
         });
         merged.issues = deduplicateIssues(merged.issues);
+        merged.summary.proof_chain_edges = merged.issues.reduce(
+          (sum, issue) => sum + (Array.isArray(issue.proof_chains) ? issue.proof_chains.length : 0),
+          0
+        );
         merged.summary.total = merged.issues.length;
         merged.summary.critical = merged.issues.filter((issue) => issue.severity === 'critical').length;
         merged.summary.high = merged.issues.filter((issue) => issue.severity === 'high').length;
         merged.summary.medium = merged.issues.filter((issue) => issue.severity === 'medium').length;
         merged.summary.low = merged.issues.filter((issue) => issue.severity === 'low').length;
       }
-      merged.summary.deterministic_rule_issues = deterministicRuleResult.issues.length;
       diagnostics.analysis_mesh_passes_completed = completedAgentPasses;
+      diagnostics.analysis_mesh_focus_layer_hit_count = merged.analysis_mesh.focus_layer_hits || diagnostics.analysis_mesh_focus_layer_hit_count;
+      diagnostics.analysis_mesh_focus_subcategory_hit_count = merged.analysis_mesh.focus_subcategory_hits || diagnostics.analysis_mesh_focus_subcategory_hit_count;
+      diagnostics.analysis_mesh_owned_layer_hit_count = merged.analysis_mesh.owned_layer_hits || diagnostics.analysis_mesh_owned_layer_hit_count;
+      diagnostics.analysis_mesh_owned_subcategory_hit_count = merged.analysis_mesh.owned_subcategory_hits || diagnostics.analysis_mesh_owned_subcategory_hit_count;
+      diagnostics.analysis_mesh_owned_detector_hit_count = merged.analysis_mesh.owned_detector_hits || diagnostics.analysis_mesh_owned_detector_hit_count;
+      diagnostics.analysis_mesh_out_of_focus_issue_count = merged.analysis_mesh.out_of_focus_issue_count || diagnostics.analysis_mesh_out_of_focus_issue_count;
+      diagnostics.analysis_mesh_out_of_owned_scope_issue_count = merged.analysis_mesh.out_of_owned_scope_issue_count || diagnostics.analysis_mesh_out_of_owned_scope_issue_count;
+      diagnostics.analysis_mesh_owned_detector_checked_count = merged.analysis_mesh.coverage_reconciliation?.checked_detector_count || diagnostics.analysis_mesh_owned_detector_checked_count || 0;
+      diagnostics.analysis_mesh_owned_detector_clean_count = merged.analysis_mesh.coverage_reconciliation?.checked_clean_detector_count || diagnostics.analysis_mesh_owned_detector_clean_count || 0;
+      diagnostics.analysis_mesh_owned_detector_untouched_count = merged.analysis_mesh.coverage_reconciliation?.untouched_detector_count || diagnostics.analysis_mesh_owned_detector_untouched_count || 0;
+      diagnostics.analysis_mesh_owned_detector_quiet_count = merged.analysis_mesh.coverage_reconciliation?.quiet_detector_count || diagnostics.analysis_mesh_owned_detector_quiet_count;
+      diagnostics.analysis_mesh_coverage_reconciliation = merged.analysis_mesh.coverage_reconciliation || diagnostics.analysis_mesh_coverage_reconciliation;
+      diagnostics.analysis_mesh_validation_warning_count = Number.isFinite(Number(merged.analysis_mesh.validation_warnings))
+        ? Number(merged.analysis_mesh.validation_warnings)
+        : diagnostics.analysis_mesh_validation_warning_count;
+      diagnostics.analysis_mesh_agent_runs = Array.isArray(merged.analysis_mesh.agents)
+        ? merged.analysis_mesh.agents
+        : diagnostics.analysis_mesh_agent_runs;
       diagnostics.agent_findings_merged_count = Math.max(
         0,
         finalBatchResults.reduce((sum, result) => sum + (result._rawIssueCount || result.issues?.length || 0), 0) - (merged.issues?.length || 0)
       );
+      diagnostics.proof_chain_edge_count = merged.summary.proof_chain_edges || diagnostics.proof_chain_edge_count || 0;
+      diagnostics.deterministic_rule_checked_detector_count = deterministicRuleResult.summary?.detectors_checked || diagnostics.deterministic_rule_checked_detector_count || 0;
+      diagnostics.deterministic_rule_clean_detector_count = deterministicRuleResult.summary?.detectors_clean || diagnostics.deterministic_rule_clean_detector_count || 0;
+      diagnostics.deterministic_rule_hit_detector_count = deterministicRuleResult.summary?.detectors_hit || diagnostics.deterministic_rule_hit_detector_count || 0;
+      updateProgressState({
+        stage: 'finalize',
+        totalFiles: files.length,
+        indexedFiles: markdownIndex.summary.documentCount,
+        totalAgentPasses,
+        completedAgentPasses,
+        deterministicRuleIssues: deterministicRuleResult.issues.length,
+        deterministicRuleRuns: diagnostics.deterministic_rule_runs || 1,
+        proofChainEdges: merged.summary.proof_chain_edges || 0,
+        ownedDetectorHits: merged.summary.analysis_mesh_owned_detector_hits || 0,
+        checkedOwnedDetectors: merged.summary.analysis_mesh_owned_detector_checked_count || 0,
+        cleanOwnedDetectors: merged.summary.analysis_mesh_owned_detector_clean_count || 0,
+        untouchedOwnedDetectors: merged.summary.analysis_mesh_owned_detector_untouched_count || 0,
+        outOfOwnedScopeIssues: merged.summary.analysis_mesh_out_of_owned_scope_issues || 0,
+        graphDocuments: projectGraph.summary.documentCount,
+        graphGroups: diagnostics.project_graph_total_group_count,
+        graphReferences: diagnostics.project_graph_reference_count,
+        message: `Finalized ${merged.summary.total} issues with ${merged.root_causes?.length || 0} root causes`
+      });
       setTaxonomyDiagnostics(diagnostics);
       setAnalysisStats({ reused: reusedCount, reanalyzed: reanalyzedCount, agentPasses: completedAgentPasses });
 
@@ -953,6 +1323,21 @@ export default function App() {
         ? ' See Analysis Diagnostics below for the captured malformed agent response preview.'
         : '';
       setError(`Analysis error: ${err.message}${diagnosticSuffix}`);
+      setProgressState(createProgressState({
+        stage: 'finalize',
+        totalFiles: files.length,
+        indexedFiles: diagnostics.indexed_document_count,
+        graphDocuments: diagnostics.project_graph_document_count,
+        graphGroups: diagnostics.project_graph_total_group_count,
+        graphReferences: diagnostics.project_graph_reference_count,
+        deterministicRuleIssues: diagnostics.deterministic_rule_issue_count,
+        deterministicRuleRuns: diagnostics.deterministic_rule_runs,
+        ownedDetectorHits: diagnostics.analysis_mesh_owned_detector_hit_count,
+        outOfOwnedScopeIssues: diagnostics.analysis_mesh_out_of_owned_scope_issue_count,
+        totalAgentPasses: diagnostics.analysis_mesh_agents_configured,
+        completedAgentPasses: diagnostics.analysis_mesh_passes_completed,
+        message: 'Analysis stopped due to an error'
+      }));
     }
 
     setAnalyzing(false);
@@ -971,11 +1356,17 @@ export default function App() {
     setPreviousResults(null);
     setContextWarning(null);
     setAnalysisStats({ reused: 0, reanalyzed: 0, agentPasses: 0 });
+    setProgressState(createProgressState());
   };
 
   const handleSaveSettings = async (newConfig) => {
-    await window.electronAPI.writeConfig(newConfig);
-    setConfig(newConfig);
+    const normalizedConfig = {
+      ...newConfig,
+      timeout: normalizeTimeoutSeconds(newConfig.timeout),
+      tokenBudget: normalizeTokenBudget(newConfig.tokenBudget)
+    };
+    await window.electronAPI.writeConfig(normalizedConfig);
+    setConfig(normalizedConfig);
     setSettingsOpen(false);
   };
 
@@ -1022,6 +1413,23 @@ export default function App() {
           (issue.analysis_agents || []).some((agent) => agent.toLowerCase().includes(query)) ||
           (issue.evidence_spans || []).some((span) =>
             [span.file, span.section, span.anchor, span.excerpt, span.role, span.source]
+              .filter(Boolean)
+              .some((value) => value.toLowerCase().includes(query))
+          ) ||
+          (issue.proof_chains || []).some((chain) =>
+            [
+              chain.id,
+              chain.relation,
+              chain.evidence_type,
+              chain.rationale,
+              ...(chain.related_keys || []),
+              chain.source_span?.file,
+              chain.source_span?.section,
+              chain.source_span?.anchor,
+              chain.target_span?.file,
+              chain.target_span?.section,
+              chain.target_span?.anchor
+            ]
               .filter(Boolean)
               .some((value) => value.toLowerCase().includes(query))
           ) ||
@@ -1119,6 +1527,42 @@ export default function App() {
               <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.project_graph_workflow_group_count}</p>
             </div>
           )}
+          {taxonomyDiagnostics.project_graph_requirement_group_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#9CA3AF] mb-0.5">Graph Requirements</p>
+              <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.project_graph_requirement_group_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.project_graph_state_group_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#9CA3AF] mb-0.5">Graph States</p>
+              <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.project_graph_state_group_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.project_graph_api_group_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#9CA3AF] mb-0.5">Graph APIs</p>
+              <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.project_graph_api_group_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.project_graph_actor_group_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#9CA3AF] mb-0.5">Graph Actors</p>
+              <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.project_graph_actor_group_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.project_graph_reference_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#9CA3AF] mb-0.5">Graph Refs</p>
+              <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.project_graph_reference_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.project_graph_total_group_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#9CA3AF] mb-0.5">Graph Total</p>
+              <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.project_graph_total_group_count}</p>
+            </div>
+          )}
           {taxonomyDiagnostics.deterministic_anchor_enrichment_count > 0 && (
             <div>
               <p className="text-[10px] text-[#93C5FD] mb-0.5">Anchored</p>
@@ -1155,10 +1599,40 @@ export default function App() {
               <p className="text-sm font-semibold text-[#A5F3FC]">{taxonomyDiagnostics.evidence_span_enrichment_count}</p>
             </div>
           )}
+          {taxonomyDiagnostics.deterministic_proof_chain_enrichment_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#67E8F9] mb-0.5">Proof Chains</p>
+              <p className="text-sm font-semibold text-[#67E8F9]">{taxonomyDiagnostics.deterministic_proof_chain_enrichment_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.proof_chain_edge_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#22D3EE] mb-0.5">Proof Edges</p>
+              <p className="text-sm font-semibold text-[#22D3EE]">{taxonomyDiagnostics.proof_chain_edge_count}</p>
+            </div>
+          )}
           {taxonomyDiagnostics.deterministic_rule_issue_count > 0 && (
             <div>
               <p className="text-[10px] text-[#FDE68A] mb-0.5">Rule Issues</p>
               <p className="text-sm font-semibold text-[#FDE68A]">{taxonomyDiagnostics.deterministic_rule_issue_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.deterministic_rule_checked_detector_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#67E8F9] mb-0.5">Rule Checked</p>
+              <p className="text-sm font-semibold text-[#67E8F9]">{taxonomyDiagnostics.deterministic_rule_checked_detector_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.deterministic_rule_clean_detector_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#86EFAC] mb-0.5">Rule Clean</p>
+              <p className="text-sm font-semibold text-[#86EFAC]">{taxonomyDiagnostics.deterministic_rule_clean_detector_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.deterministic_rule_hit_detector_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#FDE68A] mb-0.5">Rule Hit</p>
+              <p className="text-sm font-semibold text-[#FDE68A]">{taxonomyDiagnostics.deterministic_rule_hit_detector_count}</p>
             </div>
           )}
           {taxonomyDiagnostics.deterministic_section_assignment_count > 0 && (
@@ -1183,6 +1657,78 @@ export default function App() {
             <div>
               <p className="text-[10px] text-[#9CA3AF] mb-0.5">Agent Passes</p>
               <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.analysis_mesh_passes_completed}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.analysis_mesh_focus_layer_hit_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#86EFAC] mb-0.5">Focus Hits</p>
+              <p className="text-sm font-semibold text-[#86EFAC]">{taxonomyDiagnostics.analysis_mesh_focus_layer_hit_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.analysis_mesh_focus_subcategory_hit_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#A5F3FC] mb-0.5">Focus Subcats</p>
+              <p className="text-sm font-semibold text-[#A5F3FC]">{taxonomyDiagnostics.analysis_mesh_focus_subcategory_hit_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.analysis_mesh_owned_layer_hit_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#86EFAC] mb-0.5">Owned Layers</p>
+              <p className="text-sm font-semibold text-[#86EFAC]">{taxonomyDiagnostics.analysis_mesh_owned_layer_hit_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.analysis_mesh_owned_subcategory_hit_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#67E8F9] mb-0.5">Owned Subcats</p>
+              <p className="text-sm font-semibold text-[#67E8F9]">{taxonomyDiagnostics.analysis_mesh_owned_subcategory_hit_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.analysis_mesh_owned_detector_hit_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#22D3EE] mb-0.5">Owned Detectors</p>
+              <p className="text-sm font-semibold text-[#22D3EE]">{taxonomyDiagnostics.analysis_mesh_owned_detector_hit_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.analysis_mesh_owned_detector_checked_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#67E8F9] mb-0.5">Checked Owned</p>
+              <p className="text-sm font-semibold text-[#67E8F9]">{taxonomyDiagnostics.analysis_mesh_owned_detector_checked_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.analysis_mesh_owned_detector_clean_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#86EFAC] mb-0.5">Clean Owned</p>
+              <p className="text-sm font-semibold text-[#86EFAC]">{taxonomyDiagnostics.analysis_mesh_owned_detector_clean_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.analysis_mesh_out_of_focus_issue_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#FDBA74] mb-0.5">Out Of Focus</p>
+              <p className="text-sm font-semibold text-[#FDBA74]">{taxonomyDiagnostics.analysis_mesh_out_of_focus_issue_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.analysis_mesh_out_of_owned_scope_issue_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#F59E0B] mb-0.5">Cross-Scope</p>
+              <p className="text-sm font-semibold text-[#F59E0B]">{taxonomyDiagnostics.analysis_mesh_out_of_owned_scope_issue_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.analysis_mesh_owned_detector_quiet_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#C4B5FD] mb-0.5">Quiet Owned</p>
+              <p className="text-sm font-semibold text-[#C4B5FD]">{taxonomyDiagnostics.analysis_mesh_owned_detector_quiet_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.analysis_mesh_owned_detector_untouched_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#E879F9] mb-0.5">Untouched Owned</p>
+              <p className="text-sm font-semibold text-[#E879F9]">{taxonomyDiagnostics.analysis_mesh_owned_detector_untouched_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.analysis_mesh_validation_warning_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#FCA5A5] mb-0.5">Mesh Warnings</p>
+              <p className="text-sm font-semibold text-[#FCA5A5]">{taxonomyDiagnostics.analysis_mesh_validation_warning_count}</p>
             </div>
           )}
           {taxonomyDiagnostics.agent_findings_merged_count > 0 && (
@@ -1215,6 +1761,12 @@ export default function App() {
               <p className="text-sm font-semibold text-[#F59E0B]">{taxonomyDiagnostics.skipped_agent_pass_count}</p>
             </div>
           )}
+          {taxonomyDiagnostics.timeout_agent_pass_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#FB923C] mb-0.5">Timeout Skips</p>
+              <p className="text-sm font-semibold text-[#FB923C]">{taxonomyDiagnostics.timeout_agent_pass_count}</p>
+            </div>
+          )}
         </div>
 
         {taxonomyDiagnostics.warnings?.length > 0 && (
@@ -1225,6 +1777,110 @@ export default function App() {
               </p>
             ))}
           </div>
+        )}
+
+        {taxonomyDiagnostics.analysis_mesh_coverage_reconciliation && (
+          <details className="mt-3 group">
+            <summary className="cursor-pointer text-xs font-semibold text-[#67E8F9] list-none group-open:mb-3">
+              Ownership reconciliation
+            </summary>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div className="p-3 bg-[#0F172A] border border-[#374151] rounded-lg">
+                <p className="text-[10px] text-[#9CA3AF] mb-1">Finding-backed Detectors</p>
+                <p className="text-sm font-semibold text-[#22D3EE]">
+                  {taxonomyDiagnostics.analysis_mesh_coverage_reconciliation.finding_backed_detector_count || 0}
+                  /{taxonomyDiagnostics.analysis_mesh_coverage_reconciliation.assigned_detector_count || 0}
+                </p>
+              </div>
+              <div className="p-3 bg-[#0F172A] border border-[#374151] rounded-lg">
+                <p className="text-[10px] text-[#9CA3AF] mb-1">Checked Owned Detectors</p>
+                <p className="text-sm font-semibold text-[#67E8F9]">
+                  {taxonomyDiagnostics.analysis_mesh_coverage_reconciliation.checked_detector_count || 0}
+                </p>
+              </div>
+              <div className="p-3 bg-[#0F172A] border border-[#374151] rounded-lg">
+                <p className="text-[10px] text-[#9CA3AF] mb-1">Checked Clean Detectors</p>
+                <p className="text-sm font-semibold text-[#86EFAC]">
+                  {taxonomyDiagnostics.analysis_mesh_coverage_reconciliation.checked_clean_detector_count || 0}
+                </p>
+              </div>
+              <div className="p-3 bg-[#0F172A] border border-[#374151] rounded-lg">
+                <p className="text-[10px] text-[#9CA3AF] mb-1">Untouched Owned Detectors</p>
+                <p className="text-sm font-semibold text-[#E879F9]">
+                  {taxonomyDiagnostics.analysis_mesh_coverage_reconciliation.untouched_detector_count || 0}
+                </p>
+              </div>
+              <div className="p-3 bg-[#0F172A] border border-[#374151] rounded-lg">
+                <p className="text-[10px] text-[#9CA3AF] mb-1">Quiet Owned Detectors</p>
+                <p className="text-sm font-semibold text-[#C4B5FD]">
+                  {taxonomyDiagnostics.analysis_mesh_coverage_reconciliation.quiet_detector_count || 0}
+                </p>
+              </div>
+              <div className="p-3 bg-[#0F172A] border border-[#374151] rounded-lg">
+                <p className="text-[10px] text-[#9CA3AF] mb-1">Cross-Scope Issues</p>
+                <p className="text-sm font-semibold text-[#F59E0B]">
+                  {taxonomyDiagnostics.analysis_mesh_coverage_reconciliation.out_of_owned_scope_issue_count || 0}
+                </p>
+              </div>
+              <div className="p-3 bg-[#0F172A] border border-[#374151] rounded-lg">
+                <p className="text-[10px] text-[#9CA3AF] mb-1">Integrity Status</p>
+                <p className="text-sm font-semibold text-[#86EFAC]">
+                  {taxonomyDiagnostics.analysis_mesh_coverage_reconciliation.integrity_status || 'unknown'}
+                </p>
+              </div>
+            </div>
+          </details>
+        )}
+
+        {taxonomyDiagnostics.analysis_mesh_agent_runs?.length > 0 && (
+          <details className="mt-3 group">
+            <summary className="cursor-pointer text-xs font-semibold text-[#93C5FD] list-none group-open:mb-3">
+              Analysis mesh coverage ({taxonomyDiagnostics.analysis_mesh_agent_runs.length} runs)
+            </summary>
+            <div className="space-y-2">
+              {taxonomyDiagnostics.analysis_mesh_agent_runs.map((run, index) => (
+                <div key={`${run.agent_id || 'unknown'}-${index}`} className="p-3 bg-[#0F172A] border border-[#374151] rounded-lg">
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <span className="text-[10px] font-semibold text-[#DBEAFE] uppercase tracking-wide">
+                      {run.agent_label || run.agent_id || 'Unknown Agent'}
+                    </span>
+                    <span className="text-[10px] text-[#9CA3AF]">Strategy {run.merge_strategy || 'n/a'}</span>
+                    <span className="text-[10px] text-[#9CA3AF]">Priority {run.merge_priority ?? 'n/a'}</span>
+                    <span className="text-[10px] text-[#86EFAC]">Focus layers {run.focus_layer_hits || 0}</span>
+                    <span className="text-[10px] text-[#A5F3FC]">Focus subcats {run.focus_subcategory_hits || 0}</span>
+                    <span className="text-[10px] text-[#22D3EE]">Owned detectors {run.owned_detector_coverage_count || 0}/{run.owned_detector_count || 0}</span>
+                    <span className="text-[10px] text-[#67E8F9]">Checked {run.receipt_checked_owned_detector_count || 0}</span>
+                    <span className="text-[10px] text-[#86EFAC]">Clean {run.receipt_clean_owned_detector_count || 0}</span>
+                    <span className="text-[10px] text-[#E879F9]">Untouched {run.untouched_owned_detector_count || 0}</span>
+                    <span className="text-[10px] text-[#67E8F9]">Owned layers {run.owned_layer_coverage_count || 0}/{run.owned_layer_count || 0}</span>
+                    <span className="text-[10px] text-[#F59E0B]">Cross-scope {run.out_of_owned_scope_issue_count || 0}</span>
+                  </div>
+                  {run.dominant_layers?.length > 0 && (
+                    <p className="text-xs text-[#CBD5E1]">
+                      Dominant layers: {run.dominant_layers.map((entry) => `${entry.value} (${entry.count})`).join(', ')}
+                    </p>
+                  )}
+                  {run.dominant_subcategories?.length > 0 && (
+                    <p className="text-xs text-[#9CA3AF] mt-1">
+                      Dominant subcategories: {run.dominant_subcategories.map((entry) => `${entry.value} (${entry.count})`).join(', ')}
+                    </p>
+                  )}
+                  <p className="text-xs text-[#94A3B8] mt-1">
+                    Owned detector ranges: {(run.owned_detector_ranges || []).join(', ') || 'n/a'}
+                  </p>
+                  {run.warnings?.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {run.warnings.map((warning, warningIndex) => (
+                        <p key={`${warning}-${warningIndex}`} className="text-xs text-[#FCA5A5]">
+                          {warning}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </details>
         )}
 
         {hasFailures && (
@@ -1306,6 +1962,8 @@ export default function App() {
       if (issue.subcategory) md += `**Subcategory:** ${issue.subcategory}\n`;
       if (issue.failure_type) md += `**Failure Type:** ${issue.failure_type}\n`;
       if (issue.contract_step) md += `**Contract Step:** ${issue.contract_step}\n`;
+      if (issue.rule_id) md += `**Rule ID:** ${issue.rule_id}\n`;
+      if (issue.rule_stage) md += `**Rule Stage:** ${issue.rule_stage}\n`;
       if (issue.invariant_broken) md += `**Invariant Broken:** ${issue.invariant_broken}\n`;
       if (issue.authority_boundary) md += `**Authority Boundary:** ${issue.authority_boundary}\n`;
       if (issue.constraint_reference) md += `**Constraint Reference:** ${issue.constraint_reference}\n`;
@@ -1326,7 +1984,7 @@ export default function App() {
         md += `**Cross-File Links:**\n`;
         issue.cross_file_links.forEach((link) => {
           const parts = [link.type, link.file, link.section, link.target].filter(Boolean);
-          md += `- ${link.label || 'Related location'}${parts.length ? ` (${parts.join(' · ')})` : ''}\n`;
+          md += `- ${link.label || 'Related location'}${parts.length ? ` (${parts.join(' | ')})` : ''}\n`;
         });
         md += `\n`;
       }
@@ -1335,7 +1993,21 @@ export default function App() {
         md += `**Evidence Spans:**\n`;
         issue.evidence_spans.forEach((span) => {
           const parts = [span.role, span.file, span.section, span.anchor].filter(Boolean);
-          md += `- ${parts.join(' · ')}${span.excerpt ? ` — ${span.excerpt}` : ''}\n`;
+          md += `- ${parts.join(' | ')}${span.excerpt ? ` - ${span.excerpt}` : ''}\n`;
+        });
+        md += `\n`;
+      }
+
+      if (issue.proof_chains?.length > 0) {
+        md += `**Typed Proof Chains:**\n`;
+        issue.proof_chains.forEach((chain) => {
+          const parts = [
+            chain.relation,
+            chain.evidence_type,
+            chain.source_span?.anchor || chain.source_span?.file,
+            chain.target_span?.anchor || chain.target_span?.file
+          ].filter(Boolean);
+          md += `- ${parts.join(' | ')}${chain.rationale ? ` - ${chain.rationale}` : ''}\n`;
         });
         md += `\n`;
       }
@@ -1400,6 +2072,12 @@ export default function App() {
       md += `- **Project Graph Glossary Groups:** ${taxonomyDiagnostics.project_graph_glossary_term_group_count || 0}\n`;
       md += `- **Project Graph Identifier Groups:** ${taxonomyDiagnostics.project_graph_identifier_group_count || 0}\n`;
       md += `- **Project Graph Workflow Groups:** ${taxonomyDiagnostics.project_graph_workflow_group_count || 0}\n`;
+      md += `- **Project Graph Requirement Groups:** ${taxonomyDiagnostics.project_graph_requirement_group_count || 0}\n`;
+      md += `- **Project Graph State Groups:** ${taxonomyDiagnostics.project_graph_state_group_count || 0}\n`;
+      md += `- **Project Graph API Groups:** ${taxonomyDiagnostics.project_graph_api_group_count || 0}\n`;
+      md += `- **Project Graph Actor Groups:** ${taxonomyDiagnostics.project_graph_actor_group_count || 0}\n`;
+      md += `- **Project Graph References:** ${taxonomyDiagnostics.project_graph_reference_count || 0}\n`;
+      md += `- **Project Graph Total Groups:** ${taxonomyDiagnostics.project_graph_total_group_count || 0}\n`;
       md += `- **Deterministic Anchor Enrichments:** ${taxonomyDiagnostics.deterministic_anchor_enrichment_count || 0}\n`;
       md += `- **Deterministic File Assignments:** ${taxonomyDiagnostics.deterministic_file_assignment_count || 0}\n`;
       md += `- **Deterministic Section Assignments:** ${taxonomyDiagnostics.deterministic_section_assignment_count || 0}\n`;
@@ -1408,14 +2086,32 @@ export default function App() {
       md += `- **Deterministic Fallback Anchors:** ${taxonomyDiagnostics.deterministic_fallback_anchor_count || 0}\n`;
       md += `- **Deterministic Graph Link Enrichments:** ${taxonomyDiagnostics.deterministic_graph_link_enrichment_count || 0}\n`;
       md += `- **Evidence Span Enrichments:** ${taxonomyDiagnostics.evidence_span_enrichment_count || 0}\n`;
+      md += `- **Typed Proof-Chain Enrichments:** ${taxonomyDiagnostics.deterministic_proof_chain_enrichment_count || 0}\n`;
+      md += `- **Typed Proof-Chain Edges:** ${taxonomyDiagnostics.proof_chain_edge_count || 0}\n`;
       md += `- **Deterministic Rule Issues:** ${taxonomyDiagnostics.deterministic_rule_issue_count || 0}\n`;
+      md += `- **Deterministic Rule Checked Detectors:** ${taxonomyDiagnostics.deterministic_rule_checked_detector_count || 0}\n`;
+      md += `- **Deterministic Rule Clean Detectors:** ${taxonomyDiagnostics.deterministic_rule_clean_detector_count || 0}\n`;
+      md += `- **Deterministic Rule Hit Detectors:** ${taxonomyDiagnostics.deterministic_rule_hit_detector_count || 0}\n`;
       md += `- **Configured Analysis Agents:** ${taxonomyDiagnostics.analysis_mesh_agents_configured}\n`;
       md += `- **Completed Agent Passes:** ${taxonomyDiagnostics.analysis_mesh_passes_completed}\n`;
+      md += `- **Analysis Mesh Focus Layer Hits:** ${taxonomyDiagnostics.analysis_mesh_focus_layer_hit_count || 0}\n`;
+      md += `- **Analysis Mesh Focus Subcategory Hits:** ${taxonomyDiagnostics.analysis_mesh_focus_subcategory_hit_count || 0}\n`;
+      md += `- **Analysis Mesh Owned Layer Hits:** ${taxonomyDiagnostics.analysis_mesh_owned_layer_hit_count || 0}\n`;
+      md += `- **Analysis Mesh Owned Subcategory Hits:** ${taxonomyDiagnostics.analysis_mesh_owned_subcategory_hit_count || 0}\n`;
+      md += `- **Analysis Mesh Owned Detector Hits:** ${taxonomyDiagnostics.analysis_mesh_owned_detector_hit_count || 0}\n`;
+      md += `- **Analysis Mesh Checked Owned Detectors:** ${taxonomyDiagnostics.analysis_mesh_owned_detector_checked_count || 0}\n`;
+      md += `- **Analysis Mesh Clean Owned Detectors:** ${taxonomyDiagnostics.analysis_mesh_owned_detector_clean_count || 0}\n`;
+      md += `- **Analysis Mesh Untouched Owned Detectors:** ${taxonomyDiagnostics.analysis_mesh_owned_detector_untouched_count || 0}\n`;
+      md += `- **Analysis Mesh Out-of-Focus Issues:** ${taxonomyDiagnostics.analysis_mesh_out_of_focus_issue_count || 0}\n`;
+      md += `- **Analysis Mesh Cross-Scope Issues:** ${taxonomyDiagnostics.analysis_mesh_out_of_owned_scope_issue_count || 0}\n`;
+      md += `- **Analysis Mesh Quiet Owned Detectors:** ${taxonomyDiagnostics.analysis_mesh_owned_detector_quiet_count || 0}\n`;
+      md += `- **Analysis Mesh Validation Warnings:** ${taxonomyDiagnostics.analysis_mesh_validation_warning_count || 0}\n`;
       md += `- **Merged Agent Findings:** ${taxonomyDiagnostics.agent_findings_merged_count}\n`;
       md += `- **Malformed Agent Responses:** ${taxonomyDiagnostics.malformed_agent_response_count || 0}\n`;
       md += `- **Malformed Response Retries:** ${taxonomyDiagnostics.malformed_agent_retry_count || 0}\n`;
       md += `- **Recovered Agent Responses:** ${taxonomyDiagnostics.recovered_agent_response_count || 0}\n`;
       md += `- **Skipped Agent Passes:** ${taxonomyDiagnostics.skipped_agent_pass_count || 0}\n`;
+      md += `- **Timeout-Skipped Agent Passes:** ${taxonomyDiagnostics.timeout_agent_pass_count || 0}\n`;
       if (taxonomyDiagnostics.total_issues_loaded > 0) {
         md += `- **Total Issues Loaded:** ${taxonomyDiagnostics.total_issues_loaded}\n`;
       }
@@ -1440,6 +2136,51 @@ export default function App() {
         });
       }
     }
+
+    if (results.analysis_mesh?.agents?.length > 0) {
+      md += `## Analysis Mesh Coverage\n\n`;
+      if (results.analysis_mesh.coverage_reconciliation) {
+        md += `### Ownership Reconciliation\n\n`;
+        md += `- **Integrity Status:** ${results.analysis_mesh.coverage_reconciliation.integrity_status || 'unknown'}\n`;
+        md += `- **Finding-Backed Layers:** ${results.analysis_mesh.coverage_reconciliation.finding_backed_layer_count || 0}/${results.analysis_mesh.coverage_reconciliation.assigned_layer_count || 0}\n`;
+        md += `- **Finding-Backed Subcategories:** ${results.analysis_mesh.coverage_reconciliation.finding_backed_subcategory_count || 0}/${results.analysis_mesh.coverage_reconciliation.assigned_subcategory_count || 0}\n`;
+        md += `- **Finding-Backed Detectors:** ${results.analysis_mesh.coverage_reconciliation.finding_backed_detector_count || 0}/${results.analysis_mesh.coverage_reconciliation.assigned_detector_count || 0}\n`;
+        md += `- **Checked Owned Detectors:** ${results.analysis_mesh.coverage_reconciliation.checked_detector_count || 0}\n`;
+        md += `- **Checked Clean Detectors:** ${results.analysis_mesh.coverage_reconciliation.checked_clean_detector_count || 0}\n`;
+        md += `- **Untouched Owned Detectors:** ${results.analysis_mesh.coverage_reconciliation.untouched_detector_count || 0}\n`;
+        md += `- **Quiet Owned Detectors:** ${results.analysis_mesh.coverage_reconciliation.quiet_detector_count || 0}\n`;
+        md += `- **Cross-Scope Issues:** ${results.analysis_mesh.coverage_reconciliation.out_of_owned_scope_issue_count || 0}\n\n`;
+      }
+      results.analysis_mesh.agents.forEach((agentRun, index) => {
+        md += `### ${index + 1}. ${agentRun.agent_label || agentRun.agent_id}\n\n`;
+        md += `- **Merge Strategy:** ${agentRun.merge_strategy || 'n/a'}\n`;
+        md += `- **Merge Priority:** ${agentRun.merge_priority ?? 'n/a'}\n`;
+        md += `- **Issues Emitted:** ${agentRun.issues_emitted || 0}\n`;
+        md += `- **Focus Layer Hits:** ${agentRun.focus_layer_hits || 0}\n`;
+        md += `- **Focus Subcategory Hits:** ${agentRun.focus_subcategory_hits || 0}\n`;
+        md += `- **Owned Layers Covered:** ${agentRun.owned_layer_coverage_count || 0}/${agentRun.owned_layer_count || 0}\n`;
+        md += `- **Owned Subcategories Covered:** ${agentRun.owned_subcategory_coverage_count || 0}/${agentRun.owned_subcategory_count || 0}\n`;
+        md += `- **Owned Detectors Covered:** ${agentRun.owned_detector_coverage_count || 0}/${agentRun.owned_detector_count || 0}\n`;
+        md += `- **Checked Owned Detectors:** ${agentRun.receipt_checked_owned_detector_count || 0}\n`;
+        md += `- **Clean Owned Detectors:** ${agentRun.receipt_clean_owned_detector_count || 0}\n`;
+        md += `- **Untouched Owned Detectors:** ${agentRun.untouched_owned_detector_count || 0}\n`;
+        md += `- **Out-of-Focus Issues:** ${agentRun.out_of_focus_issue_count || 0}\n`;
+        md += `- **Cross-Scope Issues:** ${agentRun.out_of_owned_scope_issue_count || 0}\n`;
+        if (agentRun.dominant_layers?.length > 0) {
+          md += `- **Dominant Layers:** ${agentRun.dominant_layers.map((entry) => `${entry.value} (${entry.count})`).join(', ')}\n`;
+        }
+        if (agentRun.dominant_subcategories?.length > 0) {
+          md += `- **Dominant Subcategories:** ${agentRun.dominant_subcategories.map((entry) => `${entry.value} (${entry.count})`).join(', ')}\n`;
+        }
+        if (agentRun.owned_detector_ranges?.length > 0) {
+          md += `- **Owned Detector Ranges:** ${agentRun.owned_detector_ranges.join(', ')}\n`;
+        }
+        if (agentRun.warnings?.length > 0) {
+          md += `- **Warnings:** ${agentRun.warnings.join(' | ')}\n`;
+        }
+        md += `\n`;
+      });
+    }
     
     const blob = new Blob([md], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
@@ -1453,7 +2194,7 @@ export default function App() {
 
   const exportCSV = () => {
     if (!results) return;
-    const headers = ['ID', 'DetectorID', 'DetectorName', 'Severity', 'Category', 'Subcategory', 'FailureType', 'ContractStep', 'InvariantBroken', 'AuthorityBoundary', 'ConstraintReference', 'ViolationReference', 'ClosedWorldStatus', 'AnalysisAgents', 'Section', 'SectionSlug', 'Line', 'LineEnd', 'DocumentAnchor', 'DocumentAnchors', 'AnchorSource', 'DetectionSource', 'EvidenceSpans', 'CrossFileLinks', 'RootCauseID', 'Description', 'WhyTriggered', 'EscalationReason', 'DeterministicFix', 'RecommendedFix', 'FixSteps', 'VerificationSteps', 'Effort', 'Evidence', 'Confidence', 'Impact', 'Difficulty', 'Files', 'Tags'];
+    const headers = ['ID', 'DetectorID', 'DetectorName', 'Severity', 'Category', 'Subcategory', 'FailureType', 'ContractStep', 'RuleID', 'RuleStage', 'InvariantBroken', 'AuthorityBoundary', 'ConstraintReference', 'ViolationReference', 'ClosedWorldStatus', 'AnalysisAgents', 'Section', 'SectionSlug', 'Line', 'LineEnd', 'DocumentAnchor', 'DocumentAnchors', 'AnchorSource', 'DetectionSource', 'EvidenceSpans', 'ProofChains', 'CrossFileLinks', 'RootCauseID', 'Description', 'WhyTriggered', 'EscalationReason', 'DeterministicFix', 'RecommendedFix', 'FixSteps', 'VerificationSteps', 'Effort', 'Evidence', 'Confidence', 'Impact', 'Difficulty', 'Files', 'Tags'];
     const rows = (results.issues || []).map((issue) => [
       issue.id || '',
       issue.detector_id || '',
@@ -1463,6 +2204,8 @@ export default function App() {
       `"${(issue.subcategory || '').replace(/"/g, '""')}"`,
       issue.failure_type || '',
       issue.contract_step || '',
+      issue.rule_id || '',
+      issue.rule_stage || '',
       `"${(issue.invariant_broken || '').replace(/"/g, '""')}"`,
       `"${(issue.authority_boundary || '').replace(/"/g, '""')}"`,
       `"${(issue.constraint_reference || '').replace(/"/g, '""')}"`,
@@ -1478,6 +2221,7 @@ export default function App() {
       issue.anchor_source || '',
       issue.detection_source || '',
       `"${(issue.evidence_spans || []).map((span) => [span.role, span.anchor || span.file, span.excerpt].filter(Boolean).join(' -> ')).join(' | ').replace(/"/g, '""')}"`,
+      `"${(issue.proof_chains || []).map((chain) => [chain.relation, chain.source_span?.anchor || chain.source_span?.file, chain.target_span?.anchor || chain.target_span?.file].filter(Boolean).join(' -> ')).join(' | ').replace(/"/g, '""')}"`,
       `"${(issue.cross_file_links || []).map((link) => [link.label, link.target].filter(Boolean).join(' -> ')).join(' | ').replace(/"/g, '""')}"`,
       issue.root_cause_id || '',
       `"${(issue.description || '').replace(/"/g, '""')}"`,
@@ -1535,6 +2279,12 @@ export default function App() {
             setFiles(normalizeFileDisplayNames(session.files || []));
             setResults(session.results);
             setTaxonomyDiagnostics(session.taxonomyDiagnostics);
+            setAnalysisStats({
+              reused: 0,
+              reanalyzed: session.results.summary?.files_analyzed || session.files?.length || 0,
+              agentPasses: session.results.summary?.analysis_agent_passes || 0
+            });
+            setProgressState(createProgressState());
             setError(null);
             setDiffSummary(null);
             setDiffMode(false);
@@ -1613,6 +2363,12 @@ export default function App() {
       setFiles(normalizeFileDisplayNames(normalized.files || []));
       setResults(normalized.results);
       setTaxonomyDiagnostics(normalized.taxonomyDiagnostics);
+      setAnalysisStats({
+        reused: 0,
+        reanalyzed: normalized.results.summary?.files_analyzed || normalized.files?.length || 0,
+        agentPasses: normalized.results.summary?.analysis_agent_passes || 0
+      });
+      setProgressState(createProgressState());
       setError(null);
       setDiffSummary(null);
       setDiffMode(false);
@@ -1693,7 +2449,7 @@ export default function App() {
                   className="px-6 py-2.5 bg-[#1F2937] hover:bg-[#283548] border border-[#374151] rounded-xl text-sm font-medium transition-all"
                   title="Load past session"
                 >
-                  📂 Load Session
+                  Load Session
                 </button>
             </div>
             {error && (
@@ -1713,7 +2469,12 @@ export default function App() {
 
         {analyzing && (
           <div className="max-w-3xl mx-auto px-6 py-8">
-            <ProgressPanel model={config.model} baseURL={config.baseURL} />
+            <ProgressPanel
+              model={config.model}
+              baseURL={config.baseURL}
+              progressState={progressState}
+              analysisStats={analysisStats}
+            />
           </div>
         )}
 
@@ -1725,6 +2486,11 @@ export default function App() {
                 <p className="text-sm text-[#9CA3AF]">
                   {results.summary?.files_analyzed || files.length} files analyzed - deterministic 8-agent mesh - model: {config.model}
                 </p>
+                {(results.summary?.timeout_agent_passes || 0) > 0 && (
+                  <p className="text-xs text-[#FB923C] mt-1">
+                    Degraded mode: {results.summary.timeout_agent_passes} agent pass{results.summary.timeout_agent_passes === 1 ? '' : 'es'} timed out and were skipped.
+                  </p>
+                )}
                 {results.summary?.detectors_evaluated !== undefined && (
                   <p className="text-xs text-[#6B7280] mt-1">
                     Detectors: {results.summary.detectors_evaluated}/{TOTAL_DETECTOR_COUNT} evaluated
@@ -1738,7 +2504,7 @@ export default function App() {
                   className="px-3 py-2 bg-[#1F2937] hover:bg-[#283548] border border-[#374151] rounded-lg text-sm transition-colors"
                   title="Export session to JSON file"
                 >
-                  💾 Export JSON
+                  Export JSON
                 </button>
                 <button
                   onClick={saveToHistory}
@@ -1752,7 +2518,7 @@ export default function App() {
                     onClick={() => setExportMenuOpen(!exportMenuOpen)}
                     className="px-3 py-2 bg-[#1F2937] hover:bg-[#283548] border border-[#374151] rounded-lg text-sm transition-colors"
                   >
-                    📤 Export
+                    Export
                   </button>
                   {exportMenuOpen && (
                     <div className="absolute right-0 mt-1 w-40 bg-[#1F2937] border border-[#374151] rounded-lg shadow-xl z-10">
@@ -1766,12 +2532,17 @@ export default function App() {
                   onClick={handleReset}
                   className="px-4 py-2 bg-[#1F2937] hover:bg-[#283548] border border-[#374151] rounded-lg text-sm transition-colors"
                 >
-                  ← New audit
+                  New Audit
                 </button>
               </div>
             </div>
 
-            <SummaryDashboard summary={results.summary} />
+            <SummaryDashboard
+              summary={results.summary}
+              taxonomyDiagnostics={taxonomyDiagnostics}
+              analysisStats={analysisStats}
+              analysisMesh={results.analysis_mesh}
+            />
             
             <DiffSummaryPanel 
               diff={diffSummary} 

@@ -11,8 +11,14 @@ import {
   normalizeSeverityForDetector
 } from '../detectorMetadata';
 import { buildSystemPrompt } from '../systemPrompt';
-import { LAYERS } from '../layers';
-import { ANALYSIS_AGENT_COUNT, ANALYSIS_AGENT_MESH } from '../analysisAgents';
+import { LAYERS, ORDERED_LAYER_IDS, getLayerIdByNumber, getLayerNumber } from '../layers';
+import {
+  ANALYSIS_AGENT_COUNT,
+  ANALYSIS_AGENT_MESH,
+  ANALYSIS_AGENT_OWNERSHIP,
+  validateAnalysisAgentResult,
+  mergeAnalysisMeshRuns
+} from '../analysisAgents';
 import { generateTaxonomyQualityReport } from '../taxonomyCoverageHelper';
 import { CROSS_LAYER_BUNDLES } from '../crossLayerBundles';
 
@@ -38,6 +44,17 @@ describe('Taxonomy Integrity', () => {
     const validLayerIds = LAYERS.map(l => l.id);
     Object.values(DETECTOR_METADATA).forEach(meta => {
       expect(validLayerIds).toContain(meta.layer);
+    });
+  });
+
+  it('should derive layer ordering and numbering from layers.js as the single source of truth', () => {
+    expect(ORDERED_LAYER_IDS).toEqual(LAYERS.map((layer) => layer.id));
+    LAYERS.forEach((layer, index) => {
+      const expectedNumber = index + 1;
+      expect(layer.number).toBe(expectedNumber);
+      expect(layer.icon).toBe(`L${expectedNumber}`);
+      expect(getLayerNumber(layer.id)).toBe(expectedNumber);
+      expect(getLayerIdByNumber(expectedNumber)).toBe(layer.id);
     });
   });
 
@@ -152,7 +169,7 @@ describe('Prompt Generation', () => {
 
       expect(prompt).toContain(`**${layerCount} analytical layers and ${detectorCount} micro-detectors**`);
       expect(prompt).toContain(`evaluate all ${detectorCount} detectors across all ${layerCount} layers`);
-      expect(prompt).toContain(`Include detectors_evaluated count (must be ≤${detectorCount})`);
+      expect(prompt).toContain(`include detectors_evaluated count (must be <=${detectorCount})`);
     });
 
     it('agent-specific prompt includes the active mesh role', () => {
@@ -167,6 +184,124 @@ describe('Prompt Generation', () => {
       const detectorCount = Object.keys(DETECTOR_METADATA).length;
       expect(prompt).toContain(`--- DETECTOR CATALOG (${detectorCount} DETECTORS) ---`);
     });
+  });
+});
+
+describe('Analysis Mesh Runtime Contracts', () => {
+  it('assigns every layer and detector to exactly one owning agent', () => {
+    expect(ANALYSIS_AGENT_OWNERSHIP.status).toBe('sealed');
+    expect(ANALYSIS_AGENT_OWNERSHIP.assigned_layer_count).toBe(53);
+    expect(ANALYSIS_AGENT_OWNERSHIP.assigned_detector_count).toBe(701);
+    expect(ANALYSIS_AGENT_OWNERSHIP.unowned_layers).toEqual([]);
+    expect(ANALYSIS_AGENT_OWNERSHIP.unowned_detectors).toEqual([]);
+    expect(ANALYSIS_AGENT_OWNERSHIP.overlapping_layers).toEqual([]);
+    expect(ANALYSIS_AGENT_OWNERSHIP.overlapping_detectors).toEqual([]);
+  });
+
+  it('validates per-agent focus coverage and merge metadata', () => {
+    const reasoningEvidenceDetectorId = Object.values(DETECTOR_METADATA).find(
+      (detector) => detector.layer === 'reasoning_integrity' && detector.subcategory === 'evidence binding'
+    )?.id;
+    expect(reasoningEvidenceDetectorId).toBeDefined();
+
+    const run = validateAnalysisAgentResult('reasoning_evidence_agent', [
+      {
+        severity: 'high',
+        category: 'reasoning_integrity',
+        layer: 'reasoning_integrity',
+        subcategory: 'evidence binding',
+        detector_id: reasoningEvidenceDetectorId,
+        analysis_agent: 'reasoning_evidence_agent'
+      }
+    ], {
+      detectors_evaluated: 701,
+      detectors_skipped: 0
+    });
+
+    expect(run.valid).toBe(true);
+    expect(run.merge_strategy).toBe('evidence_binding_first');
+    expect(run.focus_layer_hits).toBe(1);
+    expect(run.focus_subcategory_hits).toBe(1);
+    expect(run.owned_detector_count).toBeGreaterThan(0);
+    expect(run.owned_detector_hits).toBe(1);
+    expect(run.out_of_owned_scope_issue_count).toBe(0);
+    expect(run.warnings).toEqual([]);
+  });
+
+  it('tracks receipt-backed checked, clean, and untouched owned detectors', () => {
+    const run = validateAnalysisAgentResult('execution_simulation_agent', [
+      {
+        severity: 'high',
+        category: 'workflow_lifecycle_integrity',
+        layer: 'workflow_lifecycle_integrity',
+        subcategory: 'required step ordering',
+        detector_id: 'L47-01',
+        analysis_agent: 'execution_simulation_agent'
+      }
+    ], {}, {
+      detectorExecutionReceipts: [
+        { detector_id: 'L47-01', status: 'hit' },
+        { detector_id: 'L47-08', status: 'clean' }
+      ]
+    });
+
+    expect(run.receipt_checked_owned_detector_count).toBe(2);
+    expect(run.receipt_clean_owned_detector_count).toBe(1);
+    expect(run.receipt_hit_owned_detector_count).toBe(1);
+    expect(run.touched_owned_detector_count).toBeGreaterThanOrEqual(2);
+    expect(run.untouched_owned_detector_count).toBe(run.owned_detector_count - run.touched_owned_detector_count);
+  });
+
+  it('merges first-class agent runs into an analysis mesh summary', () => {
+    const reasoningEvidenceDetectorId = Object.values(DETECTOR_METADATA).find(
+      (detector) => detector.layer === 'reasoning_integrity' && detector.subcategory === 'evidence binding'
+    )?.id;
+    const requiredOrderingDetectorId = Object.values(DETECTOR_METADATA).find(
+      (detector) => detector.layer === 'workflow_lifecycle_integrity' && detector.subcategory === 'required step ordering'
+    )?.id;
+    expect(reasoningEvidenceDetectorId).toBeDefined();
+    expect(requiredOrderingDetectorId).toBeDefined();
+
+    const merged = mergeAnalysisMeshRuns([
+      validateAnalysisAgentResult('reasoning_evidence_agent', [
+        {
+          severity: 'high',
+          category: 'reasoning_integrity',
+          layer: 'reasoning_integrity',
+          subcategory: 'evidence binding',
+          detector_id: reasoningEvidenceDetectorId,
+          analysis_agent: 'reasoning_evidence_agent'
+        }
+      ], {}),
+      validateAnalysisAgentResult('execution_simulation_agent', [
+        {
+          severity: 'high',
+          category: 'workflow_lifecycle_integrity',
+          layer: 'workflow_lifecycle_integrity',
+          subcategory: 'required step ordering',
+          detector_id: requiredOrderingDetectorId,
+          analysis_agent: 'execution_simulation_agent'
+        }
+      ], {}, {
+        detectorExecutionReceipts: [
+          { detector_id: 'L47-01', status: 'hit' },
+          { detector_id: 'L47-08', status: 'clean' }
+        ]
+      })
+    ]);
+
+    expect(merged.completed_passes).toBe(2);
+    expect(merged.agents).toHaveLength(2);
+    expect(merged.focus_layer_hits).toBeGreaterThanOrEqual(2);
+    expect(merged.focus_subcategory_hits).toBeGreaterThanOrEqual(1);
+    expect(merged.owned_detector_hits).toBeGreaterThanOrEqual(2);
+    expect(merged.coverage_reconciliation.finding_backed_detector_count).toBeGreaterThanOrEqual(2);
+    expect(merged.coverage_reconciliation.checked_detector_count).toBe(2);
+    expect(merged.coverage_reconciliation.checked_clean_detector_count).toBe(1);
+    expect(merged.coverage_reconciliation.untouched_detector_count).toBeLessThan(merged.coverage_reconciliation.assigned_detector_count);
+    expect(merged.coverage_reconciliation.out_of_owned_scope_issue_count).toBe(0);
+    expect(Number.isInteger(merged.validation_warnings)).toBe(true);
+    expect(merged.validation_warnings).toBeGreaterThanOrEqual(0);
   });
 });
 

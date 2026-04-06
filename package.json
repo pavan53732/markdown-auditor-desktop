@@ -18,7 +18,7 @@
   "build": {
     "appId": "com.local.markdownauditor",
     "productName": "Markdown Intelligence Auditor",
-    "copyright": "Copyright © 2026 Prem V",
+    "copyright": "Copyright (c) 2026 Prem V",
     "directories": {
       "output": "dist-electron-v4"
     },

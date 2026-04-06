@@ -6,7 +6,7 @@ Windows desktop application for auditing Markdown documentation with AI across 5
 
 Markdown Intelligence Auditor is an Electron + React desktop app that accepts one or more `.md` / `.markdown` files, sends them to an OpenAI-compatible provider, and returns a structured report of documentation issues with severity, traceability, remediation guidance, and export support.
 
-The current build includes chunk-aware batching, deterministic multi-pass post-processing, deterministic Markdown indexing for line-and-section anchors, a deterministic cross-file Markdown project graph for related-location enrichment, a staged deterministic rule engine, incremental result reuse, session diffing, root-cause grouping, a structured 701-detector catalog, and portable Windows packaging.
+The current build includes chunk-aware batching, deterministic multi-pass post-processing, deterministic Markdown indexing for line-and-section anchors, a deterministic cross-file Markdown project graph for related-location enrichment, typed proof-chain enrichment with deterministic span-to-span edges, a staged deterministic rule engine, incremental result reuse, session diffing, root-cause grouping, a structured 701-detector catalog, and portable Windows packaging.
 
 ## Current Capabilities
 
@@ -15,20 +15,26 @@ The current build includes chunk-aware batching, deterministic multi-pass post-p
 - 701 code-defined micro-detectors across all 53 layers, including the deep-spec core plus 8 universal governance and reproducibility extensions
 - Full structured detector metadata for all detectors, including trigger patterns, evidence requirements, false-positive guards, and `related_layers` cross-references for 255 detectors across the specification-intensive layers
 - Taxonomy benchmark fixtures supporting deterministic evaluation of taxonomy validation, normalization, and detector mapping correctness
-- 29 deterministic benchmark fixtures inside a 184-test local suite across 17 test files, including deep-spec and universal-audit scenarios for authority bypass, workflow skips, artifact reproducibility, toolchain isolation, recovery loop collapse, operational UX leakage, deterministic anchor enrichment, local rule-engine enforcement, cross-file graph linking, and multi-anchor cross-file resolution
+- 29 deterministic benchmark fixtures inside a 197-test local suite across 18 test files, including deep-spec and universal-audit scenarios for authority bypass, workflow skips, artifact reproducibility, toolchain isolation, recovery loop collapse, operational UX leakage, deterministic anchor enrichment, local rule-engine enforcement, cross-file graph linking, typed proof-chain generation, proof-chain fallback generation, multi-anchor cross-file resolution, unified layer numbering, explicit agent-ownership reconciliation, receipt-backed detector coverage, adaptive timeout handling, and first-class analysis-mesh validation
 - Programmatic system prompt generation from structured taxonomy and metadata
 - Agent-scoped prompt compaction for the 8-agent mesh: each pass receives a compact full-taxonomy detector index plus richer detector metadata for its focus layers
 - Taxonomy-driven runtime normalization: backfilling metadata and enforcing severity bounds
 - Deterministic Markdown indexing: heading parsing, section-range mapping, evidence-to-line anchor enrichment, heading-inference fallback, and multi-anchor cross-file resolution across loaded Markdown files
 - Deterministic cross-file project graph: terms, requirements, states, APIs, actors, workflows, and references are modeled across loaded Markdown files, with related-location enrichment for cross-file findings
-- Deterministic local rule engine for undefined identifiers, broken cross-references, duplicate headings, RFC2119 misuse, missing rollback paths, workflow ordering gaps, workflow exit criteria, and unresolved glossary bindings
+- Typed proof-chain enrichment: findings now preserve deterministic span-to-span edges such as `supports`, `contradicts`, `defines`, `depends_on`, `references`, and `violates`
+- Deterministic local rule engine for broken heading hierarchy, orphan sections, duplicate headings, broken cross-references, RFC2119 misuse, missing rollback paths, workflow ordering gaps, workflow exit criteria, undefined identifiers, and unresolved glossary bindings, with per-detector checked/clean/hit execution receipts
 - Advanced semantic validation enforcing category -> subcategory -> detector consistency
 - Local regression suite verifying taxonomy integrity and normalization logic
 - Runtime taxonomy diagnostics surfaced in UI, Markdown reports, and JSON exports for pipeline observability
 - Agent-pass malformed JSON resilience: invalid agent responses are retried per pass, captured in diagnostics with a raw response preview, and skipped in degraded mode if they remain malformed
+- Provider-timeout resilience: analysis requests now use adaptive timeout growth, and an agent pass that still times out is skipped in degraded mode with a recorded timeout warning instead of aborting the whole audit immediately
+- Hardened timeout defaults: saved configs below the safe timeout floor are automatically upgraded, and the settings UI now reflects a higher default/minimum timeout for large audits
 - Universal audit mode only: the app always applies the full taxonomy without document-type profile weighting
 - Deterministic 8-agent analysis mesh with bounded roles for specification absoluteness, architecture authority, UI/operational integrity, execution/simulation, memory/world state, tool/deployment safety, reasoning/evidence, and cross-layer synthesis
-...
+- First-class analysis-mesh runtime summaries: each pass records merge strategy, merge priority, focus-layer hits, focus-subcategory hits, explicit owned layer/detector ranges, dominant layers/subcategories, cross-scope findings, and validation warnings
+- Unified layer numbering from `src/lib/layers.js`, so visible layer badges and detector layer mapping share one source of truth
+- Stage-aware progress UI showing indexing, project graph, deterministic rule engine, analysis mesh, merge, and finalize stages with live batch/agent progress
+- Expanded summary and diagnostics UI showing project-graph counts, rule-engine counts, receipt-backed owned-detector reconciliation, checked/clean/hit/untouched ownership metrics, mesh focus hits, out-of-focus findings, cross-scope findings, and per-agent coverage summaries
 - `total_issues_loaded`: specifically tracks issues processed during session load or import
 - 31 cross-layer bundles connecting concepts like Security, Data Flow, Governance, Agent Memory Coordination, Context Orchestration Execution, Deployment Resilience Contracts, vocabulary authority, workflow execution, artifact environment integrity, and operational UI contracts
 - Enhanced UI filtering by subcategory and grouping by subcategory or root cause
@@ -43,7 +49,7 @@ The current build includes chunk-aware batching, deterministic multi-pass post-p
 - Detector traceability fields such as `detector_id`, `why_triggered`, and `escalation_reason`
 - Strict issue schema fields including `failure_type`, `constraint_reference`, `violation_reference`, `contract_step`, `invariant_broken`, `authority_boundary`, `closed_world_status`, `analysis_agents`, and `deterministic_fix`
 - Deterministic anchor fields including `section_slug`, `line_end`, `document_anchor`, `document_anchors`, and `anchor_source`
-- Cross-file evidence fields including `detection_source`, `cross_file_links`, and `evidence_spans`
+- Cross-file evidence fields including `detection_source`, `cross_file_links`, `evidence_spans`, and typed `proof_chains`
 - Remediation guidance including `recommended_fix`, `fix_steps`, `estimated_effort`, `verification_steps`, and deterministic fix guidance
 - Search, layer filtering, and grouping by file, severity, layer, or root cause
 - Export to JSON, Markdown, and CSV
@@ -76,7 +82,7 @@ Example:
   "baseURL": "https://api.openai.com/v1",
   "apiKey": "sk-...",
   "model": "gpt-4o",
-  "timeout": 60,
+  "timeout": 180,
   "retries": 2,
   "tokenBudget": 10000000
 }
@@ -142,6 +148,14 @@ The runtime performs eight bounded analysis passes over each batch. Each pass us
    - preserve cross-layer traceability
    - support deterministic root-cause grouping
 
+Each runtime agent now also owns an explicit slice of the taxonomy via a deterministic layer partition. After the mesh completes, the app reconciles:
+- finding-backed owned detector coverage
+- receipt-backed checked detector coverage
+- checked-clean and untouched owned detector counts
+- quiet owned detector count
+- cross-scope findings emitted outside an agent's owned range
+- per-agent owned detector ranges in diagnostics and Markdown exports
+
 ### Runtime Processing
 
 - Chunk-aware batching for large files
@@ -149,6 +163,7 @@ The runtime performs eight bounded analysis passes over each batch. Each pass us
 - Deterministic local rule engine
 - Cross-file project graph analysis
 - Eight sequential agent passes per batch with deterministic prompt construction
+- Per-agent runtime validation and merge summarization using the analysis mesh contract instead of treating all agent passes as the same generic loop
 - Scoped prompt construction for agent passes: compact global detector index plus full focus-layer detector metadata
 - Issue deduplication with stable identity keys
 - Agent-result merge with `analysis_agent` / `analysis_agents` provenance
@@ -163,6 +178,7 @@ The runtime performs eight bounded analysis passes over each batch. Each pass us
 - Deterministic anchor enrichment normalizes `files`, `section`, `section_slug`, `line_number`, `line_end`, `document_anchor`, `document_anchors`, `evidence_reference`, and `violation_reference` when Markdown evidence supports exact placement
 - Deterministic project-graph enrichment adds `detection_source` and `cross_file_links` when related terms, requirements, states, APIs, actors, headings, identifiers, or workflow steps are found across loaded Markdown files
 - Evidence-first enrichment adds `evidence_spans` so issues retain structured proof locations instead of only free-text evidence
+- Typed proof-chain enrichment adds deterministic span-to-span edges so related evidence is preserved as explicit proof links instead of only related locations
 - Unknown detector IDs are rejected during validation instead of being treated as soft warnings
 
 ### Deterministic Escalation Rules

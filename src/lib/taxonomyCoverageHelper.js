@@ -284,7 +284,7 @@ export function generateTaxonomyQualityReport() {
   detectors.forEach(d => {
     if (Array.isArray(d.related_layers) && d.related_layers.length > 0) {
       d.related_layers.forEach(refLayer => {
-        const pair = `${d.layer}→${refLayer}`;
+        const pair = `${d.layer}->${refLayer}`;
         pairCounts[pair] = (pairCounts[pair] || 0) + 1;
       });
     }

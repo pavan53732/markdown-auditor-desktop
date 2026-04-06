@@ -18,6 +18,7 @@ The current architecture supports:
 - deterministic Markdown indexing and anchor enrichment for file/section/line evidence, heading-inference fallback, multi-anchor cross-file resolution, and evidence-span construction
 - deterministic local rule-engine enforcement for duplicate headings, broken cross-references, RFC2119 misuse, rollback gaps, workflow ordering/terminal-state issues, undefined reused identifiers, and unresolved glossary bindings
 - deterministic cross-file project graph enrichment for headings, glossary terms, identifiers, workflows, requirements, states, APIs, actors, and document references
+- deterministic typed proof-chain enrichment with span-to-span evidence edges
 - incremental cache reuse for unchanged files
 - session diffing and root-cause grouping
 - **Audit History Workbench** for local session management
@@ -38,7 +39,7 @@ Renderer Process (React)
 - file intake and local UI state
 - hashing, caching, batching, merging, diffing
 - taxonomy orchestration (layers, universal audit mode, bundles, subcategories, detectors, agent mesh)
-- deterministic 8-pass agent execution and merge orchestration
+- deterministic 8-pass agent execution with first-class per-agent validation, merge strategies, and focus-hit summaries
 - taxonomy-driven normalization: metadata backfilling and severity clamping
 - result rendering with advanced subcategory filtering and grouping
 - renderer-branded asset usage for the top bar, progress state, and Markdown export header
@@ -88,6 +89,7 @@ Provider Layer
 |       |-- crossLayerBundles.js
 |       |-- detectorMetadata.js (Source of truth for 701 detectors)
 |       |-- auditMode.js
+|       |-- evidenceGraph.js (Deterministic typed proof-chain enrichment)
 |       |-- jsonRepair.js (Advanced semantic validation)
 |       |-- layers.js
 |       |-- markdownIndex.js (Deterministic Markdown heading/anchor indexing and evidence spans)
@@ -104,10 +106,10 @@ The system supports a local verification workflow with deepened 53-layer coverag
 1.  **Integrity Validation**: Local automated tests verify the 701-detector catalog against the 53-layer schema.
 2.  **Semantic Enforcement**: Validation logic ensures that AI-reported detector IDs, layers, and subcategories are mutually consistent.
 3.  **Benchmark Evaluation**: Canonical Markdown fixtures across `taxonomyBenchmark.test.js`, `deepSpecBenchmarks.test.js`, and `extendedUniversalBenchmarks.test.js` exercise deterministic taxonomy validation, normalization, and detector mapping behavior across 29 benchmark fixtures.
-4.  **Expanded Coverage**: The benchmark suites now cover deep-spec and universal-audit scenarios such as authority bypass, workflow skips, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty drops, artifact reproducibility gaps, toolchain leakage, recovery loop collapse, operational UX leakage, prompt compaction behavior, history metadata migration, runtime budget normalization, deterministic Markdown anchor enrichment, deterministic rule-engine enforcement, deterministic project-graph linking, and multi-anchor cross-file resolution. The full local suite currently contains 184 tests across 17 files.
+4.  **Expanded Coverage**: The benchmark suites now cover deep-spec and universal-audit scenarios such as authority bypass, workflow skips, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty drops, artifact reproducibility gaps, toolchain leakage, recovery loop collapse, operational UX leakage, prompt compaction behavior, history metadata migration, runtime budget normalization, deterministic Markdown anchor enrichment, deterministic rule-engine enforcement, deterministic project-graph linking, typed proof-chain generation, proof-chain fallback generation, multi-anchor cross-file resolution, unified layer numbering, explicit agent-ownership reconciliation, receipt-backed detector coverage, adaptive timeout handling, and first-class analysis-mesh validation. The full local suite currently contains 197 tests across 18 files.
 5.  **Enhanced Taxonomy Coverage Helper**: `taxonomyCoverageHelper.js` provides per-layer density analysis, richness metrics, subcategory coverage tracking, bundle coverage analysis, and `related_layers` coverage reporting for comprehensive taxonomy observability.
-6.  **Runtime Diagnostics**: The application tracks enrichment, parsing, clamping, Markdown indexing, deterministic anchor assignment, evidence-span construction, multi-anchor resolution, fallback anchor assignment, rule-engine issue counts, project-graph grouping, graph-link enrichment, and multi-agent merge metrics during analysis and session loading.
-7.  **Observability**: Diagnostics are surfaced in the UI results summary and exports to ensure pipeline transparency, including indexed files, indexed headings, project-graph grouping counts, deterministic anchor assignments, evidence-span enrichments, deterministic rule counts, graph-link enrichments, multi-anchor counts, fallback-anchor counts, configured agent count, completed passes, and merged findings.
+6.  **Runtime Diagnostics**: The application tracks enrichment, parsing, clamping, Markdown indexing, deterministic anchor assignment, evidence-span construction, typed proof-chain construction, multi-anchor resolution, fallback anchor assignment, rule-engine issue counts, rule-engine checked/clean/hit detector receipts, project-graph grouping, graph-link enrichment, per-agent focus-layer and focus-subcategory hits, owned-layer / owned-detector hits, checked-clean-untouched ownership metrics, cross-scope findings, and first-class analysis-mesh validation metrics during analysis and session loading.
+7.  **Observability**: Diagnostics are surfaced in the UI results summary and exports to ensure pipeline transparency, including indexed files, indexed headings, project-graph grouping counts for headings/terms/identifiers/workflows/requirements/states/APIs/actors, deterministic anchor assignments, evidence-span enrichments, typed proof-chain counts, deterministic rule counts and execution receipts, graph-link enrichments, multi-anchor counts, fallback-anchor counts, configured agent count, completed passes, owned-detector reconciliation metrics, mesh warnings, and merged findings.
 |-- build/
 |   |-- icon.ico
 |   `-- icon.png
@@ -153,7 +155,7 @@ The system supports a local verification workflow with deepened 53-layer coverag
 - JSON repair and response validation
 - deterministic Markdown indexing and evidence-to-line enrichment
 - deterministic project-graph construction and cross-file related-location enrichment
-- evidence-span enrichment and evidence-source normalization
+- evidence-span enrichment, typed proof-chain construction, and evidence-source normalization
 - merge, deduplication, escalation, and cross-layer validation
 - history management and comparison workflows
 - diffing and root-cause-aware grouping
@@ -166,7 +168,7 @@ The system supports a local verification workflow with deepened 53-layer coverag
 - detector prompt generation helpers
 - known-detector validation helpers
 - detector-driven defaults for `failure_type`, `constraint_reference`, `contract_step`, `invariant_broken`, `authority_boundary`, `closed_world_status`, `evidence_reference`, and `deterministic_fix`
-- session/export normalization for `detection_source`, `cross_file_links`, `document_anchors`, and `evidence_spans`
+- session/export normalization for `detection_source`, `cross_file_links`, `document_anchors`, `evidence_spans`, and `proof_chains`
 - pure helpers for export and session data shaping (`buildExportData`, `buildSessionData`, `normalizeLoadedSession`, `resolveInitialCache`, `buildHistoryMetadata`)
 
 ## Key UI Components
@@ -178,12 +180,12 @@ The system supports a local verification workflow with deepened 53-layer coverag
 | `HistoryModal.jsx` | history browser workbench: search, filter, sort, edit, compare |
 | `FileDropZone.jsx` | drag-and-drop and file selection |
 | `AnalyzeButton.jsx` | audit trigger state |
-| `ProgressPanel.jsx` | in-progress audit status |
-| `SummaryDashboard.jsx` | severity summary cards |
+| `ProgressPanel.jsx` | stage-aware runtime progress with indexing, graph, rule-engine, agent, batch, and finalize visibility |
+| `SummaryDashboard.jsx` | severity summary plus runtime depth cards for graph groups, rule issues, owned-detector reconciliation, mesh passes, focus hits, reuse, and merge warnings |
 | `DiffSummaryPanel.jsx` | comparison between two audits |
 | `LayerFilterBar.jsx` | category/layer filtering |
 | `IssueList.jsx` | flat and grouped issue views |
-| `IssueCard.jsx` | issue detail rendering including traceability and remediation |
+| `IssueCard.jsx` | issue detail rendering including traceability, typed proof chains, and remediation |
 
 ## Component Tree
 

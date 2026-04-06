@@ -12,6 +12,93 @@ const RFC_KEYWORD_PATTERN = /\b(MUST|SHALL|REQUIRED|SHOULD|RECOMMENDED|MAY|OPTIO
 const RFC_LOWERCASE_PATTERN = /\b(must|shall|required|should|recommended|may|optional)\b/g;
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\(([^)]+)\)/g;
 
+export const DETERMINISTIC_RULE_DEFINITIONS = [
+  {
+    id: 'broken_heading_hierarchy_rule',
+    detectorId: 'L3-01',
+    layer: 'structural',
+    subcategory: 'broken hierarchy',
+    stage: 'indexing',
+    owningAgent: 'cross_layer_synthesis_agent'
+  },
+  {
+    id: 'orphan_section_rule',
+    detectorId: 'L3-02',
+    layer: 'structural',
+    subcategory: 'orphan sections',
+    stage: 'indexing',
+    owningAgent: 'cross_layer_synthesis_agent'
+  },
+  {
+    id: 'duplicate_heading_rule',
+    detectorId: 'L3-03',
+    layer: 'structural',
+    subcategory: 'duplicate sections',
+    stage: 'indexing',
+    owningAgent: 'cross_layer_synthesis_agent'
+  },
+  {
+    id: 'broken_cross_reference_rule',
+    detectorId: 'L13-05',
+    layer: 'knowledge_graph',
+    subcategory: 'relationship gaps',
+    stage: 'project_graph',
+    owningAgent: 'memory_world_state_agent'
+  },
+  {
+    id: 'rfc2119_keyword_rule',
+    detectorId: 'L15-11',
+    layer: 'requirement',
+    subcategory: 'RFC2119 misuse',
+    stage: 'rule_engine',
+    owningAgent: 'spec_absoluteness_agent'
+  },
+  {
+    id: 'missing_rollback_rule',
+    detectorId: 'L9-09',
+    layer: 'completeness',
+    subcategory: 'missing rollback',
+    stage: 'workflow_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'workflow_ordering_rule',
+    detectorId: 'L47-01',
+    layer: 'workflow_lifecycle_integrity',
+    subcategory: 'required step ordering',
+    stage: 'workflow_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'workflow_exit_rule',
+    detectorId: 'L47-08',
+    layer: 'workflow_lifecycle_integrity',
+    subcategory: 'workflow exit criteria',
+    stage: 'workflow_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'undefined_identifier_rule',
+    detectorId: 'L46-06',
+    layer: 'ontology_vocabulary_governance',
+    subcategory: 'undefined term rejection',
+    stage: 'project_graph',
+    owningAgent: 'spec_absoluteness_agent'
+  },
+  {
+    id: 'glossary_binding_rule',
+    detectorId: 'L46-07',
+    layer: 'ontology_vocabulary_governance',
+    subcategory: 'vocabulary-to-contract mapping',
+    stage: 'project_graph',
+    owningAgent: 'spec_absoluteness_agent'
+  }
+];
+
+function getRuleDefinition(ruleId) {
+  return DETERMINISTIC_RULE_DEFINITIONS.find((rule) => rule.id === ruleId) || null;
+}
+
 function createEvidenceSpan({ file, section = '', sectionSlug = '', lineStart, lineEnd, role = 'primary', source = 'rule', excerpt = '' }) {
   return {
     file,
@@ -47,6 +134,7 @@ function getSectionForLine(documentIndex, lineNumber) {
 }
 
 function createRuleIssue({
+  ruleId,
   detectorId,
   severity,
   description,
@@ -70,6 +158,7 @@ function createRuleIssue({
     line_number: lineNumber,
     line_end: lineEnd
   });
+  const ruleDefinition = getRuleDefinition(ruleId);
 
   return {
     detector_id: detectorId,
@@ -89,15 +178,120 @@ function createRuleIssue({
     confidence,
     detection_source: 'rule',
     analysis_agent: 'deterministic_rule_engine',
-    analysis_agents: ['deterministic_rule_engine'],
+    analysis_agents: ruleDefinition?.owningAgent
+      ? ['deterministic_rule_engine', ruleDefinition.owningAgent]
+      : ['deterministic_rule_engine'],
     deterministic_fix: deterministicFix || undefined,
-    recommended_fix: recommendedFix || undefined
+    recommended_fix: recommendedFix || undefined,
+    rule_id: ruleId || undefined,
+    rule_stage: ruleDefinition?.stage || undefined
   };
 }
 
 function pushIssue(issues, issue) {
   if (!issue) return;
   issues.push(issue);
+}
+
+function hasMeaningfulSectionBody(documentIndex, heading) {
+  if (!documentIndex || !heading) return false;
+
+  for (let lineIndex = heading.lineStart + 1; lineIndex <= heading.lineEnd; lineIndex += 1) {
+    const line = documentIndex.lines[lineIndex - 1];
+    const normalized = normalizeComparableText(line);
+    if (!normalized) continue;
+    if (/^[#>*`\-_=:.]+$/.test(String(line || '').trim())) continue;
+    return true;
+  }
+
+  return false;
+}
+
+function runBrokenHeadingHierarchyRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    let previousHeading = null;
+
+    documentIndex.headings.forEach((heading) => {
+      if (
+        previousHeading
+        && Number.isFinite(Number(previousHeading.level))
+        && Number.isFinite(Number(heading.level))
+        && Number(heading.level) > Number(previousHeading.level) + 1
+      ) {
+        pushIssue(issues, createRuleIssue({
+          ruleId: 'broken_heading_hierarchy_rule',
+          detectorId: 'L3-01',
+          severity: 'medium',
+          description: `Heading "${heading.title}" jumps from H${previousHeading.level} to H${heading.level} in ${documentIndex.name} without an intermediate level.`,
+          files: [documentIndex.name],
+          section: heading.title,
+          sectionSlug: heading.slug,
+          lineNumber: heading.lineStart,
+          evidence: `${documentIndex.name}:${previousHeading.lineStart} ${previousHeading.title}\n${documentIndex.name}:${heading.lineStart} ${heading.title}`,
+          whyTriggered: 'Markdown heading levels skip one or more structural levels, which breaks deterministic section nesting.',
+          evidenceSpans: [
+            createEvidenceSpan({
+              file: documentIndex.name,
+              section: previousHeading.title,
+              sectionSlug: previousHeading.slug,
+              lineStart: previousHeading.lineStart,
+              role: 'supporting',
+              source: 'broken_heading_hierarchy_rule',
+              excerpt: buildLineExcerpt(documentIndex, previousHeading.lineStart)
+            }),
+            createEvidenceSpan({
+              file: documentIndex.name,
+              section: heading.title,
+              sectionSlug: heading.slug,
+              lineStart: heading.lineStart,
+              role: 'primary',
+              source: 'broken_heading_hierarchy_rule',
+              excerpt: buildLineExcerpt(documentIndex, heading.lineStart)
+            })
+          ],
+          deterministicFix: 'Insert the missing intermediate heading level or flatten the section so heading levels only increase by one step at a time.',
+          recommendedFix: 'Restructure the section hierarchy so the heading ladder remains H1 -> H2 -> H3 without level skips.'
+        }));
+      }
+
+      previousHeading = heading;
+    });
+  });
+}
+
+function runOrphanSectionRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    documentIndex.headings.forEach((heading) => {
+      if (hasMeaningfulSectionBody(documentIndex, heading)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'orphan_section_rule',
+        detectorId: 'L3-02',
+        severity: 'low',
+        description: `Heading "${heading.title}" in ${documentIndex.name} has no meaningful body content under it.`,
+        files: [documentIndex.name],
+        section: heading.title,
+        sectionSlug: heading.slug,
+        lineNumber: heading.lineStart,
+        evidence: `${documentIndex.name}:${heading.lineStart} ${heading.title}`,
+        whyTriggered: 'The heading resolves to an empty section range or contains only formatting/noise lines, leaving the section orphaned.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading.title,
+            sectionSlug: heading.slug,
+            lineStart: heading.lineStart,
+            lineEnd: heading.lineEnd > heading.lineStart ? heading.lineEnd : undefined,
+            role: 'primary',
+            source: 'orphan_section_rule',
+            excerpt: buildLineExcerpt(documentIndex, heading.lineStart, heading.lineEnd)
+          })
+        ],
+        deterministicFix: 'Either add body content that explains the section or remove/merge the empty heading.',
+        recommendedFix: 'Populate the section with the missing contract details or fold the heading into a neighboring section.'
+      }));
+    });
+  });
 }
 
 function runDuplicateHeadingRule(projectGraph, issues) {
@@ -124,6 +318,7 @@ function runDuplicateHeadingRule(projectGraph, issues) {
       }));
 
       pushIssue(issues, createRuleIssue({
+        ruleId: 'duplicate_heading_rule',
         detectorId: 'L3-03',
         severity: 'medium',
         description: `Heading "${first.title}" appears ${group.length} times in ${documentIndex.name}, creating duplicate section structure.`,
@@ -190,6 +385,7 @@ function runBrokenCrossReferenceRule(projectGraph, issues) {
 
         const section = getSectionForLine(documentIndex, index + 1);
         pushIssue(issues, createRuleIssue({
+          ruleId: 'broken_cross_reference_rule',
           detectorId: 'L13-05',
           severity: 'high',
           description: `Cross-reference "${target}" in ${documentIndex.name} does not resolve to a loaded file or heading.`,
@@ -237,6 +433,7 @@ function runRfc2119Rule(projectGraph, issues) {
         : `Line mixes multiple RFC 2119 keywords (${uppercaseKeywords.join(', ')}) without clarifying precedence.`;
 
       pushIssue(issues, createRuleIssue({
+        ruleId: 'rfc2119_keyword_rule',
         detectorId: 'L15-11',
         severity: 'medium',
         description: `RFC 2119 keyword usage is inconsistent on line ${index + 1} of ${documentIndex.name}.`,
@@ -305,6 +502,7 @@ function runWorkflowOrderingRule(projectGraph, issues) {
       if (!orderingBroken) return;
 
       pushIssue(issues, createRuleIssue({
+        ruleId: 'workflow_ordering_rule',
         detectorId: 'L47-01',
         severity: 'high',
         description: `Workflow step numbering in "${heading.title}" is incomplete or out of order in ${documentIndex.name}.`,
@@ -342,6 +540,7 @@ function runMissingRollbackRule(projectGraph, issues) {
       }
 
       pushIssue(issues, createRuleIssue({
+        ruleId: 'missing_rollback_rule',
         detectorId: 'L9-09',
         severity: 'high',
         description: `Workflow section "${heading.title}" in ${documentIndex.name} performs state-changing actions without a rollback path.`,
@@ -379,6 +578,7 @@ function runWorkflowExitCriteriaRule(projectGraph, issues) {
       if (hasTerminalSignal) return;
 
       pushIssue(issues, createRuleIssue({
+        ruleId: 'workflow_exit_rule',
         detectorId: 'L47-08',
         severity: 'medium',
         description: `Workflow section "${heading.title}" in ${documentIndex.name} does not define completion, abort, or failure exit criteria.`,
@@ -424,6 +624,7 @@ function runUndefinedIdentifierRule(projectGraph, issues) {
 
     const first = occurrences[0];
     pushIssue(issues, createRuleIssue({
+      ruleId: 'undefined_identifier_rule',
       detectorId: 'L46-06',
       severity: 'high',
       description: `Identifier "${key}" appears ${occurrences.length} times without a glossary or heading definition across the loaded Markdown set.`,
@@ -472,6 +673,7 @@ function runGlossaryBindingRule(projectGraph, issues) {
 
     const first = occurrences[0];
     pushIssue(issues, createRuleIssue({
+      ruleId: 'glossary_binding_rule',
       detectorId: 'L46-07',
       severity: 'medium',
       description: `Glossary term "${first.label}" is defined but never bound to non-glossary behavior or contract text.`,
@@ -496,7 +698,61 @@ function runGlossaryBindingRule(projectGraph, issues) {
   });
 }
 
-function summarizeIssues(issues, files) {
+function buildDetectorExecutionReceipts(issues = []) {
+  const issueGroups = new Map();
+  issues.forEach((issue) => {
+    const detectorId = typeof issue.detector_id === 'string' ? issue.detector_id.trim() : '';
+    if (!detectorId) return;
+    if (!issueGroups.has(detectorId)) issueGroups.set(detectorId, []);
+    issueGroups.get(detectorId).push(issue);
+  });
+
+  return DETERMINISTIC_RULE_DEFINITIONS.map((rule) => {
+    const ruleIssues = issueGroups.get(rule.detectorId) || [];
+    return {
+      detector_id: rule.detectorId,
+      rule_id: rule.id,
+      layer: rule.layer,
+      subcategory: rule.subcategory,
+      stage: rule.stage,
+      owning_agent: rule.owningAgent,
+      checked: true,
+      status: ruleIssues.length > 0 ? 'hit' : 'clean',
+      issue_count: ruleIssues.length,
+      evidence_span_count: ruleIssues.reduce(
+        (sum, issue) => sum + (Array.isArray(issue.evidence_spans) ? issue.evidence_spans.length : 0),
+        0
+      )
+    };
+  });
+}
+
+function summarizeIssues(issues, files, detectorExecutionReceipts = []) {
+  const checkedSubcategories = Array.from(new Set(
+    detectorExecutionReceipts
+      .map((receipt) => receipt.subcategory)
+      .filter(Boolean)
+  ));
+  const checkedStages = Array.from(new Set(
+    detectorExecutionReceipts
+      .map((receipt) => receipt.stage)
+      .filter(Boolean)
+  ));
+  const hitSubcategories = Array.from(new Set(
+    detectorExecutionReceipts
+      .filter((receipt) => receipt.status === 'hit')
+      .map((receipt) => receipt.subcategory)
+      .filter(Boolean)
+  ));
+  const hitStages = Array.from(new Set(
+    detectorExecutionReceipts
+      .filter((receipt) => receipt.status === 'hit')
+      .map((receipt) => receipt.stage)
+      .filter(Boolean)
+  ));
+  const detectorsHit = detectorExecutionReceipts.filter((receipt) => receipt.status === 'hit').length;
+  const detectorsChecked = detectorExecutionReceipts.length;
+
   return {
     total: issues.length,
     critical: issues.filter((issue) => issue.severity === 'critical').length,
@@ -504,14 +760,25 @@ function summarizeIssues(issues, files) {
     medium: issues.filter((issue) => issue.severity === 'medium').length,
     low: issues.filter((issue) => issue.severity === 'low').length,
     files_analyzed: Array.isArray(files) ? files.length : 0,
-    rules_evaluated: 8
+    rules_evaluated: DETERMINISTIC_RULE_DEFINITIONS.length,
+    detectors_checked: detectorsChecked,
+    detectors_hit: detectorsHit,
+    detectors_clean: Math.max(0, detectorsChecked - detectorsHit),
+    rule_subcategories_checked: checkedSubcategories,
+    rule_subcategories_hit: hitSubcategories,
+    rule_stages_checked: checkedStages,
+    rule_stages_hit: hitStages,
+    rule_subcategories_covered: checkedSubcategories,
+    rule_stages_executed: checkedStages,
+    detector_execution_receipts: detectorExecutionReceipts
   };
 }
 
 export function runDeterministicRuleEngine({ files = [], projectGraph, diagnostics = null }) {
   if (!projectGraph?.projectIndex?.documents?.length) {
+    const detectorExecutionReceipts = buildDetectorExecutionReceipts([]);
     return {
-      summary: summarizeIssues([], files),
+      summary: summarizeIssues([], files, detectorExecutionReceipts),
       issues: [],
       root_causes: [],
       _sourceFiles: (files || []).map((file) => file.name)
@@ -519,6 +786,8 @@ export function runDeterministicRuleEngine({ files = [], projectGraph, diagnosti
   }
 
   const issues = [];
+  runBrokenHeadingHierarchyRule(projectGraph, issues);
+  runOrphanSectionRule(projectGraph, issues);
   runDuplicateHeadingRule(projectGraph, issues);
   runBrokenCrossReferenceRule(projectGraph, issues);
   runRfc2119Rule(projectGraph, issues);
@@ -527,14 +796,19 @@ export function runDeterministicRuleEngine({ files = [], projectGraph, diagnosti
   runWorkflowExitCriteriaRule(projectGraph, issues);
   runUndefinedIdentifierRule(projectGraph, issues);
   runGlossaryBindingRule(projectGraph, issues);
+  const detectorExecutionReceipts = buildDetectorExecutionReceipts(issues);
 
   if (diagnostics) {
     diagnostics.deterministic_rule_issue_count = (diagnostics.deterministic_rule_issue_count || 0) + issues.length;
     diagnostics.deterministic_rule_runs = (diagnostics.deterministic_rule_runs || 0) + 1;
+    diagnostics.deterministic_rule_checked_detector_count = detectorExecutionReceipts.length;
+    diagnostics.deterministic_rule_hit_detector_count = detectorExecutionReceipts.filter((receipt) => receipt.status === 'hit').length;
+    diagnostics.deterministic_rule_clean_detector_count = detectorExecutionReceipts.filter((receipt) => receipt.status === 'clean').length;
+    diagnostics.deterministic_rule_detector_receipts = detectorExecutionReceipts;
   }
 
   return {
-    summary: summarizeIssues(issues, files),
+    summary: summarizeIssues(issues, files, detectorExecutionReceipts),
     issues,
     root_causes: [],
     _sourceFiles: (files || []).map((file) => file.name)

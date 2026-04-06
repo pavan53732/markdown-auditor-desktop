@@ -207,6 +207,45 @@ export function validateResults(results) {
         });
       });
     }
+    if (issue.proof_chains !== undefined) {
+      if (!Array.isArray(issue.proof_chains)) {
+        throw new Error(`Issue at index ${index} has invalid proof_chains type`);
+      }
+      issue.proof_chains.forEach((chain, chainIndex) => {
+        if (!chain || typeof chain !== 'object') {
+          throw new Error(`Issue at index ${index} has invalid proof_chains[${chainIndex}] entry`);
+        }
+        ['id', 'relation', 'evidence_type', 'rationale'].forEach((field) => {
+          if (chain[field] !== undefined && typeof chain[field] !== 'string') {
+            throw new Error(`Issue at index ${index} has invalid proof_chains[${chainIndex}].${field}`);
+          }
+        });
+        if (chain.relation && !['supports', 'contradicts', 'defines', 'depends_on', 'references', 'violates'].includes(chain.relation)) {
+          throw new Error(`Issue at index ${index} has invalid proof_chains[${chainIndex}].relation`);
+        }
+        if (chain.related_keys !== undefined) {
+          if (!Array.isArray(chain.related_keys) || chain.related_keys.some((value) => typeof value !== 'string')) {
+            throw new Error(`Issue at index ${index} has invalid proof_chains[${chainIndex}].related_keys`);
+          }
+        }
+        ['source_span', 'target_span'].forEach((field) => {
+          const span = chain[field];
+          if (!span || typeof span !== 'object') {
+            throw new Error(`Issue at index ${index} has invalid proof_chains[${chainIndex}].${field}`);
+          }
+          ['file', 'section', 'section_slug', 'anchor', 'role', 'source', 'excerpt'].forEach((spanField) => {
+            if (span[spanField] !== undefined && typeof span[spanField] !== 'string') {
+              throw new Error(`Issue at index ${index} has invalid proof_chains[${chainIndex}].${field}.${spanField}`);
+            }
+          });
+          ['line_start', 'line_end'].forEach((spanField) => {
+            if (span[spanField] !== undefined && !Number.isFinite(Number(span[spanField]))) {
+              throw new Error(`Issue at index ${index} has invalid proof_chains[${chainIndex}].${field}.${spanField}`);
+            }
+          });
+        });
+      });
+    }
     if (issue.cross_file_links !== undefined) {
       if (!Array.isArray(issue.cross_file_links)) {
         throw new Error(`Issue at index ${index} has invalid cross_file_links type`);

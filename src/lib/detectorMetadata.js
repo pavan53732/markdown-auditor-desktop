@@ -4,7 +4,9 @@ import {
   enrichIssueWithMarkdownIndex,
   enrichIssueWithEvidenceSpans
 } from './markdownIndex.js';
+import { enrichIssueWithProofChains } from './evidenceGraph.js';
 import { buildMarkdownProjectGraph, enrichIssueWithProjectGraph } from './projectGraph.js';
+import { ORDERED_LAYER_IDS, getLayerIdByNumber } from './layers.js';
 
 export const LAYER_SUBCATEGORIES = {
   contradiction: ['direct conflicts', 'configuration precedence conflicts', 'version drift', 'terminology drift', 'state-logic contradiction', 'diagram-text mismatch'],
@@ -1044,8 +1046,7 @@ export const DETECTOR_METADATA = {};
 
 Object.entries(rawMetadata).forEach(([id, meta]) => {
   const layerNum = id.split('-')[0].replace('L', '');
-  const layerIdx = parseInt(layerNum) - 1;
-  const layerSlug = Object.keys(LAYER_SUBCATEGORIES)[layerIdx];
+  const layerSlug = getLayerIdByNumber(layerNum);
   const layerPrefix = `L${layerNum}`;
 
   if (!layerSlug) {
@@ -1207,6 +1208,7 @@ export function createInitialDiagnostics() {
     malformed_agent_retry_count: 0,
     recovered_agent_response_count: 0,
     skipped_agent_pass_count: 0,
+    timeout_agent_pass_count: 0,
     indexed_document_count: 0,
     indexed_heading_count: 0,
     project_graph_document_count: 0,
@@ -1214,6 +1216,12 @@ export function createInitialDiagnostics() {
     project_graph_glossary_term_group_count: 0,
     project_graph_identifier_group_count: 0,
     project_graph_workflow_group_count: 0,
+    project_graph_requirement_group_count: 0,
+    project_graph_state_group_count: 0,
+    project_graph_api_group_count: 0,
+    project_graph_actor_group_count: 0,
+    project_graph_reference_count: 0,
+    project_graph_total_group_count: 0,
     deterministic_anchor_enrichment_count: 0,
     deterministic_file_assignment_count: 0,
     deterministic_section_assignment_count: 0,
@@ -1222,8 +1230,28 @@ export function createInitialDiagnostics() {
     deterministic_fallback_anchor_count: 0,
     deterministic_graph_link_enrichment_count: 0,
     evidence_span_enrichment_count: 0,
+    deterministic_proof_chain_enrichment_count: 0,
+    proof_chain_edge_count: 0,
     deterministic_rule_issue_count: 0,
     deterministic_rule_runs: 0,
+    deterministic_rule_checked_detector_count: 0,
+    deterministic_rule_clean_detector_count: 0,
+    deterministic_rule_hit_detector_count: 0,
+    deterministic_rule_detector_receipts: [],
+    analysis_mesh_focus_layer_hit_count: 0,
+    analysis_mesh_focus_subcategory_hit_count: 0,
+    analysis_mesh_owned_layer_hit_count: 0,
+    analysis_mesh_owned_subcategory_hit_count: 0,
+    analysis_mesh_owned_detector_hit_count: 0,
+    analysis_mesh_owned_detector_checked_count: 0,
+    analysis_mesh_owned_detector_clean_count: 0,
+    analysis_mesh_owned_detector_untouched_count: 0,
+    analysis_mesh_out_of_focus_issue_count: 0,
+    analysis_mesh_out_of_owned_scope_issue_count: 0,
+    analysis_mesh_owned_detector_quiet_count: 0,
+    analysis_mesh_validation_warning_count: 0,
+    analysis_mesh_coverage_reconciliation: null,
+    analysis_mesh_agent_runs: [],
     last_agent_failure: null,
     agent_failure_events: [],
     warnings: []
@@ -1270,6 +1298,12 @@ export function mergeDiagnostics(savedDiagnostics = {}) {
   return {
     ...base,
     ...savedDiagnostics,
+    deterministic_rule_detector_receipts: Array.isArray(savedDiagnostics.deterministic_rule_detector_receipts)
+      ? savedDiagnostics.deterministic_rule_detector_receipts.filter((receipt) => receipt && typeof receipt === 'object')
+      : [],
+    analysis_mesh_agent_runs: Array.isArray(savedDiagnostics.analysis_mesh_agent_runs)
+      ? savedDiagnostics.analysis_mesh_agent_runs.filter((run) => run && typeof run === 'object')
+      : [],
     warnings: Array.isArray(savedDiagnostics.warnings) ? savedDiagnostics.warnings.filter((warning) => typeof warning === 'string') : [],
     last_agent_failure: savedDiagnostics.last_agent_failure
       ? normalizeAgentFailureEvent(savedDiagnostics.last_agent_failure)
@@ -1333,7 +1367,14 @@ export function recordAgentSkip(diagnostics, skip = {}) {
   if (!diagnostics || typeof diagnostics !== 'object') return null;
 
   diagnostics.skipped_agent_pass_count = (diagnostics.skipped_agent_pass_count || 0) + 1;
-  const warning = `Skipped ${skip.agent_label || skip.agent_id || 'agent'} after ${skip.attempt || '?'} invalid response attempt(s) for batch ${skip.batch_index || '?'}${skip.batch_count ? `/${skip.batch_count}` : ''}.`;
+  const skipReason = typeof skip.reason === 'string' ? skip.reason : 'invalid_response';
+  if (skipReason === 'timeout') {
+    diagnostics.timeout_agent_pass_count = (diagnostics.timeout_agent_pass_count || 0) + 1;
+  }
+
+  const warning = skipReason === 'timeout'
+    ? `Skipped ${skip.agent_label || skip.agent_id || 'agent'} after provider timeout for batch ${skip.batch_index || '?'}${skip.batch_count ? `/${skip.batch_count}` : ''}${skip.timeout_seconds ? ` at ${skip.timeout_seconds}s` : ''}.`
+    : `Skipped ${skip.agent_label || skip.agent_id || 'agent'} after ${skip.attempt || '?'} invalid response attempt(s) for batch ${skip.batch_index || '?'}${skip.batch_count ? `/${skip.batch_count}` : ''}.`;
   diagnostics.warnings = [
     ...(Array.isArray(diagnostics.warnings) ? diagnostics.warnings : []),
     warning
@@ -1357,7 +1398,6 @@ export function isValidDetectorForSubcategory(detectorId, subcategory) {
   return meta ? meta.subcategory === subcategory : true;
 }
 
-const ORDERED_LAYER_IDS = Object.keys(LAYER_SUBCATEGORIES);
 const ORDERED_DETECTORS = Object.values(DETECTOR_METADATA).sort((a, b) => a.id.localeCompare(b.id));
 const DETECTORS_BY_LAYER = ORDERED_LAYER_IDS.reduce((acc, layerId) => {
   acc[layerId] = ORDERED_DETECTORS.filter((detector) => detector.layer === layerId);
@@ -1532,8 +1572,24 @@ export function normalizeLoadedSession(session) {
   diagnostics.deterministic_fallback_anchor_count = 0;
   diagnostics.deterministic_graph_link_enrichment_count = 0;
   diagnostics.evidence_span_enrichment_count = 0;
+  diagnostics.deterministic_proof_chain_enrichment_count = 0;
+  diagnostics.proof_chain_edge_count = 0;
   diagnostics.deterministic_rule_issue_count = 0;
   diagnostics.deterministic_rule_runs = 0;
+  diagnostics.deterministic_rule_checked_detector_count = 0;
+  diagnostics.deterministic_rule_clean_detector_count = 0;
+  diagnostics.deterministic_rule_hit_detector_count = 0;
+  diagnostics.deterministic_rule_detector_receipts = [];
+  diagnostics.timeout_agent_pass_count = 0;
+  diagnostics.analysis_mesh_owned_layer_hit_count = 0;
+  diagnostics.analysis_mesh_owned_subcategory_hit_count = 0;
+  diagnostics.analysis_mesh_owned_detector_hit_count = 0;
+  diagnostics.analysis_mesh_owned_detector_checked_count = 0;
+  diagnostics.analysis_mesh_owned_detector_clean_count = 0;
+  diagnostics.analysis_mesh_owned_detector_untouched_count = 0;
+  diagnostics.analysis_mesh_out_of_owned_scope_issue_count = 0;
+  diagnostics.analysis_mesh_owned_detector_quiet_count = 0;
+  diagnostics.analysis_mesh_coverage_reconciliation = null;
   const normalized = { ...session };
   const markdownIndex = buildMarkdownProjectIndex(normalized.files || []);
   const projectGraph = buildMarkdownProjectGraph(normalized.files || []);
@@ -1544,16 +1600,62 @@ export function normalizeLoadedSession(session) {
   diagnostics.project_graph_glossary_term_group_count = projectGraph.summary.glossaryTermGroupCount;
   diagnostics.project_graph_identifier_group_count = projectGraph.summary.identifierGroupCount;
   diagnostics.project_graph_workflow_group_count = projectGraph.summary.workflowGroupCount;
+  diagnostics.project_graph_requirement_group_count = projectGraph.summary.requirementGroupCount || 0;
+  diagnostics.project_graph_state_group_count = projectGraph.summary.stateGroupCount || 0;
+  diagnostics.project_graph_api_group_count = projectGraph.summary.apiGroupCount || 0;
+  diagnostics.project_graph_actor_group_count = projectGraph.summary.actorGroupCount || 0;
+  diagnostics.project_graph_reference_count = projectGraph.summary.referenceCount || 0;
+  diagnostics.project_graph_total_group_count =
+    diagnostics.project_graph_heading_group_count
+    + diagnostics.project_graph_glossary_term_group_count
+    + diagnostics.project_graph_identifier_group_count
+    + diagnostics.project_graph_workflow_group_count
+    + diagnostics.project_graph_requirement_group_count
+    + diagnostics.project_graph_state_group_count
+    + diagnostics.project_graph_api_group_count
+    + diagnostics.project_graph_actor_group_count;
   if (normalized.results.issues) {
     normalized.results.issues = normalized.results.issues.map(issue => {
       const enriched = normalizeIssueFromDetector(issue, diagnostics);
       diagnostics.total_issues_loaded++;
       const anchored = enrichIssueWithMarkdownIndex(enriched, markdownIndex, diagnostics);
       const graphEnriched = enrichIssueWithProjectGraph(anchored, projectGraph, diagnostics);
-      return enrichIssueWithEvidenceSpans(graphEnriched, markdownIndex, diagnostics);
+      const spanned = enrichIssueWithEvidenceSpans(graphEnriched, markdownIndex, diagnostics);
+      return enrichIssueWithProofChains(spanned, markdownIndex, diagnostics);
     });
     diagnostics.deterministic_rule_issue_count = normalized.results.issues.filter((issue) => issue.detection_source === 'rule').length;
+    diagnostics.proof_chain_edge_count = normalized.results.issues.reduce(
+      (sum, issue) => sum + (Array.isArray(issue.proof_chains) ? issue.proof_chains.length : 0),
+      0
+    );
   }
+  if (normalized.results.summary && diagnostics.proof_chain_edge_count > 0) {
+    normalized.results.summary.proof_chain_edges = diagnostics.proof_chain_edge_count;
+  }
+  diagnostics.deterministic_rule_checked_detector_count = normalized.results.summary?.deterministic_rule_checked_detectors || 0;
+  diagnostics.deterministic_rule_clean_detector_count = normalized.results.summary?.deterministic_rule_clean_detectors || 0;
+  diagnostics.deterministic_rule_hit_detector_count = normalized.results.summary?.deterministic_rule_hit_detectors || 0;
+  diagnostics.deterministic_rule_detector_receipts = Array.isArray(normalized.results.summary?.detector_execution_receipts)
+    ? normalized.results.summary.detector_execution_receipts
+    : [];
+  diagnostics.analysis_mesh_focus_layer_hit_count = normalized.results.analysis_mesh?.focus_layer_hits || 0;
+  diagnostics.analysis_mesh_focus_subcategory_hit_count = normalized.results.analysis_mesh?.focus_subcategory_hits || 0;
+  diagnostics.analysis_mesh_owned_layer_hit_count = normalized.results.analysis_mesh?.owned_layer_hits || 0;
+  diagnostics.analysis_mesh_owned_subcategory_hit_count = normalized.results.analysis_mesh?.owned_subcategory_hits || 0;
+  diagnostics.analysis_mesh_owned_detector_hit_count = normalized.results.analysis_mesh?.owned_detector_hits || 0;
+  diagnostics.analysis_mesh_owned_detector_checked_count = normalized.results.analysis_mesh?.coverage_reconciliation?.checked_detector_count || 0;
+  diagnostics.analysis_mesh_owned_detector_clean_count = normalized.results.analysis_mesh?.coverage_reconciliation?.checked_clean_detector_count || 0;
+  diagnostics.analysis_mesh_owned_detector_untouched_count = normalized.results.analysis_mesh?.coverage_reconciliation?.untouched_detector_count || 0;
+  diagnostics.analysis_mesh_out_of_focus_issue_count = normalized.results.analysis_mesh?.out_of_focus_issue_count || 0;
+  diagnostics.analysis_mesh_out_of_owned_scope_issue_count = normalized.results.analysis_mesh?.out_of_owned_scope_issue_count || 0;
+  diagnostics.analysis_mesh_owned_detector_quiet_count = normalized.results.analysis_mesh?.coverage_reconciliation?.quiet_detector_count || 0;
+  diagnostics.analysis_mesh_coverage_reconciliation = normalized.results.analysis_mesh?.coverage_reconciliation || null;
+  diagnostics.analysis_mesh_validation_warning_count = Number.isFinite(Number(normalized.results.analysis_mesh?.validation_warnings))
+    ? Number(normalized.results.analysis_mesh.validation_warnings)
+    : 0;
+  diagnostics.analysis_mesh_agent_runs = Array.isArray(normalized.results.analysis_mesh?.agents)
+    ? normalized.results.analysis_mesh.agents
+    : [];
   normalized.taxonomyDiagnostics = diagnostics;
   return normalized;
 }

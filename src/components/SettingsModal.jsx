@@ -3,7 +3,9 @@ import {
   DEFAULT_RETRIES,
   DEFAULT_SESSION_TOKEN_BUDGET,
   DEFAULT_TIMEOUT_SECONDS,
+  MIN_TIMEOUT_SECONDS,
   MIN_SESSION_TOKEN_BUDGET,
+  normalizeTimeoutSeconds,
   normalizeTokenBudget
 } from '../lib/runtimeConfig';
 
@@ -32,7 +34,7 @@ export default function SettingsModal({ open, config, onSave, onCancel, onClearC
       setBaseURL(config.baseURL || '');
       setApiKey(config.apiKey || '');
       setModel(config.model || '');
-      setTimeoutVal(config.timeout || DEFAULT_TIMEOUT_SECONDS);
+      setTimeoutVal(normalizeTimeoutSeconds(config.timeout));
       setRetries(config.retries || DEFAULT_RETRIES);
       setTokenBudget(normalizeTokenBudget(config.tokenBudget));
       setShowKey(false);
@@ -76,7 +78,7 @@ export default function SettingsModal({ open, config, onSave, onCancel, onClearC
       baseURL,
       apiKey,
       model,
-      timeout,
+      timeout: normalizeTimeoutSeconds(timeout),
       retries,
       tokenBudget: normalizeTokenBudget(tokenBudget)
     });
@@ -183,6 +185,9 @@ export default function SettingsModal({ open, config, onSave, onCancel, onClearC
                   onChange={(e) => setTimeoutVal(parseInt(e.target.value))}
                   className="w-full px-3 py-1.5 bg-[#111827] border border-[#374151] rounded text-[#F9FAFB] text-sm"
                 />
+                <p className="mt-1 text-[10px] text-[#6B7280]">
+                  Large audits are slower. Minimum timeout is {MIN_TIMEOUT_SECONDS}s; default is {DEFAULT_TIMEOUT_SECONDS}s.
+                </p>
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-[#9CA3AF] uppercase mb-1">

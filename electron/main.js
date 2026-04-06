@@ -7,9 +7,12 @@ const HistoryService = require('./historyService');
 const {
   MAX_ANALYSIS_OUTPUT_ATTEMPTS,
   computeAdaptiveAnalysisMaxTokens,
+  computeAdaptiveAnalysisTimeoutSeconds,
   expandAnalysisTokenBudget,
+  expandAnalysisTimeoutSeconds,
   reduceAnalysisTokenBudget,
-  isOutputBudgetError
+  isOutputBudgetError,
+  isTimeoutError
 } = require('./apiRequestPolicy');
 
 let mainWindow;
@@ -160,21 +163,29 @@ ipcMain.handle('api:validate', async (event, { baseURL, apiKey, model }) => {
 // AI ANALYSIS CALL (full audit)
 ipcMain.handle('api:call', async (event, { baseURL, apiKey, model, systemPrompt, userMessage, timeout, retries }) => {
   try {
-    const client = new OpenAI({
-      apiKey: apiKey || 'no-key-needed',
-      baseURL: baseURL,
-      timeout: (timeout || 60) * 1000,
-      maxRetries: retries || 2
-    });
-
+    const configuredTimeoutSeconds = Number.isFinite(Number(timeout)) ? Number(timeout) : 60;
     let outputTokenBudget = computeAdaptiveAnalysisMaxTokens({ systemPrompt, userMessage });
+    let requestTimeoutSeconds = computeAdaptiveAnalysisTimeoutSeconds({
+      systemPrompt,
+      userMessage,
+      configuredTimeoutSeconds
+    });
     const seenBudgets = new Set();
+    const seenTimeouts = new Set();
     let lastError = null;
 
     for (let attempt = 1; attempt <= MAX_ANALYSIS_OUTPUT_ATTEMPTS; attempt += 1) {
       seenBudgets.add(outputTokenBudget);
+      seenTimeouts.add(requestTimeoutSeconds);
 
       try {
+        const client = new OpenAI({
+          apiKey: apiKey || 'no-key-needed',
+          baseURL: baseURL,
+          timeout: requestTimeoutSeconds * 1000,
+          maxRetries: retries || 2
+        });
+
         const response = await client.chat.completions.create({
           model: model,
           max_tokens: outputTokenBudget,
@@ -198,7 +209,14 @@ ipcMain.handle('api:call', async (event, { baseURL, apiKey, model, systemPrompt,
           continue;
         }
 
-        return { success: true, raw, finishReason, outputTokenBudget };
+        return {
+          success: true,
+          raw,
+          finishReason,
+          outputTokenBudget,
+          requestTimeoutSeconds,
+          timeoutAttempts: seenTimeouts.size
+        };
       } catch (err) {
         lastError = err;
         if (isOutputBudgetError(err)) {
@@ -208,11 +226,24 @@ ipcMain.handle('api:call', async (event, { baseURL, apiKey, model, systemPrompt,
             continue;
           }
         }
+        if (isTimeoutError(err)) {
+          const expandedTimeout = expandAnalysisTimeoutSeconds(requestTimeoutSeconds, configuredTimeoutSeconds);
+          if (expandedTimeout > requestTimeoutSeconds && !seenTimeouts.has(expandedTimeout)) {
+            requestTimeoutSeconds = expandedTimeout;
+            continue;
+          }
+        }
         break;
       }
     }
 
-    return { success: false, error: lastError?.message || 'Analysis request failed' };
+    return {
+      success: false,
+      error: lastError?.message || 'Analysis request failed',
+      outputTokenBudget,
+      requestTimeoutSeconds,
+      timeoutAttempts: seenTimeouts.size
+    };
   } catch (err) {
     return { success: false, error: err.message };
   }

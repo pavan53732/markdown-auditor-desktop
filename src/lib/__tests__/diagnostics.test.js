@@ -15,7 +15,24 @@ describe('Taxonomy Diagnostics', () => {
     expect(diag.indexed_document_count).toBe(0);
     expect(diag.deterministic_anchor_enrichment_count).toBe(0);
     expect(diag.evidence_span_enrichment_count).toBe(0);
+    expect(diag.deterministic_proof_chain_enrichment_count).toBe(0);
+    expect(diag.proof_chain_edge_count).toBe(0);
     expect(diag.deterministic_rule_issue_count).toBe(0);
+    expect(diag.deterministic_rule_checked_detector_count).toBe(0);
+    expect(diag.deterministic_rule_clean_detector_count).toBe(0);
+    expect(diag.deterministic_rule_hit_detector_count).toBe(0);
+    expect(diag.project_graph_requirement_group_count).toBe(0);
+    expect(diag.analysis_mesh_focus_layer_hit_count).toBe(0);
+    expect(diag.analysis_mesh_owned_layer_hit_count).toBe(0);
+    expect(diag.analysis_mesh_owned_subcategory_hit_count).toBe(0);
+    expect(diag.analysis_mesh_owned_detector_hit_count).toBe(0);
+    expect(diag.analysis_mesh_owned_detector_checked_count).toBe(0);
+    expect(diag.analysis_mesh_owned_detector_clean_count).toBe(0);
+    expect(diag.analysis_mesh_owned_detector_untouched_count).toBe(0);
+    expect(diag.analysis_mesh_out_of_owned_scope_issue_count).toBe(0);
+    expect(diag.analysis_mesh_owned_detector_quiet_count).toBe(0);
+    expect(diag.analysis_mesh_coverage_reconciliation).toBeNull();
+    expect(diag.analysis_mesh_agent_runs).toEqual([]);
   });
 
   it('should track enrichment and clamping', () => {
@@ -102,5 +119,23 @@ describe('Taxonomy Diagnostics', () => {
 
     expect(diag.skipped_agent_pass_count).toBe(1);
     expect(diag.warnings[0]).toContain('Skipped Reasoning & Evidence Agent');
+  });
+
+  it('should track timeout-skipped agent passes separately', () => {
+    const diag = createInitialDiagnostics();
+
+    recordAgentSkip(diag, {
+      batch_index: 1,
+      batch_count: 1,
+      agent_id: 'spec_absoluteness_agent',
+      agent_label: 'Spec Absoluteness Agent',
+      reason: 'timeout',
+      timeout_seconds: 180
+    });
+
+    expect(diag.skipped_agent_pass_count).toBe(1);
+    expect(diag.timeout_agent_pass_count).toBe(1);
+    expect(diag.warnings[0]).toContain('provider timeout');
+    expect(diag.warnings[0]).toContain('180s');
   });
 });

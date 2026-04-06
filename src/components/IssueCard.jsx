@@ -33,17 +33,15 @@ export default function IssueCard({ issue }) {
       className="bg-[#1F2937] border border-[#374151] rounded-lg overflow-hidden transition-colors hover:border-[#4B5563]"
       style={{ borderLeftWidth: '3px', borderLeftColor: severityStyle.color }}
     >
-      {/* Header */}
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full px-4 py-3 flex items-start gap-3 text-left"
       >
         <span className="mt-0.5 text-[#6B7280] transition-transform" style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
         </span>
 
         <div className="flex-1 min-w-0">
-          {/* Badges */}
           <div className="flex flex-wrap items-center gap-2 mb-1.5">
             <span
               className="px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide"
@@ -69,7 +67,7 @@ export default function IssueCard({ issue }) {
                 className="px-2 py-0.5 rounded-full text-xs font-medium"
                 style={{
                   color: getConfidenceColor(issue.confidence),
-                  backgroundColor: getConfidenceColor(issue.confidence) + '20'
+                  backgroundColor: `${getConfidenceColor(issue.confidence)}20`
                 }}
               >
                 {Math.round(issue.confidence * 100)}% confidence
@@ -88,21 +86,18 @@ export default function IssueCard({ issue }) {
             )}
           </div>
 
-          {/* Title */}
           <p className="text-sm text-[#F9FAFB] font-medium leading-snug">
             {issue.description}
           </p>
 
-          {/* Subtitle */}
           <p className="text-xs text-[#6B7280] mt-1">
             {(issue.files || []).join(', ')}
-            {issue.section && ` · ${issue.section}`}
-            {issue.line_number && ` · Line ${issue.line_number}${issue.line_end ? `-${issue.line_end}` : ''}`}
+            {issue.section && ` | ${issue.section}`}
+            {issue.line_number && ` | Line ${issue.line_number}${issue.line_end ? `-${issue.line_end}` : ''}`}
           </p>
         </div>
       </button>
 
-      {/* Expanded content */}
       {expanded && (
         <div className="px-4 pb-4 space-y-3 border-t border-[#374151]">
           <div className="pt-3">
@@ -119,7 +114,6 @@ export default function IssueCard({ issue }) {
             </div>
           )}
 
-          {/* Metrics Row */}
           <div className="flex flex-wrap gap-3 py-1">
             {issue.impact_score !== undefined && (
               <div className="flex items-center gap-2">
@@ -135,7 +129,7 @@ export default function IssueCard({ issue }) {
                   className="text-xs font-medium px-1.5 py-0.5 rounded"
                   style={{
                     color: getDifficultyColor(issue.fix_difficulty),
-                    backgroundColor: getDifficultyColor(issue.fix_difficulty) + '20'
+                    backgroundColor: `${getDifficultyColor(issue.fix_difficulty)}20`
                   }}
                 >
                   {issue.fix_difficulty}
@@ -150,7 +144,6 @@ export default function IssueCard({ issue }) {
             )}
           </div>
 
-          {/* Detector Traceability */}
           <div className="bg-[#111827] border border-[#374151] rounded-lg p-3 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold text-[#6B7280] uppercase tracking-widest">Detector Traceability</span>
@@ -180,9 +173,19 @@ export default function IssueCard({ issue }) {
                     Step: {issue.contract_step}
                   </span>
                 )}
+                {issue.rule_id && (
+                  <span className="px-2 py-0.5 bg-[#1F2937] border border-[#4B5563] rounded-full text-[10px] text-[#D1D5DB]">
+                    Rule: {issue.rule_id}
+                  </span>
+                )}
+                {issue.rule_stage && (
+                  <span className="px-2 py-0.5 bg-[#1F2937] border border-[#4B5563] rounded-full text-[10px] text-[#D1D5DB]">
+                    Rule Stage: {issue.rule_stage}
+                  </span>
+                )}
               </div>
             )}
-            {(issue.invariant_broken || issue.authority_boundary || issue.constraint_reference || issue.violation_reference || issue.closed_world_status || issue.analysis_agents?.length || issue.document_anchor || issue.anchor_source || issue.detection_source || issue.evidence_spans?.length || issue.cross_file_links?.length) && (
+            {(issue.invariant_broken || issue.authority_boundary || issue.constraint_reference || issue.violation_reference || issue.closed_world_status || issue.analysis_agents?.length || issue.document_anchor || issue.anchor_source || issue.detection_source || issue.evidence_spans?.length || issue.proof_chains?.length || issue.cross_file_links?.length) && (
               <div className="grid gap-2 border-t border-[#374151] pt-2">
                 {issue.document_anchor && (
                   <div>
@@ -261,10 +264,35 @@ export default function IssueCard({ issue }) {
                       {issue.evidence_spans.map((span) => (
                         <div key={`${span.role}-${span.anchor || span.file}-${span.line_start || ''}`} className="rounded-lg border border-[#374151] bg-[#0B1220] px-2.5 py-2">
                           <p className="text-[11px] text-[#F9FAFB] break-all">
-                            {[span.role, span.file, span.section, span.anchor].filter(Boolean).join(' · ')}
+                            {[span.role, span.file, span.section, span.anchor].filter(Boolean).join(' | ')}
                           </p>
                           {span.excerpt && (
                             <p className="text-[11px] text-[#9CA3AF] mt-1 leading-relaxed">{span.excerpt}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {issue.proof_chains?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-[#9CA3AF] mb-1">Typed proof chains:</p>
+                    <div className="space-y-2">
+                      {issue.proof_chains.map((chain) => (
+                        <div key={chain.id || `${chain.relation}-${chain.source_span?.anchor}-${chain.target_span?.anchor}`} className="rounded-lg border border-[#374151] bg-[#0B1220] px-2.5 py-2">
+                          <p className="text-[11px] text-[#F9FAFB] break-all">
+                            {[chain.relation, chain.evidence_type].filter(Boolean).join(' | ')}
+                          </p>
+                          <p className="text-[11px] text-[#9CA3AF] mt-1 break-all">
+                            {[chain.source_span?.anchor || chain.source_span?.file, chain.target_span?.anchor || chain.target_span?.file].filter(Boolean).join(' -> ')}
+                          </p>
+                          {chain.rationale && (
+                            <p className="text-[11px] text-[#CBD5E1] mt-1 leading-relaxed">{chain.rationale}</p>
+                          )}
+                          {chain.related_keys?.length > 0 && (
+                            <p className="text-[11px] text-[#6B7280] mt-1 break-all">
+                              Keys: {chain.related_keys.join(', ')}
+                            </p>
                           )}
                         </div>
                       ))}
@@ -279,7 +307,7 @@ export default function IssueCard({ issue }) {
                         <div key={link.target} className="rounded-lg border border-[#374151] bg-[#0F172A] px-2.5 py-2">
                           <p className="text-xs text-[#F9FAFB] break-all">{link.label || link.target}</p>
                           <p className="text-[11px] text-[#9CA3AF] break-all">
-                            {[link.type, link.file, link.section, link.target].filter(Boolean).join(' · ')}
+                            {[link.type, link.file, link.section, link.target].filter(Boolean).join(' | ')}
                           </p>
                           {link.related_keys?.length > 0 && (
                             <p className="text-[11px] text-[#6B7280] break-all">
@@ -315,7 +343,6 @@ export default function IssueCard({ issue }) {
             )}
           </div>
 
-          {/* Remediation Guidance */}
           {(issue.deterministic_fix || issue.recommended_fix || issue.fix_steps) && (
             <div className="bg-[#064E3B] bg-opacity-20 border border-[#059669] border-opacity-30 rounded-lg p-3 space-y-3">
               <span className="text-[10px] font-bold text-[#10B981] uppercase tracking-widest">Remediation Guidance</span>
@@ -350,7 +377,7 @@ export default function IssueCard({ issue }) {
                   <ul className="space-y-1">
                     {issue.verification_steps.map((step, i) => (
                       <li key={i} className="flex items-center gap-2 text-xs text-[#9CA3AF]">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] bg-opacity-50"></span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] bg-opacity-50" />
                         {step}
                       </li>
                     ))}
@@ -364,8 +391,8 @@ export default function IssueCard({ issue }) {
             <div>
               <p className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-wide mb-1">Tags</p>
               <div className="flex flex-wrap gap-1.5">
-                {issue.tags.map((tag, i) => (
-                  <span key={i} className="px-2 py-0.5 bg-[#374151] border border-[#4B5563] rounded text-xs text-[#9CA3AF]">
+                {issue.tags.map((tag, index) => (
+                  <span key={index} className="px-2 py-0.5 bg-[#374151] border border-[#4B5563] rounded text-xs text-[#9CA3AF]">
                     {tag}
                   </span>
                 ))}
@@ -377,8 +404,8 @@ export default function IssueCard({ issue }) {
             <div>
               <p className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-wide mb-1">Files</p>
               <div className="flex flex-wrap gap-1.5">
-                {issue.files.map((file, i) => (
-                  <span key={i} className="px-2 py-0.5 bg-[#111827] border border-[#374151] rounded text-xs text-[#9CA3AF]">
+                {issue.files.map((file, index) => (
+                  <span key={index} className="px-2 py-0.5 bg-[#111827] border border-[#374151] rounded text-xs text-[#9CA3AF]">
                     {file}
                   </span>
                 ))}
@@ -390,9 +417,9 @@ export default function IssueCard({ issue }) {
             <div>
               <p className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-wide mb-1">References</p>
               <div className="flex flex-wrap gap-1.5">
-                {issue.references.map((ref, i) => (
-                  <a key={i} href={ref} target="_blank" rel="noopener noreferrer" className="px-2 py-0.5 bg-[#111827] border border-[#374151] rounded text-xs text-[#60A5FA] hover:underline truncate max-w-[200px]">
-                    {ref}
+                {issue.references.map((reference, index) => (
+                  <a key={index} href={reference} target="_blank" rel="noopener noreferrer" className="px-2 py-0.5 bg-[#111827] border border-[#374151] rounded text-xs text-[#60A5FA] hover:underline truncate max-w-[200px]">
+                    {reference}
                   </a>
                 ))}
               </div>

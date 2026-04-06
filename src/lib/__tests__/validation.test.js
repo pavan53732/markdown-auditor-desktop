@@ -49,6 +49,37 @@ describe('Result Validation', () => {
               excerpt: 'Primary anchored excerpt'
             }
           ],
+          proof_chains: [
+            {
+              id: 'supports::requirement_clause::file.md#overview:L12-L14::file-b.md#overview:L12-L14',
+              relation: 'supports',
+              evidence_type: 'requirement_clause',
+              rationale: 'The supporting span reinforces the same requirement clause.',
+              related_keys: ['must record transition'],
+              source_span: {
+                file: 'file.md',
+                section: 'Overview',
+                section_slug: 'overview',
+                line_start: 12,
+                line_end: 14,
+                anchor: 'file.md#overview:L12-L14',
+                role: 'primary',
+                source: 'evidence_match',
+                excerpt: 'Primary anchored excerpt'
+              },
+              target_span: {
+                file: 'file-b.md',
+                section: 'Overview',
+                section_slug: 'overview',
+                line_start: 12,
+                line_end: 14,
+                anchor: 'file-b.md#overview:L12-L14',
+                role: 'related',
+                source: 'requirement_clause',
+                excerpt: 'Supporting anchored excerpt'
+              }
+            }
+          ],
           cross_file_links: [
             {
               type: 'shared_heading',
@@ -143,6 +174,28 @@ describe('Result Validation', () => {
       ]
     };
     expect(() => validateResults(results)).toThrow('evidence_spans[0].line_start');
+  });
+
+  it('should reject malformed proof chain payloads', () => {
+    const results = {
+      summary: { total: 1 },
+      issues: [
+        {
+          severity: 'high',
+          category: 'contradiction',
+          description: 'x',
+          detector_id: 'L1-01',
+          proof_chains: [
+            {
+              relation: 'supports',
+              source_span: { file: 'spec.md', line_start: 1 },
+              target_span: 'bad-span'
+            }
+          ]
+        }
+      ]
+    };
+    expect(() => validateResults(results)).toThrow('proof_chains[0].target_span');
   });
 });
 

@@ -1,4 +1,5 @@
-export const DEFAULT_TIMEOUT_SECONDS = 60;
+export const MIN_TIMEOUT_SECONDS = 120;
+export const DEFAULT_TIMEOUT_SECONDS = 180;
 export const DEFAULT_RETRIES = 2;
 
 export const MIN_SESSION_TOKEN_BUDGET = 5_000_001;
@@ -18,4 +19,13 @@ export function normalizeTokenBudget(value) {
   }
 
   return Math.max(MIN_SESSION_TOKEN_BUDGET, Math.floor(parsed));
+}
+
+export function normalizeTimeoutSeconds(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return DEFAULT_TIMEOUT_SECONDS;
+  }
+
+  return Math.max(MIN_TIMEOUT_SECONDS, Math.floor(parsed));
 }

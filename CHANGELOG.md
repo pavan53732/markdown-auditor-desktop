@@ -10,14 +10,19 @@ This changelog establishes the current production-ready baseline for the app as 
 
 - **Deterministic Local Rule Engine**: Added `src/lib/ruleEngine/index.js` and integrated it into the staged audit pipeline so duplicate headings, broken cross-references, RFC2119 misuse, rollback gaps, workflow ordering/terminal-state issues, undefined reused identifiers, and unresolved glossary bindings can be caught locally before agent synthesis.
 - **Evidence-First Schema Enrichment**: Findings now preserve structured `evidence_spans` alongside `document_anchor` / `document_anchors`, making exports, history reloads, and UI rendering less dependent on free-text evidence alone.
+- **First-Class Analysis Mesh Runtime Model**: Each agent pass now produces a validated runtime summary with merge strategy, merge priority, focus-layer hits, focus-subcategory hits, dominant layers/subcategories, and validation warnings, and the merged audit output now carries an `analysis_mesh` summary instead of treating all passes as interchangeable prompt calls.
+- **Typed Proof Chains**: Added deterministic `proof_chains` so findings can preserve typed span-to-span evidence edges such as `supports`, `contradicts`, `defines`, `depends_on`, `references`, and `violates` instead of only related-location links.
 
 ### Fixed
 
+- **Loose Agent Ownership Integration**: The 8-agent mesh now assigns every layer and detector to an explicit owning runtime agent, surfaces owned detector ranges per pass, and reconciles finding-backed owned coverage versus cross-scope findings after merge instead of relying only on focus metadata.
 - **Packaged Main-Process Startup Crash**: Replaced the ESM-only `uuid` import in `electron/historyService.js` with Node's built-in `crypto.randomUUID()` so the packaged Electron main process no longer crashes on startup with `ERR_REQUIRE_ESM`.
 - **Large Markdown Budget Wall**: Raised the minimum/default session token budget above 5 million and switched the old 6,000-token warning to a much higher batch target so large specs are chunked and batched instead of failing immediately on outdated defaults.
 - **Oversized Agent Prompt Payloads**: Switched the live 8-agent runtime from sending the full detailed 701-detector catalog on every pass to a scoped prompt format with a compact full-taxonomy detector index plus rich focus-layer detector metadata per agent, substantially reducing per-pass prompt size for large audits.
 - **Profile Drift in Universal Audits**: Removed document-type profiles from the runtime, prompt layer, pre-analysis UI, cache identity, and history workbench so the app now always runs in a single universal audit mode.
 - **Malformed Agent JSON Failures**: Added stronger JSON repair, per-agent malformed-response retry, degraded-mode skipped-pass continuation, and captured raw-response diagnostics so a single bad agent pass is less likely to abort the whole audit without actionable evidence.
+- **Provider Timeout Abortions**: Analysis requests now use adaptive timeout growth in the Electron main process, and an agent pass that still times out is skipped in degraded mode with a recorded timeout warning instead of crashing the whole batch immediately.
+- **Low Timeout Config Drift**: Saved configs below the safe timeout floor are now normalized upward automatically, and the settings UI reflects the hardened default/minimum timeout so large audits stop failing on outdated timeout values.
 - **History Diagnostics Loss**: Local history now preserves taxonomy diagnostics and malformed-agent trace data when reopening or comparing saved audits, instead of dropping them by saving only the bare results object.
 - **Stale Filter State Across Audits**: Starting a new audit or resetting the workbench now clears stale subcategory and comparison state so earlier filters do not silently hide issues from the next run.
 - **Fixed 8000 Output-Token Cap**: Replaced the fixed `max_tokens: 8000` analysis request cap in `electron/main.js` with an adaptive output-budget policy that expands on `finish_reason: "length"` and backs off when a provider rejects larger budgets.
@@ -25,11 +30,16 @@ This changelog establishes the current production-ready baseline for the app as 
 - **Weak Document Anchoring**: Added a deterministic Markdown indexing layer that parses headings, resolves section ranges, and enriches findings with file, section, line, and anchor metadata from the actual Markdown source before export, history save, and session reload.
 - **Single-Anchor Cross-File Findings**: Deterministic anchoring now preserves multiple resolved anchors for cross-file findings and uses heading-inference fallback when evidence is too weak for a direct line match but the Markdown structure still yields a unique deterministic section.
 - **Shallow Cross-File Graphing**: Expanded the deterministic cross-file Markdown project graph so it now models headings, glossary terms, identifiers, workflows, requirements, states, APIs, actors, and document references across loaded files, enriches findings with canonical `detection_source` values plus `cross_file_links`, and preserves the new evidence across UI rendering, exports, history reloads, and session normalization.
+- **Fragile Layer Numbering**: Layer numbers, visible layer badges, and detector layer mapping now come from `src/lib/layers.js` as a single source of truth instead of depending on detector metadata object-key ordering.
+- **Hidden Runtime Depth in UI**: Progress and summary surfaces now expose staged runtime progress, project-graph counts, deterministic rule counts, per-agent focus hits, mesh warnings, and merged findings instead of compressing everything into a generic spinner and severity-only cards.
+- **Prompt and UI Encoding Drift**: Removed remaining encoding/polish cracks from the live prompt, runtime comments/messages, badges, and shipped UI controls so the runtime no longer carries mojibake in the main audit surfaces.
+- **Renderer Bundle Warning Noise**: Simplified the Vite chunk split so the production renderer build no longer emits the earlier large-chunk warning or the follow-on circular-chunk warning during packaging verification.
+- **Detector Coverage Ambiguity**: The deterministic rule engine now emits per-detector checked/clean/hit receipts, the analysis mesh reconciles checked/clean/hit/untouched ownership coverage per agent, and the UI/exports surface those receipt-backed metrics instead of treating every quiet detector as the same state.
 
 ### Changed
 
 - **Hybrid Staged Pipeline**: The live runtime now follows a deeper staged flow of Markdown indexing -> deterministic rule evaluation -> cross-file project-graph analysis -> agent synthesis -> merge/severity calibration -> export/history persistence.
-- **Verification Coverage**: The local suite now covers 184 tests across 17 files, including dedicated rule-engine coverage and richer validation/history expectations for evidence spans and hybrid detection sources.
+- **Verification Coverage**: The local suite now covers 197 tests across 18 files, including dedicated evidence-graph coverage, proof-chain fallback coverage, rule-engine coverage, unified layer-numbering checks, explicit agent-ownership reconciliation, receipt-backed detector coverage, adaptive timeout handling, and richer validation/history expectations for evidence spans, typed proof chains, hybrid detection sources, and analysis-mesh runtime summaries.
 
 ## [1.13.0] - 2026-04-02
 ### Added

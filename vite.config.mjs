@@ -8,7 +8,20 @@ export default defineConfig({
   root: 'src',
   build: {
     outDir: '../dist',
-    emptyOutDir: true
+    emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          const normalizedId = String(id || '').replace(/\\/g, '/');
+
+          if (normalizedId.includes('/node_modules/react/') || normalizedId.includes('/node_modules/react-dom/')) {
+            return 'react-vendor';
+          }
+
+          return undefined;
+        }
+      }
+    }
   },
   resolve: {
     alias: {

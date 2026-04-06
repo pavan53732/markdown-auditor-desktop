@@ -237,7 +237,7 @@ export default function HistoryModal({
                         <span className="text-[#FCD34D] font-bold">{entry.issuesCount?.medium}M</span>
                         <span className="text-[#34D399] font-bold">{entry.issuesCount?.low}L</span>
                         {entry.rootCauseCount > 0 && (
-                          <span className="ml-1 text-[#818CF8]">· {entry.rootCauseCount} Root Causes</span>
+                          <span className="ml-1 text-[#818CF8]">| {entry.rootCauseCount} Root Causes</span>
                         )}
                       </div>
                     </div>

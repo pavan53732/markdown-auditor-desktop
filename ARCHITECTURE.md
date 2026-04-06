@@ -2,7 +2,7 @@
 
 ## System Overview
 
-Markdown Intelligence Auditor is a desktop application built with Electron, React, and Vite. It accepts Markdown files, sends chunked/batched requests to an OpenAI-compatible provider, deterministically indexes the source Markdown for headings and line anchors, normalizes the returned findings, and presents a searchable, exportable audit report.
+Markdown Intelligence Auditor is a desktop application built with Electron, React, and Vite. It accepts Markdown files, sends chunked/batched requests to an OpenAI-compatible provider, deterministically indexes the source Markdown for headings and line anchors, builds a deterministic cross-file project graph over the loaded Markdown set, normalizes the returned findings, and presents a searchable, exportable audit report.
 
 The current architecture supports:
 
@@ -16,6 +16,7 @@ The current architecture supports:
 - chunk-aware batching for large files
 - deterministic runtime normalization
 - deterministic Markdown indexing and anchor enrichment for file/section/line evidence, heading-inference fallback, and multi-anchor cross-file resolution
+- deterministic cross-file project graph enrichment for headings, glossary terms, identifiers, and workflow steps
 - incremental cache reuse for unchanged files
 - session diffing and root-cause grouping
 - **Audit History Workbench** for local session management
@@ -40,6 +41,7 @@ Renderer Process (React)
 - taxonomy-driven normalization: metadata backfilling and severity clamping
 - result rendering with advanced subcategory filtering and grouping
 - renderer-branded asset usage for the top bar, progress state, and Markdown export header
+- deterministic project-graph enrichment and cross-file link preservation in exports/history
 - History Workbench UI (search, filter, sort, edit, compare)
 - export generation (JSON, Markdown, CSV)
 
@@ -87,6 +89,8 @@ Provider Layer
 |       |-- auditMode.js
 |       |-- jsonRepair.js (Advanced semantic validation)
 |       |-- layers.js
+|       |-- markdownIndex.js (Deterministic Markdown heading/anchor indexing)
+|       |-- projectGraph.js (Deterministic cross-file Markdown relationship graph)
 |       |-- taxonomyCoverageHelper.js (Per-layer density, richness, subcategory, and bundle coverage analysis)
 |       `-- systemPrompt.js (Dynamic prompt generator for the deterministic agent mesh)
 
@@ -97,10 +101,10 @@ The system supports a local verification workflow with deepened 53-layer coverag
 1.  **Integrity Validation**: Local automated tests verify the 701-detector catalog against the 53-layer schema.
 2.  **Semantic Enforcement**: Validation logic ensures that AI-reported detector IDs, layers, and subcategories are mutually consistent.
 3.  **Benchmark Evaluation**: Canonical Markdown fixtures across `taxonomyBenchmark.test.js`, `deepSpecBenchmarks.test.js`, and `extendedUniversalBenchmarks.test.js` exercise deterministic taxonomy validation, normalization, and detector mapping behavior across 29 benchmark fixtures.
-4.  **Expanded Coverage**: The benchmark suites now cover deep-spec and universal-audit scenarios such as authority bypass, workflow skips, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty drops, artifact reproducibility gaps, toolchain leakage, recovery loop collapse, operational UX leakage, prompt compaction behavior, history metadata migration, runtime budget normalization, deterministic Markdown anchor enrichment, and multi-anchor cross-file resolution. The full local suite currently contains 178 tests across 15 files.
+4.  **Expanded Coverage**: The benchmark suites now cover deep-spec and universal-audit scenarios such as authority bypass, workflow skips, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty drops, artifact reproducibility gaps, toolchain leakage, recovery loop collapse, operational UX leakage, prompt compaction behavior, history metadata migration, runtime budget normalization, deterministic Markdown anchor enrichment, deterministic project-graph linking, and multi-anchor cross-file resolution. The full local suite currently contains 181 tests across 16 files.
 5.  **Enhanced Taxonomy Coverage Helper**: `taxonomyCoverageHelper.js` provides per-layer density analysis, richness metrics, subcategory coverage tracking, bundle coverage analysis, and `related_layers` coverage reporting for comprehensive taxonomy observability.
-6.  **Runtime Diagnostics**: The application tracks enrichment, parsing, clamping, Markdown indexing, deterministic anchor assignment, multi-anchor resolution, fallback anchor assignment, and multi-agent merge metrics during analysis and session loading.
-7.  **Observability**: Diagnostics are surfaced in the UI results summary and exports to ensure pipeline transparency, including indexed files, indexed headings, deterministic anchor assignments, multi-anchor counts, fallback-anchor counts, configured agent count, completed passes, and merged findings.
+6.  **Runtime Diagnostics**: The application tracks enrichment, parsing, clamping, Markdown indexing, deterministic anchor assignment, multi-anchor resolution, fallback anchor assignment, project-graph grouping, graph-link enrichment, and multi-agent merge metrics during analysis and session loading.
+7.  **Observability**: Diagnostics are surfaced in the UI results summary and exports to ensure pipeline transparency, including indexed files, indexed headings, project-graph grouping counts, deterministic anchor assignments, graph-link enrichments, multi-anchor counts, fallback-anchor counts, configured agent count, completed passes, and merged findings.
 |-- build/
 |   |-- icon.ico
 |   `-- icon.png
@@ -142,6 +146,7 @@ The system supports a local verification workflow with deepened 53-layer coverag
 - 8-pass deterministic agent execution using `analysisAgents.js`
 - JSON repair and response validation
 - deterministic Markdown indexing and evidence-to-line enrichment
+- deterministic project-graph construction and cross-file related-location enrichment
 - merge, deduplication, escalation, and cross-layer validation
 - history management and comparison workflows
 - diffing and root-cause-aware grouping

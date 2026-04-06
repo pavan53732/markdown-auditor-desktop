@@ -48,6 +48,15 @@ describe('History Normalization', () => {
             '2. Governance Enforcement Interface',
             '3. Verification Layer'
           ].join('\n')
+        },
+        {
+          name: 'reference.md',
+          content: [
+            '# Execution Flow',
+            '1. Agent Proposal',
+            '2. Governance Enforcement Interface',
+            '4. Local Export'
+          ].join('\n')
         }
       ],
       taxonomyDiagnostics: {
@@ -85,11 +94,22 @@ describe('History Normalization', () => {
     expect(normalized.results.issues[0].section).toBe('Execution Flow');
     expect(normalized.results.issues[0].line_number).toBe(5);
     expect(normalized.results.issues[0].document_anchor).toBe('plan.md#execution-flow:L5');
+    expect(normalized.results.issues[0].detection_source).toBe('hybrid_graph');
+    expect(normalized.results.issues[0].cross_file_links).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          file: 'reference.md'
+        })
+      ])
+    );
     expect(normalized.taxonomyDiagnostics.severity_clamped_count).toBe(1);
     expect(normalized.taxonomyDiagnostics.total_issues_loaded).toBe(1);
-    expect(normalized.taxonomyDiagnostics.indexed_document_count).toBe(1);
-    expect(normalized.taxonomyDiagnostics.indexed_heading_count).toBe(2);
+    expect(normalized.taxonomyDiagnostics.indexed_document_count).toBe(2);
+    expect(normalized.taxonomyDiagnostics.indexed_heading_count).toBe(3);
+    expect(normalized.taxonomyDiagnostics.project_graph_document_count).toBe(2);
+    expect(normalized.taxonomyDiagnostics.project_graph_workflow_group_count).toBeGreaterThanOrEqual(1);
     expect(normalized.taxonomyDiagnostics.deterministic_anchor_enrichment_count).toBe(1);
+    expect(normalized.taxonomyDiagnostics.deterministic_graph_link_enrichment_count).toBe(1);
     expect(normalized.taxonomyDiagnostics.agent_failure_events).toHaveLength(1);
     expect(normalized.taxonomyDiagnostics.agent_failure_events[0].agent_id).toBe('reasoning_evidence_agent');
   });

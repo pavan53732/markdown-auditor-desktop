@@ -35,6 +35,17 @@ describe('Result Validation', () => {
           document_anchor: 'file.md#overview:L12-L14',
           document_anchors: ['file.md#overview:L12-L14', 'file-b.md#overview:L12-L14'],
           anchor_source: 'evidence_match',
+          detection_source: 'hybrid_graph',
+          cross_file_links: [
+            {
+              type: 'shared_heading',
+              label: 'Overview',
+              file: 'file-b.md',
+              section: 'Overview',
+              target: 'file-b.md#overview:L12-L14',
+              related_keys: ['overview']
+            }
+          ],
           line_number: 12,
           line_end: 14
         }
@@ -87,6 +98,22 @@ describe('Result Validation', () => {
       issues: [{ severity: 'high', category: 'contradiction', description: 'x', detector_id: 'L99-99' }]
     };
     expect(() => validateResults(results)).toThrow('unknown detector_id');
+  });
+
+  it('should reject malformed cross-file link payloads', () => {
+    const results = {
+      summary: { total: 1 },
+      issues: [
+        {
+          severity: 'high',
+          category: 'contradiction',
+          description: 'x',
+          detector_id: 'L1-01',
+          cross_file_links: [{ label: 'Missing target' }]
+        }
+      ]
+    };
+    expect(() => validateResults(results)).toThrow('cross_file_links[0].target');
   });
 });
 

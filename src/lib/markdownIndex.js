@@ -15,7 +15,7 @@ function stripMarkdownInlineFormatting(value) {
     .trim();
 }
 
-function normalizeComparableText(value) {
+export function normalizeComparableText(value) {
   return stripMarkdownInlineFormatting(value)
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -30,7 +30,7 @@ function tokenizeComparableText(value) {
   return normalized ? normalized.split(' ') : [];
 }
 
-function buildHeadingSlug(value) {
+export function buildHeadingSlug(value) {
   return normalizeComparableText(value).replace(/\s+/g, '-');
 }
 
@@ -437,6 +437,7 @@ export function buildMarkdownDocumentIndex(file = {}) {
     path: file.path || '',
     aliases: buildFileAliases(file),
     lineCount: Math.max(1, lines.length),
+    lines,
     headings,
     normalizedLines: lines.map((line) => normalizeComparableText(line)),
     normalizedContent: normalizeComparableText(content)

@@ -179,6 +179,32 @@ export function validateResults(results) {
     if (issue.anchor_source && typeof issue.anchor_source !== 'string') {
       throw new Error(`Issue at index ${index} has invalid anchor_source type`);
     }
+    if (issue.detection_source && typeof issue.detection_source !== 'string') {
+      throw new Error(`Issue at index ${index} has invalid detection_source type`);
+    }
+    if (issue.cross_file_links !== undefined) {
+      if (!Array.isArray(issue.cross_file_links)) {
+        throw new Error(`Issue at index ${index} has invalid cross_file_links type`);
+      }
+      issue.cross_file_links.forEach((link, linkIndex) => {
+        if (!link || typeof link !== 'object') {
+          throw new Error(`Issue at index ${index} has invalid cross_file_links[${linkIndex}] entry`);
+        }
+        if (typeof link.target !== 'string' || !link.target.trim()) {
+          throw new Error(`Issue at index ${index} has invalid cross_file_links[${linkIndex}].target`);
+        }
+        ['type', 'label', 'file', 'section'].forEach((field) => {
+          if (link[field] !== undefined && typeof link[field] !== 'string') {
+            throw new Error(`Issue at index ${index} has invalid cross_file_links[${linkIndex}].${field}`);
+          }
+        });
+        if (link.related_keys !== undefined) {
+          if (!Array.isArray(link.related_keys) || link.related_keys.some((value) => typeof value !== 'string')) {
+            throw new Error(`Issue at index ${index} has invalid cross_file_links[${linkIndex}].related_keys`);
+          }
+        }
+      });
+    }
     if (issue.closed_world_status && typeof issue.closed_world_status !== 'string') {
       throw new Error(`Issue at index ${index} has invalid closed_world_status type`);
     }

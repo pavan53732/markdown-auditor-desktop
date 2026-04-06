@@ -19,6 +19,7 @@ This changelog establishes the current production-ready baseline for the app as 
 - **Unknown Detector Soft-Warning**: AI-result validation now rejects unknown detector IDs instead of only logging warnings, preventing unsupported detector IDs from entering runtime results.
 - **Weak Document Anchoring**: Added a deterministic Markdown indexing layer that parses headings, resolves section ranges, and enriches findings with file, section, line, and anchor metadata from the actual Markdown source before export, history save, and session reload.
 - **Single-Anchor Cross-File Findings**: Deterministic anchoring now preserves multiple resolved anchors for cross-file findings and uses heading-inference fallback when evidence is too weak for a direct line match but the Markdown structure still yields a unique deterministic section.
+- **Missing Cross-File Evidence Graph**: Added a deterministic cross-file Markdown project graph that groups shared headings, glossary terms, identifiers, and workflow steps across loaded files, enriches findings with `detection_source` and `cross_file_links`, and preserves the new evidence across UI rendering, exports, history reloads, and session normalization.
 
 ## [1.13.0] - 2026-04-02
 ### Added

@@ -3,6 +3,7 @@ import {
   buildMarkdownProjectIndex,
   enrichIssueWithMarkdownIndex
 } from './markdownIndex.js';
+import { buildMarkdownProjectGraph, enrichIssueWithProjectGraph } from './projectGraph.js';
 
 export const LAYER_SUBCATEGORIES = {
   contradiction: ['direct conflicts', 'configuration precedence conflicts', 'version drift', 'terminology drift', 'state-logic contradiction', 'diagram-text mismatch'],
@@ -1207,12 +1208,18 @@ export function createInitialDiagnostics() {
     skipped_agent_pass_count: 0,
     indexed_document_count: 0,
     indexed_heading_count: 0,
+    project_graph_document_count: 0,
+    project_graph_heading_group_count: 0,
+    project_graph_glossary_term_group_count: 0,
+    project_graph_identifier_group_count: 0,
+    project_graph_workflow_group_count: 0,
     deterministic_anchor_enrichment_count: 0,
     deterministic_file_assignment_count: 0,
     deterministic_section_assignment_count: 0,
     deterministic_line_assignment_count: 0,
     deterministic_multi_anchor_count: 0,
     deterministic_fallback_anchor_count: 0,
+    deterministic_graph_link_enrichment_count: 0,
     last_agent_failure: null,
     agent_failure_events: [],
     warnings: []
@@ -1519,15 +1526,23 @@ export function normalizeLoadedSession(session) {
   diagnostics.deterministic_line_assignment_count = 0;
   diagnostics.deterministic_multi_anchor_count = 0;
   diagnostics.deterministic_fallback_anchor_count = 0;
+  diagnostics.deterministic_graph_link_enrichment_count = 0;
   const normalized = { ...session };
   const markdownIndex = buildMarkdownProjectIndex(normalized.files || []);
+  const projectGraph = buildMarkdownProjectGraph(normalized.files || []);
   diagnostics.indexed_document_count = markdownIndex.summary.documentCount;
   diagnostics.indexed_heading_count = markdownIndex.summary.headingCount;
+  diagnostics.project_graph_document_count = projectGraph.summary.documentCount;
+  diagnostics.project_graph_heading_group_count = projectGraph.summary.headingGroupCount;
+  diagnostics.project_graph_glossary_term_group_count = projectGraph.summary.glossaryTermGroupCount;
+  diagnostics.project_graph_identifier_group_count = projectGraph.summary.identifierGroupCount;
+  diagnostics.project_graph_workflow_group_count = projectGraph.summary.workflowGroupCount;
   if (normalized.results.issues) {
     normalized.results.issues = normalized.results.issues.map(issue => {
       const enriched = normalizeIssueFromDetector(issue, diagnostics);
       diagnostics.total_issues_loaded++;
-      return enrichIssueWithMarkdownIndex(enriched, markdownIndex, diagnostics);
+      const anchored = enrichIssueWithMarkdownIndex(enriched, markdownIndex, diagnostics);
+      return enrichIssueWithProjectGraph(anchored, projectGraph, diagnostics);
     });
   }
   normalized.taxonomyDiagnostics = diagnostics;

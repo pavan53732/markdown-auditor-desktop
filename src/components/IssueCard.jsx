@@ -182,7 +182,7 @@ export default function IssueCard({ issue }) {
                 )}
               </div>
             )}
-            {(issue.invariant_broken || issue.authority_boundary || issue.constraint_reference || issue.violation_reference || issue.closed_world_status || issue.analysis_agents?.length || issue.document_anchor || issue.anchor_source) && (
+            {(issue.invariant_broken || issue.authority_boundary || issue.constraint_reference || issue.violation_reference || issue.closed_world_status || issue.analysis_agents?.length || issue.document_anchor || issue.anchor_source || issue.detection_source || issue.cross_file_links?.length) && (
               <div className="grid gap-2 border-t border-[#374151] pt-2">
                 {issue.document_anchor && (
                   <div>
@@ -204,6 +204,12 @@ export default function IssueCard({ issue }) {
                   <div>
                     <p className="text-xs font-semibold text-[#9CA3AF] mb-0.5">Anchor source:</p>
                     <p className="text-xs text-[#D1D5DB]">{issue.anchor_source}</p>
+                  </div>
+                )}
+                {issue.detection_source && (
+                  <div>
+                    <p className="text-xs font-semibold text-[#9CA3AF] mb-0.5">Detection source:</p>
+                    <p className="text-xs text-[#D1D5DB]">{issue.detection_source}</p>
                   </div>
                 )}
                 {issue.invariant_broken && (
@@ -244,6 +250,26 @@ export default function IssueCard({ issue }) {
                         <span key={agentId} className="px-2 py-0.5 bg-[#1F2937] border border-[#4B5563] rounded-full text-[10px] text-[#D1D5DB]">
                           {agentId}
                         </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {issue.cross_file_links?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-[#9CA3AF] mb-1">Cross-file links:</p>
+                    <div className="space-y-2">
+                      {issue.cross_file_links.map((link) => (
+                        <div key={link.target} className="rounded-lg border border-[#374151] bg-[#0F172A] px-2.5 py-2">
+                          <p className="text-xs text-[#F9FAFB] break-all">{link.label || link.target}</p>
+                          <p className="text-[11px] text-[#9CA3AF] break-all">
+                            {[link.type, link.file, link.section, link.target].filter(Boolean).join(' · ')}
+                          </p>
+                          {link.related_keys?.length > 0 && (
+                            <p className="text-[11px] text-[#6B7280] break-all">
+                              Keys: {link.related_keys.join(', ')}
+                            </p>
+                          )}
+                        </div>
                       ))}
                     </div>
                   </div>

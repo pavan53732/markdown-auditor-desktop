@@ -14,6 +14,7 @@ import { buildSystemPrompt } from './lib/systemPrompt';
 import { repairJSON, validateResults } from './lib/jsonRepair';
 import { ANALYSIS_AGENT_COUNT, ANALYSIS_AGENT_MESH, ANALYSIS_MESH_VERSION } from './lib/analysisAgents';
 import { buildMarkdownProjectIndex, enrichIssueWithMarkdownIndex } from './lib/markdownIndex';
+import { buildMarkdownProjectGraph, enrichIssueWithProjectGraph } from './lib/projectGraph';
 import {
   DEFAULT_RETRIES,
   DEFAULT_SESSION_TOKEN_BUDGET,
@@ -98,6 +99,41 @@ function normalizeFileDisplayNames(fileList) {
 function normalizeHistorySessionPayload(session) {
   if (!session) return null;
   return session.results ? session : { results: session };
+}
+
+const DETECTION_SOURCE_PRIORITY = {
+  model: 0,
+  hybrid_anchor: 1,
+  hybrid_graph: 2
+};
+
+function normalizeCrossFileLinks(links = []) {
+  if (!Array.isArray(links)) return [];
+
+  const seenTargets = new Set();
+  return links
+    .filter((link) => link && typeof link === 'object' && typeof link.target === 'string' && link.target.trim())
+    .map((link) => ({
+      type: typeof link.type === 'string' ? link.type : '',
+      label: typeof link.label === 'string' ? link.label : '',
+      file: typeof link.file === 'string' ? link.file : '',
+      section: typeof link.section === 'string' ? link.section : '',
+      target: link.target.trim(),
+      related_keys: Array.isArray(link.related_keys)
+        ? Array.from(new Set(link.related_keys.filter((value) => typeof value === 'string' && value.trim())))
+        : []
+    }))
+    .filter((link) => {
+      if (seenTargets.has(link.target)) return false;
+      seenTargets.add(link.target);
+      return true;
+    });
+}
+
+function mergeDetectionSource(existingSource, nextSource) {
+  const existingPriority = DETECTION_SOURCE_PRIORITY[existingSource] ?? -1;
+  const nextPriority = DETECTION_SOURCE_PRIORITY[nextSource] ?? -1;
+  return nextPriority > existingPriority ? nextSource : existingSource;
 }
 
 export default function App() {
@@ -628,6 +664,22 @@ export default function App() {
           existing.analysis_agents = Array.from(new Set(mergedAgents));
           existing.analysis_agent = existing.analysis_agents[0];
         }
+        if (issue.document_anchors?.length) {
+          existing.document_anchors = Array.from(
+            new Set([...(existing.document_anchors || []), ...issue.document_anchors.filter(Boolean)])
+          );
+        }
+        if (!existing.document_anchor && issue.document_anchor) {
+          existing.document_anchor = issue.document_anchor;
+        }
+        if (!existing.anchor_source && issue.anchor_source) {
+          existing.anchor_source = issue.anchor_source;
+        }
+        existing.cross_file_links = normalizeCrossFileLinks([
+          ...(existing.cross_file_links || []),
+          ...(issue.cross_file_links || [])
+        ]);
+        existing.detection_source = mergeDetectionSource(existing.detection_source, issue.detection_source);
         [
           'why_triggered',
           'failure_type',
@@ -656,6 +708,7 @@ export default function App() {
       } else {
         const normalizedIssue = {
           ...issue,
+          cross_file_links: normalizeCrossFileLinks(issue.cross_file_links),
           analysis_agents: Array.isArray(issue.analysis_agents)
             ? Array.from(new Set(issue.analysis_agents))
             : (issue.analysis_agent ? [issue.analysis_agent] : [])
@@ -694,8 +747,14 @@ export default function App() {
     const diagnostics = createInitialDiagnostics();
     diagnostics.analysis_mesh_agents_configured = ANALYSIS_AGENT_COUNT;
     const markdownIndex = buildMarkdownProjectIndex(files);
+    const projectGraph = buildMarkdownProjectGraph(files);
     diagnostics.indexed_document_count = markdownIndex.summary.documentCount;
     diagnostics.indexed_heading_count = markdownIndex.summary.headingCount;
+    diagnostics.project_graph_document_count = projectGraph.summary.documentCount;
+    diagnostics.project_graph_heading_group_count = projectGraph.summary.headingGroupCount;
+    diagnostics.project_graph_glossary_term_group_count = projectGraph.summary.glossaryTermGroupCount;
+    diagnostics.project_graph_identifier_group_count = projectGraph.summary.identifierGroupCount;
+    diagnostics.project_graph_workflow_group_count = projectGraph.summary.workflowGroupCount;
 
     try {
       const filesToAnalyze = [];
@@ -807,7 +866,8 @@ export default function App() {
       if (merged.issues) {
         merged.issues = merged.issues.map((issue) => {
           const taxonomyNormalized = normalizeIssueFromDetector(issue, diagnostics);
-          return enrichIssueWithMarkdownIndex(taxonomyNormalized, markdownIndex, diagnostics);
+          const anchoredIssue = enrichIssueWithMarkdownIndex(taxonomyNormalized, markdownIndex, diagnostics);
+          return enrichIssueWithProjectGraph(anchoredIssue, projectGraph, diagnostics);
         });
         merged.issues = deduplicateIssues(merged.issues);
         merged.summary.total = merged.issues.length;
@@ -919,6 +979,7 @@ export default function App() {
           (issue.detector_name || '').toLowerCase().includes(query) ||
           (issue.subcategory || '').toLowerCase().includes(query) ||
           (issue.failure_type || '').toLowerCase().includes(query) ||
+          (issue.detection_source || '').toLowerCase().includes(query) ||
           (issue.contract_step || '').toLowerCase().includes(query) ||
           (issue.invariant_broken || '').toLowerCase().includes(query) ||
           (issue.authority_boundary || '').toLowerCase().includes(query) ||
@@ -926,6 +987,11 @@ export default function App() {
           (issue.violation_reference || '').toLowerCase().includes(query) ||
           (issue.analysis_agent || '').toLowerCase().includes(query) ||
           (issue.analysis_agents || []).some((agent) => agent.toLowerCase().includes(query)) ||
+          (issue.cross_file_links || []).some((link) =>
+            [link.type, link.label, link.file, link.section, link.target]
+              .filter(Boolean)
+              .some((value) => value.toLowerCase().includes(query))
+          ) ||
           (issue.files || []).some(f => f.toLowerCase().includes(query)) ||
           (issue.tags || []).some(t => t.toLowerCase().includes(query))
         );
@@ -991,6 +1057,30 @@ export default function App() {
               <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.indexed_heading_count}</p>
             </div>
           )}
+          {taxonomyDiagnostics.project_graph_heading_group_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#9CA3AF] mb-0.5">Graph Headings</p>
+              <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.project_graph_heading_group_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.project_graph_glossary_term_group_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#9CA3AF] mb-0.5">Graph Terms</p>
+              <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.project_graph_glossary_term_group_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.project_graph_identifier_group_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#9CA3AF] mb-0.5">Graph IDs</p>
+              <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.project_graph_identifier_group_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.project_graph_workflow_group_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#9CA3AF] mb-0.5">Graph Workflows</p>
+              <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.project_graph_workflow_group_count}</p>
+            </div>
+          )}
           {taxonomyDiagnostics.deterministic_anchor_enrichment_count > 0 && (
             <div>
               <p className="text-[10px] text-[#93C5FD] mb-0.5">Anchored</p>
@@ -1013,6 +1103,12 @@ export default function App() {
             <div>
               <p className="text-[10px] text-[#FCD34D] mb-0.5">Fallback Anchors</p>
               <p className="text-sm font-semibold text-[#FCD34D]">{taxonomyDiagnostics.deterministic_fallback_anchor_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.deterministic_graph_link_enrichment_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#F9A8D4] mb-0.5">Graph Links</p>
+              <p className="text-sm font-semibold text-[#F9A8D4]">{taxonomyDiagnostics.deterministic_graph_link_enrichment_count}</p>
             </div>
           )}
           {taxonomyDiagnostics.deterministic_section_assignment_count > 0 && (
@@ -1172,8 +1268,18 @@ export default function App() {
       if (issue.document_anchor) md += `**Document Anchor:** ${issue.document_anchor}\n`;
       if (issue.document_anchors?.length > 1) md += `**Additional Anchors:** ${issue.document_anchors.slice(1).join(', ')}\n`;
       if (issue.anchor_source) md += `**Anchor Source:** ${issue.anchor_source}\n`;
+      if (issue.detection_source) md += `**Detection Source:** ${issue.detection_source}\n`;
       if (issue.root_cause_id) md += `**Root Cause ID:** ${issue.root_cause_id}\n`;
       md += `**Files:** ${(issue.files || []).join(', ')}\n\n`;
+
+      if (issue.cross_file_links?.length > 0) {
+        md += `**Cross-File Links:**\n`;
+        issue.cross_file_links.forEach((link) => {
+          const parts = [link.type, link.file, link.section, link.target].filter(Boolean);
+          md += `- ${link.label || 'Related location'}${parts.length ? ` (${parts.join(' · ')})` : ''}\n`;
+        });
+        md += `\n`;
+      }
       
       if (issue.why_triggered) {
         md += `**Why Triggered:** ${issue.why_triggered}\n\n`;
@@ -1230,12 +1336,18 @@ export default function App() {
       md += `- **Severity Clamped:** ${taxonomyDiagnostics.severity_clamped_count}\n`;
       md += `- **Indexed Documents:** ${taxonomyDiagnostics.indexed_document_count || 0}\n`;
       md += `- **Indexed Headings:** ${taxonomyDiagnostics.indexed_heading_count || 0}\n`;
+      md += `- **Project Graph Documents:** ${taxonomyDiagnostics.project_graph_document_count || 0}\n`;
+      md += `- **Project Graph Heading Groups:** ${taxonomyDiagnostics.project_graph_heading_group_count || 0}\n`;
+      md += `- **Project Graph Glossary Groups:** ${taxonomyDiagnostics.project_graph_glossary_term_group_count || 0}\n`;
+      md += `- **Project Graph Identifier Groups:** ${taxonomyDiagnostics.project_graph_identifier_group_count || 0}\n`;
+      md += `- **Project Graph Workflow Groups:** ${taxonomyDiagnostics.project_graph_workflow_group_count || 0}\n`;
       md += `- **Deterministic Anchor Enrichments:** ${taxonomyDiagnostics.deterministic_anchor_enrichment_count || 0}\n`;
       md += `- **Deterministic File Assignments:** ${taxonomyDiagnostics.deterministic_file_assignment_count || 0}\n`;
       md += `- **Deterministic Section Assignments:** ${taxonomyDiagnostics.deterministic_section_assignment_count || 0}\n`;
       md += `- **Deterministic Line Assignments:** ${taxonomyDiagnostics.deterministic_line_assignment_count || 0}\n`;
       md += `- **Deterministic Multi-Anchor Assignments:** ${taxonomyDiagnostics.deterministic_multi_anchor_count || 0}\n`;
       md += `- **Deterministic Fallback Anchors:** ${taxonomyDiagnostics.deterministic_fallback_anchor_count || 0}\n`;
+      md += `- **Deterministic Graph Link Enrichments:** ${taxonomyDiagnostics.deterministic_graph_link_enrichment_count || 0}\n`;
       md += `- **Configured Analysis Agents:** ${taxonomyDiagnostics.analysis_mesh_agents_configured}\n`;
       md += `- **Completed Agent Passes:** ${taxonomyDiagnostics.analysis_mesh_passes_completed}\n`;
       md += `- **Merged Agent Findings:** ${taxonomyDiagnostics.agent_findings_merged_count}\n`;
@@ -1280,7 +1392,7 @@ export default function App() {
 
   const exportCSV = () => {
     if (!results) return;
-    const headers = ['ID', 'DetectorID', 'DetectorName', 'Severity', 'Category', 'Subcategory', 'FailureType', 'ContractStep', 'InvariantBroken', 'AuthorityBoundary', 'ConstraintReference', 'ViolationReference', 'ClosedWorldStatus', 'AnalysisAgents', 'Section', 'SectionSlug', 'Line', 'LineEnd', 'DocumentAnchor', 'DocumentAnchors', 'AnchorSource', 'RootCauseID', 'Description', 'WhyTriggered', 'EscalationReason', 'DeterministicFix', 'RecommendedFix', 'FixSteps', 'VerificationSteps', 'Effort', 'Evidence', 'Confidence', 'Impact', 'Difficulty', 'Files', 'Tags'];
+    const headers = ['ID', 'DetectorID', 'DetectorName', 'Severity', 'Category', 'Subcategory', 'FailureType', 'ContractStep', 'InvariantBroken', 'AuthorityBoundary', 'ConstraintReference', 'ViolationReference', 'ClosedWorldStatus', 'AnalysisAgents', 'Section', 'SectionSlug', 'Line', 'LineEnd', 'DocumentAnchor', 'DocumentAnchors', 'AnchorSource', 'DetectionSource', 'CrossFileLinks', 'RootCauseID', 'Description', 'WhyTriggered', 'EscalationReason', 'DeterministicFix', 'RecommendedFix', 'FixSteps', 'VerificationSteps', 'Effort', 'Evidence', 'Confidence', 'Impact', 'Difficulty', 'Files', 'Tags'];
     const rows = (results.issues || []).map((issue) => [
       issue.id || '',
       issue.detector_id || '',
@@ -1303,6 +1415,8 @@ export default function App() {
       `"${(issue.document_anchor || '').replace(/"/g, '""')}"`,
       `"${(issue.document_anchors || []).join(' | ').replace(/"/g, '""')}"`,
       issue.anchor_source || '',
+      issue.detection_source || '',
+      `"${(issue.cross_file_links || []).map((link) => [link.label, link.target].filter(Boolean).join(' -> ')).join(' | ').replace(/"/g, '""')}"`,
       issue.root_cause_id || '',
       `"${(issue.description || '').replace(/"/g, '""')}"`,
       `"${(issue.why_triggered || '').replace(/"/g, '""')}"`,

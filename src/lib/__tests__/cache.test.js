@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { resolveInitialCache } from '../detectorMetadata';
 const CacheService = require('../../../electron/cacheService');
 const fs = require('fs');
 const path = require('path');
-const { resolveInitialCache } = require('../detectorMetadata');
 
 vi.mock('fs');
 vi.mock('path');

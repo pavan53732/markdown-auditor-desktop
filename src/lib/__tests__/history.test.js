@@ -37,6 +37,19 @@ describe('History Metadata', () => {
 describe('History Normalization', () => {
   it('should normalize loaded history results', () => {
     const historySession = {
+      files: [
+        {
+          name: 'plan.md',
+          content: [
+            '# Overview',
+            '',
+            '## Execution Flow',
+            '1. Agent Proposal',
+            '2. Governance Enforcement Interface',
+            '3. Verification Layer'
+          ].join('\n')
+        }
+      ],
       taxonomyDiagnostics: {
         malformed_agent_response_count: 1,
         agent_failure_events: [
@@ -53,7 +66,13 @@ describe('History Normalization', () => {
       },
       results: {
         issues: [
-          { detector_id: 'L1-01', description: 'issue 1', severity: 'low' }
+          {
+            detector_id: 'L1-01',
+            description: 'issue 1',
+            severity: 'low',
+            evidence: '2. Governance Enforcement Interface',
+            files: ['plan.md']
+          }
         ]
       }
     };
@@ -63,8 +82,14 @@ describe('History Normalization', () => {
     // L1-01 has a floor of 'high'
     expect(normalized.results.issues[0].severity).toBe('high');
     expect(normalized.results.issues[0].detector_name).toBe('direct contradictions');
+    expect(normalized.results.issues[0].section).toBe('Execution Flow');
+    expect(normalized.results.issues[0].line_number).toBe(5);
+    expect(normalized.results.issues[0].document_anchor).toBe('plan.md#execution-flow:L5');
     expect(normalized.taxonomyDiagnostics.severity_clamped_count).toBe(1);
     expect(normalized.taxonomyDiagnostics.total_issues_loaded).toBe(1);
+    expect(normalized.taxonomyDiagnostics.indexed_document_count).toBe(1);
+    expect(normalized.taxonomyDiagnostics.indexed_heading_count).toBe(2);
+    expect(normalized.taxonomyDiagnostics.deterministic_anchor_enrichment_count).toBe(1);
     expect(normalized.taxonomyDiagnostics.agent_failure_events).toHaveLength(1);
     expect(normalized.taxonomyDiagnostics.agent_failure_events[0].agent_id).toBe('reasoning_evidence_agent');
   });

@@ -165,8 +165,28 @@ export function validateResults(results) {
     if (issue.evidence_reference && typeof issue.evidence_reference !== 'string') {
       throw new Error(`Issue at index ${index} has invalid evidence_reference type`);
     }
+    if (issue.section_slug && typeof issue.section_slug !== 'string') {
+      throw new Error(`Issue at index ${index} has invalid section_slug type`);
+    }
+    if (issue.document_anchor && typeof issue.document_anchor !== 'string') {
+      throw new Error(`Issue at index ${index} has invalid document_anchor type`);
+    }
+    if (issue.document_anchors) {
+      if (!Array.isArray(issue.document_anchors) || issue.document_anchors.some((anchor) => typeof anchor !== 'string')) {
+        throw new Error(`Issue at index ${index} has invalid document_anchors type`);
+      }
+    }
+    if (issue.anchor_source && typeof issue.anchor_source !== 'string') {
+      throw new Error(`Issue at index ${index} has invalid anchor_source type`);
+    }
     if (issue.closed_world_status && typeof issue.closed_world_status !== 'string') {
       throw new Error(`Issue at index ${index} has invalid closed_world_status type`);
+    }
+    if (issue.line_number !== undefined && !Number.isFinite(Number(issue.line_number))) {
+      throw new Error(`Issue at index ${index} has invalid line_number type`);
+    }
+    if (issue.line_end !== undefined && !Number.isFinite(Number(issue.line_end))) {
+      throw new Error(`Issue at index ${index} has invalid line_end type`);
     }
     if (issue.assumption_detected !== undefined && typeof issue.assumption_detected !== 'boolean') {
       throw new Error(`Issue at index ${index} has invalid assumption_detected type`);

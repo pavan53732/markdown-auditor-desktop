@@ -97,7 +97,7 @@ export default function IssueCard({ issue }) {
           <p className="text-xs text-[#6B7280] mt-1">
             {(issue.files || []).join(', ')}
             {issue.section && ` · ${issue.section}`}
-            {issue.line_number && ` · Line ${issue.line_number}`}
+            {issue.line_number && ` · Line ${issue.line_number}${issue.line_end ? `-${issue.line_end}` : ''}`}
           </p>
         </div>
       </button>
@@ -182,8 +182,30 @@ export default function IssueCard({ issue }) {
                 )}
               </div>
             )}
-            {(issue.invariant_broken || issue.authority_boundary || issue.constraint_reference || issue.violation_reference || issue.closed_world_status || issue.analysis_agents?.length) && (
+            {(issue.invariant_broken || issue.authority_boundary || issue.constraint_reference || issue.violation_reference || issue.closed_world_status || issue.analysis_agents?.length || issue.document_anchor || issue.anchor_source) && (
               <div className="grid gap-2 border-t border-[#374151] pt-2">
+                {issue.document_anchor && (
+                  <div>
+                    <p className="text-xs font-semibold text-[#9CA3AF] mb-0.5">Document anchor:</p>
+                    <p className="text-xs text-[#D1D5DB] break-all">{issue.document_anchor}</p>
+                  </div>
+                )}
+                {issue.document_anchors?.length > 1 && (
+                  <div>
+                    <p className="text-xs font-semibold text-[#9CA3AF] mb-1">Additional anchors:</p>
+                    <div className="space-y-1">
+                      {issue.document_anchors.slice(1).map((anchor) => (
+                        <p key={anchor} className="text-xs text-[#D1D5DB] break-all">{anchor}</p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {issue.anchor_source && (
+                  <div>
+                    <p className="text-xs font-semibold text-[#9CA3AF] mb-0.5">Anchor source:</p>
+                    <p className="text-xs text-[#D1D5DB]">{issue.anchor_source}</p>
+                  </div>
+                )}
                 {issue.invariant_broken && (
                   <div>
                     <p className="text-xs font-semibold text-[#9CA3AF] mb-0.5">Invariant broken:</p>

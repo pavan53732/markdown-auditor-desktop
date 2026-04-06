@@ -1,3 +1,9 @@
+import {
+  buildIssueDocumentAnchor,
+  buildMarkdownProjectIndex,
+  enrichIssueWithMarkdownIndex
+} from './markdownIndex.js';
+
 export const LAYER_SUBCATEGORIES = {
   contradiction: ['direct conflicts', 'configuration precedence conflicts', 'version drift', 'terminology drift', 'state-logic contradiction', 'diagram-text mismatch'],
   logical: ['invalid assumptions', 'causality gaps', 'circular reasoning', 'scope leaps', 'invariant violation logic', 'logic-state mismatch'],
@@ -1025,10 +1031,11 @@ const buildEvidenceReference = (id) => `detector_catalog:${id}`;
 const buildDeterministicFixTemplate = (meta, layer) =>
   meta.remediation || `Enforce a deterministic contract for ${meta.sub} within the ${layer} layer and validate it with explicit evidence.`;
 const buildViolationReference = (issue, detectorId) => {
-  const filePart = issue.files?.[0] || 'unknown_file';
-  const sectionPart = issue.section ? `#${toSnakeCase(issue.section)}` : '';
-  const linePart = issue.line_number ? `:L${issue.line_number}` : '';
-  return `${filePart}${sectionPart}${linePart}::${detectorId || 'unknown_detector'}`;
+  const anchor = buildIssueDocumentAnchor({
+    ...issue,
+    section_slug: issue.section_slug || toSnakeCase(issue.section || '')
+  }) || (issue.files?.[0] || 'unknown_file');
+  return `${anchor}::${detectorId || 'unknown_detector'}`;
 };
 
 export const DETECTOR_METADATA = {};
@@ -1198,6 +1205,14 @@ export function createInitialDiagnostics() {
     malformed_agent_retry_count: 0,
     recovered_agent_response_count: 0,
     skipped_agent_pass_count: 0,
+    indexed_document_count: 0,
+    indexed_heading_count: 0,
+    deterministic_anchor_enrichment_count: 0,
+    deterministic_file_assignment_count: 0,
+    deterministic_section_assignment_count: 0,
+    deterministic_line_assignment_count: 0,
+    deterministic_multi_anchor_count: 0,
+    deterministic_fallback_anchor_count: 0,
     last_agent_failure: null,
     agent_failure_events: [],
     warnings: []
@@ -1455,6 +1470,9 @@ export const hashDescription = (text) => {
 export const getIssueIdentity = (issue) => {
   const detectorMatch = issue.description?.match(/\[L(\d+)-(\d+)\]/);
   const detectorId = issue.detector_id || (detectorMatch ? `L${detectorMatch[1]}-${detectorMatch[2]}` : 'unknown');
+  if (issue.document_anchor) {
+    return `${detectorId}::${issue.document_anchor}`;
+  }
   const primaryFile = issue.files?.[0] || 'unknown';
   const section = issue.section || 'no-section';
   if (issue.line_number) return `${detectorId}::${primaryFile}::${section}::${issue.line_number}`;
@@ -1495,12 +1513,21 @@ export function normalizeLoadedSession(session) {
   diagnostics.severity_clamped_count = 0;
   diagnostics.missing_taxonomy_after_normalization_count = 0;
   diagnostics.total_issues_loaded = 0;
+  diagnostics.deterministic_anchor_enrichment_count = 0;
+  diagnostics.deterministic_file_assignment_count = 0;
+  diagnostics.deterministic_section_assignment_count = 0;
+  diagnostics.deterministic_line_assignment_count = 0;
+  diagnostics.deterministic_multi_anchor_count = 0;
+  diagnostics.deterministic_fallback_anchor_count = 0;
   const normalized = { ...session };
+  const markdownIndex = buildMarkdownProjectIndex(normalized.files || []);
+  diagnostics.indexed_document_count = markdownIndex.summary.documentCount;
+  diagnostics.indexed_heading_count = markdownIndex.summary.headingCount;
   if (normalized.results.issues) {
     normalized.results.issues = normalized.results.issues.map(issue => {
       const enriched = normalizeIssueFromDetector(issue, diagnostics);
       diagnostics.total_issues_loaded++;
-      return enriched;
+      return enrichIssueWithMarkdownIndex(enriched, markdownIndex, diagnostics);
     });
   }
   normalized.taxonomyDiagnostics = diagnostics;

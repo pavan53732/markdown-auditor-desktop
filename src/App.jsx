@@ -13,6 +13,7 @@ import brandIconDataUrl from './assets/brand-icon.png?inline';
 import { buildSystemPrompt } from './lib/systemPrompt';
 import { repairJSON, validateResults } from './lib/jsonRepair';
 import { ANALYSIS_AGENT_COUNT, ANALYSIS_AGENT_MESH, ANALYSIS_MESH_VERSION } from './lib/analysisAgents';
+import { buildMarkdownProjectIndex, enrichIssueWithMarkdownIndex } from './lib/markdownIndex';
 import {
   DEFAULT_RETRIES,
   DEFAULT_SESSION_TOKEN_BUDGET,
@@ -692,6 +693,9 @@ export default function App() {
     setAnalysisStats({ reused: 0, reanalyzed: 0, agentPasses: 0 });
     const diagnostics = createInitialDiagnostics();
     diagnostics.analysis_mesh_agents_configured = ANALYSIS_AGENT_COUNT;
+    const markdownIndex = buildMarkdownProjectIndex(files);
+    diagnostics.indexed_document_count = markdownIndex.summary.documentCount;
+    diagnostics.indexed_heading_count = markdownIndex.summary.headingCount;
 
     try {
       const filesToAnalyze = [];
@@ -801,7 +805,16 @@ export default function App() {
 
       // Perform final taxonomy enrichment and collect diagnostics
       if (merged.issues) {
-        merged.issues = merged.issues.map(issue => normalizeIssueFromDetector(issue, diagnostics));
+        merged.issues = merged.issues.map((issue) => {
+          const taxonomyNormalized = normalizeIssueFromDetector(issue, diagnostics);
+          return enrichIssueWithMarkdownIndex(taxonomyNormalized, markdownIndex, diagnostics);
+        });
+        merged.issues = deduplicateIssues(merged.issues);
+        merged.summary.total = merged.issues.length;
+        merged.summary.critical = merged.issues.filter((issue) => issue.severity === 'critical').length;
+        merged.summary.high = merged.issues.filter((issue) => issue.severity === 'high').length;
+        merged.summary.medium = merged.issues.filter((issue) => issue.severity === 'medium').length;
+        merged.summary.low = merged.issues.filter((issue) => issue.severity === 'low').length;
       }
       diagnostics.analysis_mesh_passes_completed = completedAgentPasses;
       diagnostics.agent_findings_merged_count = Math.max(
@@ -864,6 +877,7 @@ export default function App() {
     setDiffSummary(null);
     setPreviousResults(null);
     setContextWarning(null);
+    setAnalysisStats({ reused: 0, reanalyzed: 0, agentPasses: 0 });
   };
 
   const handleSaveSettings = async (newConfig) => {
@@ -900,6 +914,7 @@ export default function App() {
           (issue.description || '').toLowerCase().includes(query) ||
           (issue.evidence || '').toLowerCase().includes(query) ||
           (issue.section || '').toLowerCase().includes(query) ||
+          (issue.document_anchor || '').toLowerCase().includes(query) ||
           (issue.detector_id || '').toLowerCase().includes(query) ||
           (issue.detector_name || '').toLowerCase().includes(query) ||
           (issue.subcategory || '').toLowerCase().includes(query) ||
@@ -962,6 +977,54 @@ export default function App() {
             <div>
               <p className="text-[10px] text-[#9CA3AF] mb-0.5">Loaded</p>
               <p className="text-sm font-semibold text-[#9CA3AF]">{taxonomyDiagnostics.total_issues_loaded}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.indexed_document_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#9CA3AF] mb-0.5">Indexed Files</p>
+              <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.indexed_document_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.indexed_heading_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#9CA3AF] mb-0.5">Indexed Headings</p>
+              <p className="text-sm font-semibold text-[#F9FAFB]">{taxonomyDiagnostics.indexed_heading_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.deterministic_anchor_enrichment_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#93C5FD] mb-0.5">Anchored</p>
+              <p className="text-sm font-semibold text-[#93C5FD]">{taxonomyDiagnostics.deterministic_anchor_enrichment_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.deterministic_line_assignment_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#86EFAC] mb-0.5">Line Anchors</p>
+              <p className="text-sm font-semibold text-[#86EFAC]">{taxonomyDiagnostics.deterministic_line_assignment_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.deterministic_multi_anchor_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#C4B5FD] mb-0.5">Multi-Anchor</p>
+              <p className="text-sm font-semibold text-[#C4B5FD]">{taxonomyDiagnostics.deterministic_multi_anchor_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.deterministic_fallback_anchor_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#FCD34D] mb-0.5">Fallback Anchors</p>
+              <p className="text-sm font-semibold text-[#FCD34D]">{taxonomyDiagnostics.deterministic_fallback_anchor_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.deterministic_section_assignment_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#86EFAC] mb-0.5">Section Anchors</p>
+              <p className="text-sm font-semibold text-[#86EFAC]">{taxonomyDiagnostics.deterministic_section_assignment_count}</p>
+            </div>
+          )}
+          {taxonomyDiagnostics.deterministic_file_assignment_count > 0 && (
+            <div>
+              <p className="text-[10px] text-[#86EFAC] mb-0.5">File Anchors</p>
+              <p className="text-sm font-semibold text-[#86EFAC]">{taxonomyDiagnostics.deterministic_file_assignment_count}</p>
             </div>
           )}
           {taxonomyDiagnostics.analysis_mesh_agents_configured > 0 && (
@@ -1104,7 +1167,11 @@ export default function App() {
       if (issue.closed_world_status) md += `**Closed World Status:** ${issue.closed_world_status}\n`;
       if (issue.analysis_agents?.length) md += `**Analysis Agents:** ${issue.analysis_agents.join(', ')}\n`;
       if (issue.section) md += `**Section:** ${issue.section}\n`;
-      if (issue.line_number) md += `**Line:** ${issue.line_number}\n`;
+      if (issue.section_slug) md += `**Section Slug:** ${issue.section_slug}\n`;
+      if (issue.line_number) md += `**Line:** ${issue.line_number}${issue.line_end ? `-${issue.line_end}` : ''}\n`;
+      if (issue.document_anchor) md += `**Document Anchor:** ${issue.document_anchor}\n`;
+      if (issue.document_anchors?.length > 1) md += `**Additional Anchors:** ${issue.document_anchors.slice(1).join(', ')}\n`;
+      if (issue.anchor_source) md += `**Anchor Source:** ${issue.anchor_source}\n`;
       if (issue.root_cause_id) md += `**Root Cause ID:** ${issue.root_cause_id}\n`;
       md += `**Files:** ${(issue.files || []).join(', ')}\n\n`;
       
@@ -1161,6 +1228,14 @@ export default function App() {
       md += `- **Parsed Detector IDs:** ${taxonomyDiagnostics.detector_id_parsed_from_description_count}\n`;
       md += `- **Unknown Detector IDs:** ${taxonomyDiagnostics.unknown_detector_id_count}\n`;
       md += `- **Severity Clamped:** ${taxonomyDiagnostics.severity_clamped_count}\n`;
+      md += `- **Indexed Documents:** ${taxonomyDiagnostics.indexed_document_count || 0}\n`;
+      md += `- **Indexed Headings:** ${taxonomyDiagnostics.indexed_heading_count || 0}\n`;
+      md += `- **Deterministic Anchor Enrichments:** ${taxonomyDiagnostics.deterministic_anchor_enrichment_count || 0}\n`;
+      md += `- **Deterministic File Assignments:** ${taxonomyDiagnostics.deterministic_file_assignment_count || 0}\n`;
+      md += `- **Deterministic Section Assignments:** ${taxonomyDiagnostics.deterministic_section_assignment_count || 0}\n`;
+      md += `- **Deterministic Line Assignments:** ${taxonomyDiagnostics.deterministic_line_assignment_count || 0}\n`;
+      md += `- **Deterministic Multi-Anchor Assignments:** ${taxonomyDiagnostics.deterministic_multi_anchor_count || 0}\n`;
+      md += `- **Deterministic Fallback Anchors:** ${taxonomyDiagnostics.deterministic_fallback_anchor_count || 0}\n`;
       md += `- **Configured Analysis Agents:** ${taxonomyDiagnostics.analysis_mesh_agents_configured}\n`;
       md += `- **Completed Agent Passes:** ${taxonomyDiagnostics.analysis_mesh_passes_completed}\n`;
       md += `- **Merged Agent Findings:** ${taxonomyDiagnostics.agent_findings_merged_count}\n`;
@@ -1205,7 +1280,7 @@ export default function App() {
 
   const exportCSV = () => {
     if (!results) return;
-    const headers = ['ID', 'DetectorID', 'DetectorName', 'Severity', 'Category', 'Subcategory', 'FailureType', 'ContractStep', 'InvariantBroken', 'AuthorityBoundary', 'ConstraintReference', 'ViolationReference', 'ClosedWorldStatus', 'AnalysisAgents', 'Section', 'Line', 'RootCauseID', 'Description', 'WhyTriggered', 'EscalationReason', 'DeterministicFix', 'RecommendedFix', 'FixSteps', 'VerificationSteps', 'Effort', 'Evidence', 'Confidence', 'Impact', 'Difficulty', 'Files', 'Tags'];
+    const headers = ['ID', 'DetectorID', 'DetectorName', 'Severity', 'Category', 'Subcategory', 'FailureType', 'ContractStep', 'InvariantBroken', 'AuthorityBoundary', 'ConstraintReference', 'ViolationReference', 'ClosedWorldStatus', 'AnalysisAgents', 'Section', 'SectionSlug', 'Line', 'LineEnd', 'DocumentAnchor', 'DocumentAnchors', 'AnchorSource', 'RootCauseID', 'Description', 'WhyTriggered', 'EscalationReason', 'DeterministicFix', 'RecommendedFix', 'FixSteps', 'VerificationSteps', 'Effort', 'Evidence', 'Confidence', 'Impact', 'Difficulty', 'Files', 'Tags'];
     const rows = (results.issues || []).map((issue) => [
       issue.id || '',
       issue.detector_id || '',
@@ -1222,7 +1297,12 @@ export default function App() {
       issue.closed_world_status || '',
       `"${((issue.analysis_agents || (issue.analysis_agent ? [issue.analysis_agent] : []))).join(' | ').replace(/"/g, '""')}"`,
       issue.section || '',
+      issue.section_slug || '',
       issue.line_number || '',
+      issue.line_end || '',
+      `"${(issue.document_anchor || '').replace(/"/g, '""')}"`,
+      `"${(issue.document_anchors || []).join(' | ').replace(/"/g, '""')}"`,
+      issue.anchor_source || '',
       issue.root_cause_id || '',
       `"${(issue.description || '').replace(/"/g, '""')}"`,
       `"${(issue.why_triggered || '').replace(/"/g, '""')}"`,
@@ -1354,6 +1434,7 @@ export default function App() {
     const session = await window.electronAPI.readHistorySession(id);
     if (session) {
       const normalized = normalizeLoadedSession(normalizeHistorySessionPayload(session));
+      setFiles(normalizeFileDisplayNames(normalized.files || []));
       setResults(normalized.results);
       setTaxonomyDiagnostics(normalized.taxonomyDiagnostics);
       setError(null);

@@ -30,7 +30,13 @@ describe('Result Validation', () => {
           severity: 'high',
           category: 'contradiction',
           description: 'issue',
-          detector_id: 'L1-01'
+          detector_id: 'L1-01',
+          section_slug: 'overview',
+          document_anchor: 'file.md#overview:L12-L14',
+          document_anchors: ['file.md#overview:L12-L14', 'file-b.md#overview:L12-L14'],
+          anchor_source: 'evidence_match',
+          line_number: 12,
+          line_end: 14
         }
       ]
     };

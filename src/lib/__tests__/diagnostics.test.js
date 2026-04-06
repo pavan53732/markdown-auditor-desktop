@@ -12,6 +12,8 @@ describe('Taxonomy Diagnostics', () => {
     const diag = createInitialDiagnostics();
     expect(diag.normalized_from_detector_count).toBe(0);
     expect(diag.severity_clamped_count).toBe(0);
+    expect(diag.indexed_document_count).toBe(0);
+    expect(diag.deterministic_anchor_enrichment_count).toBe(0);
   });
 
   it('should track enrichment and clamping', () => {

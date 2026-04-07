@@ -8,6 +8,9 @@ This changelog establishes the current production-ready baseline for the app as 
 
 ### Added
 
+- **GitHub Releases Binary Distribution**: Windows `.exe` artifacts are now treated as generated release outputs that should be attached to GitHub Releases instead of being committed into the repository or tracked through Git LFS.
+- **Windows Code-Signing Support**: Moved Electron Builder configuration into `electron-builder.config.cjs`, added `scripts/windowsSigningSupport.cjs`, `scripts/verifyWindowsSigning.cjs`, and `scripts/runSignedWindowsDist.cjs`, and introduced a gated `npm run dist:signed` workflow that supports dedicated certificate files, certificate-store SHA1 lookup, standard `CSC_LINK` / `WIN_CSC_LINK` flows, and Azure Trusted Signing without changing the default local unsigned build path.
+- **More Deterministic Governance / Execution / Dependency Rules**: Expanded the local rule engine again with deterministic checks for missing execution triggers, execution idempotency gaps, execution-order indeterminism, policy-priority conflicts, enforcement-path gaps, authority-delegation ambiguity, policy-enforcement-point gaps, dependency-version ambiguity, transitive dependency conflicts, deadlock/livelock risk articulation, and output-determinism gaps.
 - **Windows Installer Build**: Added an NSIS installer target alongside the portable package so the app now supports Start Menu/Desktop shortcuts, uninstall support, installation-directory selection, and a cleaner install flow for non-technical users.
 - **Runtime Service Modules**: Added `src/lib/agentMeshRuntime.js` for shared chunking/batching/agent-pass execution logic and `src/lib/sessionService.js` for session/history payload normalization and persistence helpers.
 - **Workbench Controller Extraction**: Added `src/lib/workbenchController.js` so export generation, history comparisons, history persistence, and session import/export flows no longer live entirely inside `src/App.jsx`.
@@ -56,6 +59,7 @@ This changelog establishes the current production-ready baseline for the app as 
 
 ### Changed
 
+- **Verification Coverage**: The local suite now covers 237 tests across 24 files, including Windows signing-config validation alongside the earlier deterministic rule-engine, pipeline, and analysis-mesh coverage.
 - **Hybrid Staged Pipeline**: The live runtime now follows a deeper staged flow of Markdown indexing -> deterministic rule evaluation -> cross-file project-graph analysis -> agent synthesis -> merge/severity calibration -> export/history persistence.
 - **Trust Tier Ordering**: Findings now carry explicit trust tiers plus proof-backed, receipt-backed, hybrid-supported, and model-only summary splits, and same-severity ordering now weights stronger proof status and source-backed findings above pure model findings.
 - **Proof-Aware Severity Gating**: `model_only` findings in `api_contract`, `specification_formalism`, `dependency_graph`, `execution_path`, `governance`, `deterministic_execution`, `control_plane_authority`, and `world_state_governance` are now capped at medium severity so unsupported formal-contract claims cannot overstate risk ahead of deterministic proof support.

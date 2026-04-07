@@ -32,7 +32,14 @@ npm run electron:dev
 npm run dist
 ```
 
-Current packaged output:
+Optional signed Windows release build after configuring certificate environment variables:
+
+```bash
+npm run verify:windows-signing
+npm run dist:signed
+```
+
+Generated packaged output:
 
 - `dist-electron-v4\MarkdownAuditor-portable.exe`
 - `dist-electron-v4\MarkdownAuditor-setup-1.13.0.exe`
@@ -214,7 +221,8 @@ Stop-Process -Name "electron" -Force -ErrorAction SilentlyContinue
 
 - current build targets are Windows portable and NSIS installer
 - current output directory is `dist-electron-v4`
-- packaged executables are not code-signed
+- signed release builds are supported through `electron-builder.config.cjs`, but local artifacts remain unsigned unless signing credentials are configured
+- packaged `.exe` artifacts are generated locally and should be attached to GitHub Releases instead of being committed into the repository
 
 ### Additional Troubleshooting
 
@@ -324,9 +332,11 @@ This project is optimized for local maintenance and personal use.
 - Document changes in `CHANGELOG.md` and `RELEASE_NOTES.md`.
 
 ### 3. Local Packaging
-- To create a fresh portable Windows executable, run `npm run dist`.
+- To create fresh local Windows artifacts, run `npm run dist`.
+- To require a signed Windows release build, configure signing credentials and run `npm run dist:signed`.
 - The current packaged outputs will be located in `dist-electron-v4\MarkdownAuditor-portable.exe` and `dist-electron-v4\MarkdownAuditor-setup-1.13.0.exe`.
+- Treat those `.exe` files as release artifacts, not source-controlled repository files.
 - It is recommended to perform a quick smoke test of the generated executable.
 
 ### 4. Security Note
-- The packaged executables are **unsigned**. Windows SmartScreen may show a warning when running either `.exe` for the first time. Select "More info" -> "Run anyway" to proceed.
+- The packaged executables are unsigned on machines without signing credentials. Windows SmartScreen may still show a warning when running either `.exe` for the first time on those builds. Select "More info" -> "Run anyway" to proceed.

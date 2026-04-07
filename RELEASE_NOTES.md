@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **GitHub Releases For Windows Artifacts**: The packaged portable and installer `.exe` files are now intended to be distributed through GitHub Releases instead of repository history or Git LFS.
+- **Windows Code-Signing Support**: Electron Builder now loads signing-aware config from `electron-builder.config.cjs`, the repo includes helper scripts for signing-mode detection and signed release builds, and `npm run dist:signed` now requires actual signing configuration before packaging a signed Windows release.
+- **More Deterministic Governance / Execution / Dependency Rules**: The local rule engine now also catches missing execution triggers, execution idempotency gaps, execution-order indeterminism, policy-priority conflicts, enforcement-path gaps, authority-delegation ambiguity, policy-enforcement-point gaps, dependency-version ambiguity, transitive dependency conflicts, deadlock/livelock articulation gaps, and output-determinism gaps before model synthesis.
 - **Runtime Service Extraction**: Shared chunking/batching/agent-pass execution now lives in `src/lib/agentMeshRuntime.js`, and session/history payload shaping now lives in `src/lib/sessionService.js`, making the runtime easier to test without changing the audit contract.
 - **Workbench Controller Extraction**: Export generation, history comparisons, history persistence, and session import/export now route through `src/lib/workbenchController.js`, reducing coupling inside `src/App.jsx`.
 - **Docs Truth Alignment**: Current-state docs now describe fresh upload analysis, legacy cache storage, and the dual portable/installer packaging flow more accurately.
@@ -15,7 +18,7 @@
 - **Universal Audit Mode Only**: Removed document-type profiles from the prompt layer, pre-analysis UI, cache identity, and history workbench. The app now always runs the full universal taxonomy without profile-specific weighting.
 - **Fresh Upload Analysis**: Matching file content no longer reuses old cached findings during live analysis runs. Each upload is analyzed fresh, while the legacy cache controls remain available only for clearing old stored cache data.
 - **History Workbench Simplification**: History filtering now focuses on model and source, matching the new universal-mode runtime.
-- **Prompt Payload Efficiency**: The live 8-agent runtime continues to use scoped prompt compaction, and the local verification suite now covers 232 tests across 23 files.
+- **Prompt Payload Efficiency**: The live 8-agent runtime continues to use scoped prompt compaction, and the local verification suite now covers 237 tests across 24 files.
 - **Malformed Agent Response Recovery**: The runtime now retries malformed agent JSON per pass, hardens JSON repair for common object-literal mistakes, surfaces captured bad-response previews in diagnostics, and degrades gracefully by skipping a still-malformed agent pass instead of aborting the entire audit.
 - **Adaptive Timeout Recovery**: Analysis requests now grow their timeout window based on prompt size, and an agent pass that still times out is skipped in degraded mode with a recorded timeout warning instead of failing the entire batch immediately.
 - **Hardened Timeout Defaults**: Saved configs below the safe timeout floor are automatically upgraded, the default timeout is now higher for large audits, and the results summary calls out degraded-mode timeout skips explicitly.

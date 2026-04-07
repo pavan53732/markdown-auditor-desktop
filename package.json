@@ -12,60 +12,13 @@
     "test:watch": "vitest",
     "verify": "npm test && npm run build",
     "electron:dev": "vite build && electron .",
-    "electron:build": "vite build && electron-builder",
-    "dist": "vite build && electron-builder --win portable nsis",
-    "dist:portable": "vite build && electron-builder --win portable",
-    "dist:installer": "vite build && electron-builder --win nsis"
-  },
-  "build": {
-    "appId": "com.local.markdownauditor",
-    "productName": "Markdown Intelligence Auditor",
-    "copyright": "Copyright (c) 2026 Prem V",
-    "directories": {
-      "output": "dist-electron-v4"
-    },
-    "win": {
-      "signtoolOptions": {
-        "publisherName": "Prem V"
-      },
-      "target": [
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "signAndEditExecutable": false,
-      "icon": "build/icon.ico"
-    },
-    "portable": {
-      "artifactName": "MarkdownAuditor-portable.exe"
-    },
-    "nsis": {
-      "artifactName": "MarkdownAuditor-setup-${version}.exe",
-      "oneClick": false,
-      "perMachine": false,
-      "allowElevation": true,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Markdown Intelligence Auditor",
-      "deleteAppDataOnUninstall": false
-    },
-    "files": [
-      "dist/**/*",
-      "electron/**/*",
-      "build/**/*",
-      "node_modules/**/*",
-      "package.json"
-    ]
+    "electron:build": "vite build && electron-builder --config electron-builder.config.cjs",
+    "verify:windows-signing": "node scripts/verifyWindowsSigning.cjs",
+    "verify:windows-signing:required": "node scripts/verifyWindowsSigning.cjs --require",
+    "dist": "vite build && electron-builder --config electron-builder.config.cjs --win portable nsis",
+    "dist:portable": "vite build && electron-builder --config electron-builder.config.cjs --win portable",
+    "dist:installer": "vite build && electron-builder --config electron-builder.config.cjs --win nsis",
+    "dist:signed": "node scripts/runSignedWindowsDist.cjs"
   },
   "dependencies": {
     "openai": "^4.73.0"

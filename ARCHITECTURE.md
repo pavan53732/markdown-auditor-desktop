@@ -16,7 +16,7 @@ The current architecture supports:
 - chunk-aware batching for large files
 - deterministic runtime normalization
 - deterministic Markdown indexing and anchor enrichment for file/section/line evidence, heading-inference fallback, multi-anchor cross-file resolution, and evidence-span construction
-- deterministic local rule-engine enforcement for duplicate headings, broken cross-references, RFC2119 misuse, ambiguous requirement wording, duplicated requirements, requirement-strength conflicts, missing terminal states, rollback gaps, workflow ordering/terminal-state issues, governance checkpoint gaps, governance bypass patterns, compliance-gate omissions, audit-trail requirements, execution-owner boundary clarity, control-plane override guard gaps, retry/backoff policy gaps, deterministic replay requirements, execution-determinism gaps, commit-hash binding, transition-determinism failures, state-transition preconditions/postconditions, task-graph DAG/cycle validation, missing prerequisite-node detection, dependency-order checks, optional-vs-required dependency ambiguity, dependency ownership/lifecycle checks, disconnected task-node detection, priority propagation checks, parallel resource ordering checks, intent ambiguity detection, change-scope boundary checks, user-intent consistency validation, interaction conflict detection, unresolved UI-state mappings, undefined reused identifiers, unresolved glossary bindings, API return/error/idempotency/rate-limit/auth contract gaps, terminology-registry gaps, malformed terminology registries, symbol inconsistency, state-space definition gaps, and input/output contract determinism
+- deterministic local rule-engine enforcement for duplicate headings, broken cross-references, RFC2119 misuse, ambiguous requirement wording, duplicated requirements, requirement-strength conflicts, missing terminal states, rollback gaps, missing workflow triggers, execution idempotency gaps, workflow ordering/terminal-state issues, execution-order indeterminism, governance checkpoint gaps, governance bypass patterns, compliance-gate omissions, policy-priority conflicts, enforcement-path gaps, audit-trail requirements, authority-delegation ambiguity, execution-owner boundary clarity, policy-enforcement-point gaps, control-plane override guard gaps, retry/backoff policy gaps, deadlock/livelock risk articulation gaps, deterministic replay requirements, execution-determinism gaps, output-determinism gaps, commit-hash binding, transition-determinism failures, state-transition preconditions/postconditions, task-graph DAG/cycle validation, missing prerequisite-node detection, dependency-order checks, optional-vs-required dependency ambiguity, dependency ownership/lifecycle checks, dependency-version ambiguity, transitive dependency conflicts, disconnected task-node detection, priority propagation checks, parallel resource ordering checks, intent ambiguity detection, change-scope boundary checks, user-intent consistency validation, interaction conflict detection, unresolved UI-state mappings, undefined reused identifiers, unresolved glossary bindings, API return/error/idempotency/rate-limit/auth contract gaps, terminology-registry gaps, malformed terminology registries, symbol inconsistency, state-space definition gaps, and input/output contract determinism
 - deterministic cross-file project graph enrichment for headings, glossary terms, identifiers, workflows, requirements, states, APIs, actors, and document references, including first-class reference grouping
 - deterministic typed proof-chain enrichment with span-to-span evidence edges
 - truthful receipt-backed runtime coverage accounting for taxonomy-defined, locally checked, model finding-backed, runtime-touched, untouched detectors, and deterministic-vs-model-driven catalog coverage percentages
@@ -24,7 +24,7 @@ The current architecture supports:
 - fresh per-upload analysis without runtime reuse of cached findings
 - session diffing and root-cause grouping
 - **Audit History Workbench** for local session management
-- Windows packaging for both portable and installer distributions
+- Windows packaging for both portable and installer distributions, with env-driven code-signing support for signed release builds
 
 ## Runtime Architecture
 
@@ -117,7 +117,7 @@ The system supports a local verification workflow with deepened 53-layer coverag
 1.  **Integrity Validation**: Local automated tests verify the 701-detector catalog against the 53-layer schema.
 2.  **Semantic Enforcement**: Validation logic ensures that AI-reported detector IDs, layers, and subcategories are mutually consistent.
 3.  **Benchmark Evaluation**: Canonical Markdown fixtures across `taxonomyBenchmark.test.js`, `deepSpecBenchmarks.test.js`, and `extendedUniversalBenchmarks.test.js` exercise deterministic taxonomy validation, normalization, and detector mapping behavior across 29 benchmark fixtures.
-4.  **Expanded Coverage**: The benchmark suites now cover deep-spec and universal-audit scenarios such as authority bypass, workflow skips, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty drops, artifact reproducibility gaps, toolchain leakage, recovery loop collapse, operational UX leakage, prompt compaction behavior, history metadata migration, runtime budget normalization, deterministic Markdown anchor enrichment, deterministic rule-engine enforcement, deterministic project-graph linking, typed proof-chain generation, proof-chain fallback generation, multi-anchor cross-file resolution, unified layer numbering, explicit agent-ownership reconciliation, receipt-backed detector coverage, adaptive timeout handling, deterministic trust-signal enrichment, proof-status/trust-basis validation, trust-tier/source-priority ordering, proof-aware severity gating, extracted report-format generation, extracted audit-pipeline coverage/escalation/merge coverage, extracted audit-orchestrator / pipeline-controller behavior, extracted agent-mesh runtime behavior, extracted session-service normalization behavior, extracted workbench-controller behavior, deterministic task-graph validation, deterministic interaction-intelligence validation, deeper governance/execution/dependency rule coverage, and first-class analysis-mesh validation. The full local suite currently contains 232 tests across 23 files.
+4.  **Expanded Coverage**: The benchmark suites now cover deep-spec and universal-audit scenarios such as authority bypass, workflow skips, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty drops, artifact reproducibility gaps, toolchain leakage, recovery loop collapse, operational UX leakage, prompt compaction behavior, history metadata migration, runtime budget normalization, deterministic Markdown anchor enrichment, deterministic rule-engine enforcement, deterministic project-graph linking, typed proof-chain generation, proof-chain fallback generation, multi-anchor cross-file resolution, unified layer numbering, explicit agent-ownership reconciliation, receipt-backed detector coverage, adaptive timeout handling, deterministic trust-signal enrichment, proof-status/trust-basis validation, trust-tier/source-priority ordering, proof-aware severity gating, extracted report-format generation, extracted audit-pipeline coverage/escalation/merge coverage, extracted audit-orchestrator / pipeline-controller behavior, extracted agent-mesh runtime behavior, extracted session-service normalization behavior, extracted workbench-controller behavior, deterministic task-graph validation, deterministic interaction-intelligence validation, deeper governance/execution/dependency rule coverage, Windows signing-config coverage, and first-class analysis-mesh validation. The full local suite currently contains 237 tests across 24 files.
 5.  **Enhanced Taxonomy Coverage Helper**: `taxonomyCoverageHelper.js` provides per-layer density analysis, richness metrics, subcategory coverage tracking, bundle coverage analysis, and `related_layers` coverage reporting for comprehensive taxonomy observability.
 6.  **Runtime Diagnostics**: The application tracks enrichment, parsing, clamping, Markdown indexing, deterministic anchor assignment, evidence-span construction, typed proof-chain construction, multi-anchor resolution, fallback anchor assignment, rule-engine issue counts, rule-engine checked/clean/hit detector receipts, project-graph grouping, reference-group counts, graph-link enrichment, per-agent focus-layer and focus-subcategory hits, owned-layer / owned-detector hits, checked-clean-untouched ownership metrics, truthful runtime detector coverage metrics, trust-score/proof-status/trust-basis/trust-tier/evidence-grade enrichment, source-backed trust summary splits, cross-scope findings, and first-class analysis-mesh validation metrics during analysis and session loading.
 7.  **Observability**: Diagnostics are surfaced in the UI results summary and exports to ensure pipeline transparency, including indexed files, indexed headings, project-graph grouping counts for headings/terms/identifiers/workflows/requirements/states/APIs/actors/references, deterministic anchor assignments, evidence-span enrichments, typed proof-chain counts, deterministic rule counts and execution receipts, graph-link enrichments, multi-anchor counts, fallback-anchor counts, configured agent count, completed passes, owned-detector reconciliation metrics, runtime detector coverage metrics, trust metrics, mesh warnings, and merged findings.
@@ -125,7 +125,7 @@ The system supports a local verification workflow with deepened 53-layer coverag
 |   |-- icon.ico
 |   `-- icon.png
 |-- dist/
-`-- dist-electron-v4/
+`-- dist-electron-v4/ (generated locally for release packaging; not committed)
     |-- MarkdownAuditor-portable.exe
     `-- MarkdownAuditor-setup-1.13.0.exe
 ```
@@ -273,7 +273,7 @@ Build steps:
 1. `npm run build`
 2. `npm run dist`
 
-Current packaged output:
+Generated packaged output:
 
 - `dist-electron-v4\MarkdownAuditor-portable.exe`
 - `dist-electron-v4\MarkdownAuditor-setup-1.13.0.exe`
@@ -282,7 +282,8 @@ Packaging notes:
 
 - Electron Builder is configured for both Windows portable and NSIS installer targets
 - The NSIS installer creates Start Menu/Desktop shortcuts, supports uninstall, and allows installation-directory selection
-- code signing is currently disabled / not configured
+- env-driven Windows code signing is configured through `electron-builder.config.cjs`, `scripts/windowsSigningSupport.cjs`, and `npm run dist:signed`; local builds remain unsigned unless certificate or Azure Trusted Signing environment variables are present
+- Large packaged `.exe` artifacts are intended for GitHub Releases instead of repository storage
 
 ## Security Posture
 

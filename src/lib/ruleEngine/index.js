@@ -57,6 +57,21 @@ const TRANSITION_CONDITION_PATTERN = /\b(if|when|on|unless|after|before|only if|
 const AUTO_INTERACTION_PATTERN = /\b(automatic(?:ally)?|auto[- ]?(?:apply|approve|submit|progress|advance)|self[- ]?serve|without user intervention|no user action|zero-click|hands[- ]?free|approval-free)\b/i;
 const MANUAL_INTERACTION_PATTERN = /\b(user must|operator must|click|confirm|approve|approval|review|manual(?:ly)?|select|choose|submit|fill out|enter|sign[- ]?off)\b/i;
 const NO_APPROVAL_PATTERN = /\b(no approval|without approval|approval-free)\b/i;
+const DEPENDENCY_HEADING_PATTERN = /\b(dependency|dependencies|package|packages|module|modules|library|libraries|versions?)\b/i;
+const FLOATING_VERSION_PATTERN = /\b(latest|stable|current|newest)\b/i;
+const VERSION_TOKEN_PATTERN = /\bv?\d+\.\d+(?:\.\d+){0,2}\b/ig;
+const EXPLICIT_VERSION_PATTERN = /\bv?\d+\.\d+(?:\.\d+){0,2}\b/i;
+const VERSIONED_DEPENDENCY_REFERENCE_PATTERN = /\b([A-Za-z][A-Za-z0-9_.-]{2,63})\b[^\n]{0,40}?\b(v?\d+\.\d+(?:\.\d+){0,2}|latest|stable|current)\b/gi;
+const POLICY_PRIORITY_PATTERN = /\b(priority|precedence|takes precedence|higher priority|lower priority|wins|winner|policy order|override order)\b/i;
+const POLICY_CONFLICT_PATTERN = /\b(conflict|conflicts|override|overrides|except|unless|emergency|break[- ]?glass|manual override|bypass)\b/i;
+const ENFORCEMENT_PATH_PATTERN = /\b(enforce|enforced|enforcement|validator|validate|validation|policy engine|gatekeeper|reject(?:ed|s)?|deny|denied|block(?:ed|ing)?|admission|guardrail)\b/i;
+const CONTROL_PLANE_PATTERN = /\b(control plane|authority|decision|policy enforcement|gatekeeper|override)\b/i;
+const DELEGATION_PATTERN = /\b(delegate|delegated|delegation|handoff|hand off|assigned authority|may decide|may approve|may reject|decision by|delegates to)\b/i;
+const EXECUTION_TRIGGER_PATTERN = /\b(trigger(?:ed)? by|invoked by|requested by|starts? when|begins? when|upon\b|when\b|if\b|after\b)\b/i;
+const DEADLOCK_RISK_PATTERN = /\b(lock|mutex|lease|semaphore|waits? for|blocked by|exclusive)\b/i;
+const DEADLOCK_MITIGATION_PATTERN = /\b(timeout|backoff|ordered|resource order|try[- ]?lock|lease expiry|deadlock|livelock|circuit breaker)\b/i;
+const OUTPUT_SURFACE_PATTERN = /\b(output|outputs|result|results|report|reports|events|records|items)\b/i;
+const OUTPUT_ORDERING_PATTERN = /\b(sorted|stable order|canonical(?:ized)?|deterministic output|ordered output|same output|consistent ordering)\b/i;
 
 export const DETERMINISTIC_RULE_DEFINITIONS = [
   {
@@ -292,6 +307,22 @@ export const DETERMINISTIC_RULE_DEFINITIONS = [
     owningAgent: 'architecture_authority_agent'
   },
   {
+    id: 'authority_delegation_ambiguity_rule',
+    detectorId: 'L44-02',
+    layer: 'control_plane_authority',
+    subcategory: 'authority delegation rules',
+    stage: 'governance_rules',
+    owningAgent: 'architecture_authority_agent'
+  },
+  {
+    id: 'policy_enforcement_point_gap_rule',
+    detectorId: 'L44-05',
+    layer: 'control_plane_authority',
+    subcategory: 'policy enforcement points',
+    stage: 'governance_rules',
+    owningAgent: 'architecture_authority_agent'
+  },
+  {
     id: 'commit_hash_binding_rule',
     detectorId: 'L45-03',
     layer: 'world_state_governance',
@@ -332,6 +363,22 @@ export const DETERMINISTIC_RULE_DEFINITIONS = [
     owningAgent: 'execution_simulation_agent'
   },
   {
+    id: 'dependency_version_ambiguity_rule',
+    detectorId: 'L18-08',
+    layer: 'dependency_graph',
+    subcategory: 'version conflicts',
+    stage: 'task_graph_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'transitive_dependency_conflict_rule',
+    detectorId: 'L18-06',
+    layer: 'dependency_graph',
+    subcategory: 'version conflicts',
+    stage: 'task_graph_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
     id: 'task_graph_missing_dependency_rule',
     detectorId: 'L18-03',
     layer: 'dependency_graph',
@@ -356,6 +403,22 @@ export const DETERMINISTIC_RULE_DEFINITIONS = [
     owningAgent: 'architecture_authority_agent'
   },
   {
+    id: 'policy_priority_conflict_rule',
+    detectorId: 'L29-11',
+    layer: 'governance',
+    subcategory: 'policy-priority conflicts',
+    stage: 'governance_rules',
+    owningAgent: 'architecture_authority_agent'
+  },
+  {
+    id: 'enforcement_path_gap_rule',
+    detectorId: 'L29-17',
+    layer: 'governance',
+    subcategory: 'enforcement-path gaps',
+    stage: 'governance_rules',
+    owningAgent: 'architecture_authority_agent'
+  },
+  {
     id: 'retry_backoff_policy_rule',
     detectorId: 'L43-05',
     layer: 'deterministic_execution',
@@ -372,6 +435,14 @@ export const DETERMINISTIC_RULE_DEFINITIONS = [
     owningAgent: 'execution_simulation_agent'
   },
   {
+    id: 'deadlock_livelock_risk_rule',
+    detectorId: 'L43-03',
+    layer: 'deterministic_execution',
+    subcategory: 'deadlock / livelock prevention',
+    stage: 'execution_invariant_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
     id: 'deterministic_replay_requirements_rule',
     detectorId: 'L43-13',
     layer: 'deterministic_execution',
@@ -384,6 +455,14 @@ export const DETERMINISTIC_RULE_DEFINITIONS = [
     detectorId: 'L43-09',
     layer: 'deterministic_execution',
     subcategory: 'scheduling determinism',
+    stage: 'execution_invariant_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'output_determinism_gap_rule',
+    detectorId: 'L43-12',
+    layer: 'deterministic_execution',
+    subcategory: 'scheduling non-determinism',
     stage: 'execution_invariant_rules',
     owningAgent: 'execution_simulation_agent'
   },
@@ -425,6 +504,30 @@ export const DETERMINISTIC_RULE_DEFINITIONS = [
     layer: 'execution_path',
     subcategory: 'unreachable paths',
     stage: 'task_graph_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'missing_execution_trigger_rule',
+    detectorId: 'L20-02',
+    layer: 'execution_path',
+    subcategory: 'branch omissions',
+    stage: 'workflow_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'execution_idempotency_gap_rule',
+    detectorId: 'L20-16',
+    layer: 'execution_path',
+    subcategory: 'idempotency gaps',
+    stage: 'workflow_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'execution_order_indeterminism_rule',
+    detectorId: 'L20-17',
+    layer: 'execution_path',
+    subcategory: 'execution order determinism',
+    stage: 'workflow_rules',
     owningAgent: 'execution_simulation_agent'
   },
   {
@@ -1087,8 +1190,18 @@ function collectTaskGraphSections(documentIndex) {
       && (
         TASK_GRAPH_HEADING_PATTERN.test(heading?.title || '')
         || TASK_DEPENDENCY_HINT_PATTERN.test(sectionText)
-      )
-    ));
+        )
+      ));
+}
+
+function collectDependencySections(documentIndex) {
+  return collectDocumentSections(documentIndex).filter(({ heading, sectionText }) => (
+    DEPENDENCY_HEADING_PATTERN.test(heading?.title || '')
+    || (
+      TASK_DEPENDENCY_HINT_PATTERN.test(sectionText)
+      && DEPENDENCY_HEADING_PATTERN.test(sectionText)
+    )
+  ));
 }
 
 function extractActorRoles(text = '') {
@@ -1157,7 +1270,31 @@ function buildTaskGraphContext(taskSection) {
     missingDependencies,
     optionalDependencySteps,
     requiredDependencySteps
-  };
+    };
+  }
+
+function buildDependencyVersionReferences(sectionText = '') {
+  const references = new Map();
+
+  String(sectionText || '')
+    .split('\n')
+    .forEach((line) => {
+      const trimmedLine = String(line || '').trim();
+      if (!trimmedLine) return;
+
+      for (const match of trimmedLine.matchAll(VERSIONED_DEPENDENCY_REFERENCE_PATTERN)) {
+        const dependencyName = String(match[1] || '').trim().toLowerCase();
+        const versionToken = String(match[2] || '').trim().toLowerCase();
+        if (!dependencyName || !versionToken) continue;
+
+        if (!references.has(dependencyName)) {
+          references.set(dependencyName, new Set());
+        }
+        references.get(dependencyName).add(versionToken);
+      }
+    });
+
+  return references;
 }
 
 function findTaskGraphCycle(adjacency) {
@@ -1732,6 +1869,217 @@ function runDependencyLifecycleRule(projectGraph, issues) {
   });
 }
 
+function runDependencyVersionAmbiguityRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDependencySections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const versionReferences = buildDependencyVersionReferences(sectionText);
+      const floatingMentions = Array.from(versionReferences.entries())
+        .filter(([, versions]) => Array.from(versions).some((version) => FLOATING_VERSION_PATTERN.test(version)));
+      if (floatingMentions.length === 0) return;
+
+      const evidence = floatingMentions
+        .map(([dependencyName, versions]) => `${dependencyName}: ${Array.from(versions).join(', ')}`)
+        .join('\n');
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'dependency_version_ambiguity_rule',
+        detectorId: 'L18-08',
+        severity: 'medium',
+        description: `Dependency section "${heading?.title || documentIndex.name}" in ${documentIndex.name} uses floating dependency versions without a deterministic pin.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence,
+        whyTriggered: 'The dependency surface references versions such as latest, stable, or current, which makes downstream dependency resolution non-deterministic.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'dependency_version_ambiguity_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Replace floating dependency labels with explicit pinned versions or a named deterministic version-selection rule.',
+        recommendedFix: 'Pin each dependency to an exact version instead of referring to latest/current/stable variants.'
+      }));
+    });
+  });
+}
+
+function runTransitiveDependencyConflictRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDependencySections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const versionReferences = buildDependencyVersionReferences(sectionText);
+      const conflictingDependencies = Array.from(versionReferences.entries())
+        .filter(([, versions]) => {
+          const explicitVersions = Array.from(versions).filter((version) => EXPLICIT_VERSION_PATTERN.test(version));
+          return new Set(explicitVersions).size > 1;
+        });
+      if (conflictingDependencies.length === 0) return;
+
+      const evidence = conflictingDependencies
+        .map(([dependencyName, versions]) => `${dependencyName}: ${Array.from(versions).join(', ')}`)
+        .join('\n');
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'transitive_dependency_conflict_rule',
+        detectorId: 'L18-06',
+        severity: 'high',
+        description: `Dependency section "${heading?.title || documentIndex.name}" in ${documentIndex.name} assigns conflicting versions to the same dependency surface.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence,
+        whyTriggered: 'The same dependency name is paired with multiple explicit versions in one deterministic dependency surface, creating a transitive conflict risk.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'transitive_dependency_conflict_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Collapse each dependency surface to one canonical version or document a deterministic compatibility matrix.',
+        recommendedFix: 'Remove competing version pins for the same dependency and state the single approved version chain.'
+      }));
+    });
+  });
+}
+
+function runMissingExecutionTriggerRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectWorkflowSections(documentIndex).forEach(({ heading, lines, numberedSteps }) => {
+      if (numberedSteps.length < 2) return;
+
+      const sectionText = lines.map(({ text }) => text).join('\n');
+      if (!ACTION_PATTERN.test(sectionText)) return;
+      const firstStep = numberedSteps[0];
+      const preambleText = lines
+        .filter(({ lineNumber }) => lineNumber < firstStep.lineNumber)
+        .map(({ text }) => text)
+        .join('\n');
+      const workflowStartSurface = [preambleText, firstStep.text].filter(Boolean).join('\n');
+      if (EXECUTION_TRIGGER_PATTERN.test(workflowStartSurface)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'missing_execution_trigger_rule',
+        detectorId: 'L20-02',
+        severity: 'high',
+        description: `Workflow section "${heading.title}" in ${documentIndex.name} defines execution steps without a deterministic trigger.`,
+        files: [documentIndex.name],
+        section: heading.title,
+        sectionSlug: heading.slug,
+        lineNumber: heading.lineStart,
+        lineEnd: heading.lineEnd,
+        evidence: numberedSteps.map((step) => `${step.number}. ${step.text}`).join('\n'),
+        whyTriggered: 'The workflow lists ordered actions, but never states what event, request, or condition starts the flow.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading.title,
+            sectionSlug: heading.slug,
+            lineStart: heading.lineStart,
+            lineEnd: heading.lineEnd,
+            source: 'missing_execution_trigger_rule',
+            excerpt: buildLineExcerpt(documentIndex, heading.lineStart, Math.min(heading.lineEnd, heading.lineStart + 6))
+          })
+        ],
+        deterministicFix: 'Name the exact trigger, request, or precondition that starts the workflow.',
+        recommendedFix: 'Document what event or actor action initiates this sequence before step 1 begins.'
+      }));
+    });
+  });
+}
+
+function runExecutionIdempotencyGapRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectWorkflowSections(documentIndex).forEach(({ heading, lines, numberedSteps }) => {
+      if (numberedSteps.length < 2) return;
+
+      const sectionText = lines.map(({ text }) => text).join('\n');
+      if (!ACTION_PATTERN.test(sectionText)) return;
+      if (!API_RETRY_PATTERN.test(sectionText)) return;
+      if (API_IDEMPOTENCY_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'execution_idempotency_gap_rule',
+        detectorId: 'L20-16',
+        severity: 'critical',
+        description: `Workflow section "${heading.title}" in ${documentIndex.name} retries execution without an idempotency contract.`,
+        files: [documentIndex.name],
+        section: heading.title,
+        sectionSlug: heading.slug,
+        lineNumber: heading.lineStart,
+        lineEnd: heading.lineEnd,
+        evidence: sectionText.trim().slice(0, 500),
+        whyTriggered: 'The workflow allows retries or replays of mutating actions but never states how duplicate execution is prevented or safely absorbed.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading.title,
+            sectionSlug: heading.slug,
+            lineStart: heading.lineStart,
+            lineEnd: heading.lineEnd,
+            source: 'execution_idempotency_gap_rule',
+            excerpt: buildLineExcerpt(documentIndex, heading.lineStart, Math.min(heading.lineEnd, heading.lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Define the idempotency key, deduplication rule, or safe-retry boundary for the retried workflow steps.',
+        recommendedFix: 'Specify how repeated execution is recognized and made safe before allowing retries.'
+      }));
+    });
+  });
+}
+
+function runExecutionOrderIndeterminismRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectWorkflowSections(documentIndex).forEach(({ heading, lines, numberedSteps }) => {
+      if (numberedSteps.length < 2) return;
+
+      const sectionText = lines.map(({ text }) => text).join('\n');
+      if (!(EXECUTION_NON_DETERMINISM_PATTERN.test(sectionText) || PARALLEL_EXECUTION_PATTERN.test(sectionText))) return;
+      if (RESOURCE_ORDERING_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'execution_order_indeterminism_rule',
+        detectorId: 'L20-17',
+        severity: 'high',
+        description: `Workflow section "${heading.title}" in ${documentIndex.name} leaves execution order indeterminate.`,
+        files: [documentIndex.name],
+        section: heading.title,
+        sectionSlug: heading.slug,
+        lineNumber: heading.lineStart,
+        lineEnd: heading.lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The workflow permits parallel or any-order execution without a documented ordering or serialization boundary.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading.title,
+            sectionSlug: heading.slug,
+            lineStart: heading.lineStart,
+            lineEnd: heading.lineEnd,
+            source: 'execution_order_indeterminism_rule',
+            excerpt: buildLineExcerpt(documentIndex, heading.lineStart, Math.min(heading.lineEnd, heading.lineStart + 8))
+          })
+        ],
+        deterministicFix: 'State the exact execution order or the serialization rule that stabilizes the workflow.',
+        recommendedFix: 'Replace any-order wording with a named queue, lock, or deterministic step-order contract.'
+      }));
+    });
+  });
+}
+
 function runMissingRollbackRule(projectGraph, issues) {
   projectGraph.projectIndex.documents.forEach((documentIndex) => {
     collectWorkflowSections(documentIndex).forEach(({ heading, lines, numberedSteps }) => {
@@ -2001,6 +2349,82 @@ function runControlPlaneOverrideConditionRule(projectGraph, issues) {
   });
 }
 
+function runAuthorityDelegationAmbiguityRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const headingTitle = heading?.title || '';
+      if (!DELEGATION_PATTERN.test(sectionText)) return;
+      if (!(CONTROL_PLANE_PATTERN.test(headingTitle) || CONTROL_PLANE_PATTERN.test(sectionText) || ACTION_PATTERN.test(sectionText))) return;
+      if (OWNER_BOUNDARY_PATTERN.test(sectionText) || OVERRIDE_GUARD_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'authority_delegation_ambiguity_rule',
+        detectorId: 'L44-02',
+        severity: 'high',
+        description: `Section "${headingTitle || documentIndex.name}" in ${documentIndex.name} delegates authority without a bounded delegation rule.`,
+        files: [documentIndex.name],
+        section: headingTitle,
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 500),
+        whyTriggered: 'The section delegates or hands off decision authority, but it does not specify who may delegate, who may receive that authority, or under what bounded conditions.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: headingTitle,
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'authority_delegation_ambiguity_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Define the delegation source, receiving authority, and the bounded conditions that make the delegation valid.',
+        recommendedFix: 'Document exactly who can delegate authority, to whom, and with what approval or expiry guard.'
+      }));
+    });
+  });
+}
+
+function runPolicyEnforcementPointGapRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const headingTitle = heading?.title || '';
+      if (!(CONTROL_PLANE_PATTERN.test(headingTitle) || CONTROL_PLANE_PATTERN.test(sectionText))) return;
+      if (!(COMPLIANCE_GATE_PATTERN.test(sectionText) || ACTION_PATTERN.test(sectionText) || GOVERNANCE_BYPASS_PATTERN.test(sectionText))) return;
+      if (ENFORCEMENT_PATH_PATTERN.test(sectionText) || GOVERNANCE_CHECKPOINT_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'policy_enforcement_point_gap_rule',
+        detectorId: 'L44-05',
+        severity: 'high',
+        description: `Section "${headingTitle || documentIndex.name}" in ${documentIndex.name} defines control-plane policy without an enforcement point.`,
+        files: [documentIndex.name],
+        section: headingTitle,
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section names authority, policy, or override behavior, but it never identifies the validator, gate, or enforcement point that actually blocks invalid execution.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: headingTitle,
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'policy_enforcement_point_gap_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Name the concrete enforcement point, validator, or admission gate that applies the policy before execution proceeds.',
+        recommendedFix: 'Document where the policy is enforced and what happens when validation fails.'
+      }));
+    });
+  });
+}
+
 function runComplianceGateOmissionRule(projectGraph, issues) {
   projectGraph.projectIndex.documents.forEach((documentIndex) => {
     collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
@@ -2035,6 +2459,82 @@ function runComplianceGateOmissionRule(projectGraph, issues) {
         ],
         deterministicFix: 'Add an explicit compliance checkpoint that names the gate, authority, and approval condition before execution proceeds.',
         recommendedFix: 'Document the exact control/compliance validation step and where it blocks or permits the workflow.'
+      }));
+    });
+  });
+}
+
+function runPolicyPriorityConflictRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const headingTitle = heading?.title || '';
+      if (!(COMPLIANCE_GATE_PATTERN.test(headingTitle) || COMPLIANCE_GATE_PATTERN.test(sectionText))) return;
+      if (!POLICY_CONFLICT_PATTERN.test(sectionText)) return;
+      if (POLICY_PRIORITY_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'policy_priority_conflict_rule',
+        detectorId: 'L29-11',
+        severity: 'high',
+        description: `Section "${headingTitle || documentIndex.name}" in ${documentIndex.name} contains competing policy paths without a priority rule.`,
+        files: [documentIndex.name],
+        section: headingTitle,
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section mixes policy/compliance requirements with override, bypass, or emergency-path language, but it never says which rule wins when they conflict.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: headingTitle,
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'policy_priority_conflict_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Define a precedence rule for conflicting policy, compliance, and override paths.',
+        recommendedFix: 'State which policy path takes precedence and what conditions permit an exception.'
+      }));
+    });
+  });
+}
+
+function runEnforcementPathGapRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const headingTitle = heading?.title || '';
+      if (!(COMPLIANCE_GATE_PATTERN.test(headingTitle) || COMPLIANCE_GATE_PATTERN.test(sectionText))) return;
+      if (!(ACTION_PATTERN.test(sectionText) || POLICY_CONFLICT_PATTERN.test(sectionText) || GOVERNANCE_CHECKPOINT_PATTERN.test(sectionText))) return;
+      if (ENFORCEMENT_PATH_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'enforcement_path_gap_rule',
+        detectorId: 'L29-17',
+        severity: 'high',
+        description: `Section "${headingTitle || documentIndex.name}" in ${documentIndex.name} names governance policy without an enforcement path.`,
+        files: [documentIndex.name],
+        section: headingTitle,
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section defines a policy, compliance, or control obligation, but it never says what validator, gate, or rejection path enforces it.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: headingTitle,
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'enforcement_path_gap_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Document the explicit enforcement path, including the validating actor or system and the failure behavior when policy is not met.',
+        recommendedFix: 'Add the concrete enforcement step that blocks execution when the policy fails.'
       }));
     });
   });
@@ -2115,6 +2615,44 @@ function runParallelResourceOrderRule(projectGraph, issues) {
   });
 }
 
+function runDeadlockLivelockRiskRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const headingTitle = heading?.title || '';
+      if (!(PARALLEL_EXECUTION_PATTERN.test(sectionText) || TASK_GRAPH_HEADING_PATTERN.test(headingTitle))) return;
+      if (!DEADLOCK_RISK_PATTERN.test(sectionText)) return;
+      if (DEADLOCK_MITIGATION_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'deadlock_livelock_risk_rule',
+        detectorId: 'L43-03',
+        severity: 'critical',
+        description: `Section "${headingTitle || documentIndex.name}" in ${documentIndex.name} creates a lock/wait dependency without deadlock or livelock mitigation.`,
+        files: [documentIndex.name],
+        section: headingTitle,
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section allows concurrent or dependency-driven execution over locks, waits, or exclusive resources, but it never documents timeout, ordering, or fallback mitigation.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: headingTitle,
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'deadlock_livelock_risk_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Add timeout, ordering, try-lock, or equivalent mitigation rules for the concurrent lock/wait path.',
+        recommendedFix: 'Document how the system avoids deadlock or livelock when work waits on exclusive resources.'
+      }));
+    });
+  });
+}
+
 function runExecutionDeterminismGapRule(projectGraph, issues) {
   projectGraph.projectIndex.documents.forEach((documentIndex) => {
     collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
@@ -2153,6 +2691,44 @@ function runExecutionDeterminismGapRule(projectGraph, issues) {
         ],
         deterministicFix: 'Specify the deterministic ordering, scheduling, or replay contract that resolves the non-deterministic execution wording.',
         recommendedFix: 'Replace vague execution wording with an explicit sequencing or scheduling invariant.'
+      }));
+    });
+  });
+}
+
+function runOutputDeterminismGapRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const headingTitle = heading?.title || '';
+      if (!(OUTPUT_SURFACE_PATTERN.test(sectionText) || /output|result|report/i.test(headingTitle))) return;
+      if (!(PARALLEL_EXECUTION_PATTERN.test(sectionText) || EXECUTION_NON_DETERMINISM_PATTERN.test(sectionText))) return;
+      if (OUTPUT_ORDERING_PATTERN.test(sectionText) || RESOURCE_ORDERING_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'output_determinism_gap_rule',
+        detectorId: 'L43-12',
+        severity: 'high',
+        description: `Section "${headingTitle || documentIndex.name}" in ${documentIndex.name} leaves output ordering non-deterministic.`,
+        files: [documentIndex.name],
+        section: headingTitle,
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section describes results, reports, or emitted records in parallel or any-order terms without a stable output-order contract.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: headingTitle,
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'output_determinism_gap_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Specify the deterministic output order, canonical sorting rule, or stable emission contract for the result set.',
+        recommendedFix: 'Document how outputs are ordered so the same execution produces the same externally visible result ordering.'
       }));
     });
   });
@@ -3212,16 +3788,25 @@ export function runDeterministicRuleEngine({ files = [], projectGraph, diagnosti
   runMissingRollbackRule(projectGraph, issues);
   runWorkflowOrderingRule(projectGraph, issues);
   runWorkflowExitCriteriaRule(projectGraph, issues);
+  runMissingExecutionTriggerRule(projectGraph, issues);
+  runExecutionIdempotencyGapRule(projectGraph, issues);
+  runExecutionOrderIndeterminismRule(projectGraph, issues);
   runGovernanceCheckpointRule(projectGraph, issues);
   runGovernanceBypassRule(projectGraph, issues);
   runComplianceGateOmissionRule(projectGraph, issues);
+  runPolicyPriorityConflictRule(projectGraph, issues);
+  runEnforcementPathGapRule(projectGraph, issues);
   runAuditTrailRequirementRule(projectGraph, issues);
   runControlPlaneOverrideConditionRule(projectGraph, issues);
+  runAuthorityDelegationAmbiguityRule(projectGraph, issues);
+  runPolicyEnforcementPointGapRule(projectGraph, issues);
   runExecutionOwnerBoundaryRule(projectGraph, issues);
   runRetryBackoffPolicyRule(projectGraph, issues);
   runParallelResourceOrderRule(projectGraph, issues);
+  runDeadlockLivelockRiskRule(projectGraph, issues);
   runDeterministicReplayRequirementsRule(projectGraph, issues);
   runExecutionDeterminismGapRule(projectGraph, issues);
+  runOutputDeterminismGapRule(projectGraph, issues);
   runCommitHashBindingRule(projectGraph, issues);
   runStateTransitionPreconditionRule(projectGraph, issues);
   runStateTransitionPostconditionRule(projectGraph, issues);
@@ -3234,6 +3819,8 @@ export function runDeterministicRuleEngine({ files = [], projectGraph, diagnosti
   runTaskGraphPriorityPropagationRule(projectGraph, issues);
   runDependencyOwnershipRule(projectGraph, issues);
   runDependencyLifecycleRule(projectGraph, issues);
+  runDependencyVersionAmbiguityRule(projectGraph, issues);
+  runTransitiveDependencyConflictRule(projectGraph, issues);
   runIntentAmbiguityRule(projectGraph, issues);
   runChangeScopeBoundaryRule(projectGraph, issues);
   runUserIntentConsistencyRule(projectGraph, issues);

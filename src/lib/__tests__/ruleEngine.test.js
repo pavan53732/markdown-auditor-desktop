@@ -369,4 +369,82 @@ describe('Deterministic Rule Engine', () => {
     expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L43-09' && receipt.status === 'hit')).toBe(true);
     expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L43-11' && receipt.status === 'hit')).toBe(true);
   });
+
+  it('emits deterministic dependency-version, governance-priority, enforcement-path, and delegation issues', () => {
+    const files = [
+      {
+        name: 'governance.md',
+        content: [
+          '# Release Governance',
+          '## Dependencies',
+          'runtime-sdk latest',
+          'cache-lib v1.0.0',
+          'cache-lib v2.0.0',
+          '',
+          '## Governance Policy',
+          'Policy overrides apply during emergency release bypass.',
+          'Deploy release artifacts under compliance policy.',
+          '',
+          '## Control Plane',
+          'Delegated agent may decide the deployment override.',
+          'Control plane policy applies to release execution.'
+        ].join('\n')
+      }
+    ];
+
+    const projectGraph = buildMarkdownProjectGraph(files);
+    const result = runDeterministicRuleEngine({ files, projectGraph });
+    const detectorIds = result.issues.map((issue) => issue.detector_id);
+
+    expect(detectorIds).toEqual(expect.arrayContaining([
+      'L18-08',
+      'L18-06',
+      'L29-11',
+      'L29-17',
+      'L44-02',
+      'L44-05'
+    ]));
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L18-08' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L18-06' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L29-11' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L29-17' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L44-02' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L44-05' && receipt.status === 'hit')).toBe(true);
+  });
+
+  it('emits deterministic execution-trigger, idempotency, ordering, deadlock, and output-determinism issues', () => {
+    const files = [
+      {
+        name: 'execution.md',
+        content: [
+          '# Runtime Execution',
+          '## Release Workflow',
+          '1. Deploy artifact',
+          '2. Retry deployment if it fails',
+          '3. Publish results in any order',
+          '',
+          '## Concurrency',
+          'Workers run in parallel and wait for lock A before lock B.',
+          'Reports may be emitted in any order.'
+        ].join('\n')
+      }
+    ];
+
+    const projectGraph = buildMarkdownProjectGraph(files);
+    const result = runDeterministicRuleEngine({ files, projectGraph });
+    const detectorIds = result.issues.map((issue) => issue.detector_id);
+
+    expect(detectorIds).toEqual(expect.arrayContaining([
+      'L20-02',
+      'L20-16',
+      'L20-17',
+      'L43-03',
+      'L43-12'
+    ]));
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L20-02' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L20-16' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L20-17' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L43-03' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L43-12' && receipt.status === 'hit')).toBe(true);
+  });
 });

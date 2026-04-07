@@ -1246,6 +1246,10 @@ export function createInitialDiagnostics() {
     runtime_detector_locally_checked_count: 0,
     runtime_detector_touched_count: 0,
     runtime_detector_untouched_count: TOTAL_DETECTOR_COUNT,
+    deterministic_catalog_detector_count: 0,
+    model_driven_catalog_detector_count: 0,
+    deterministic_catalog_coverage_percent: 0,
+    model_driven_catalog_coverage_percent: 0,
     analysis_mesh_focus_layer_hit_count: 0,
     analysis_mesh_focus_subcategory_hit_count: 0,
     analysis_mesh_owned_layer_hit_count: 0,
@@ -1711,6 +1715,10 @@ export function normalizeLoadedSession(session) {
   diagnostics.runtime_detector_locally_checked_count = runtimeCoverage.detectors_locally_checked;
   diagnostics.runtime_detector_touched_count = runtimeCoverage.detectors_runtime_touched;
   diagnostics.runtime_detector_untouched_count = runtimeCoverage.detectors_untouched;
+  diagnostics.deterministic_catalog_detector_count = normalized.results.summary?.deterministic_catalog_detector_count || 0;
+  diagnostics.model_driven_catalog_detector_count = normalized.results.summary?.model_driven_catalog_detector_count || 0;
+  diagnostics.deterministic_catalog_coverage_percent = normalized.results.summary?.deterministic_catalog_coverage_percent || 0;
+  diagnostics.model_driven_catalog_coverage_percent = normalized.results.summary?.model_driven_catalog_coverage_percent || 0;
   diagnostics.analysis_mesh_focus_layer_hit_count = normalized.results.analysis_mesh?.focus_layer_hits || 0;
   diagnostics.analysis_mesh_focus_subcategory_hit_count = normalized.results.analysis_mesh?.focus_subcategory_hits || 0;
   diagnostics.analysis_mesh_owned_layer_hit_count = normalized.results.analysis_mesh?.owned_layer_hits || 0;
@@ -1732,6 +1740,10 @@ export function normalizeLoadedSession(session) {
   normalized.results.summary = {
     ...(normalized.results.summary || {}),
     ...runtimeCoverage,
+    deterministic_catalog_detector_count: diagnostics.deterministic_catalog_detector_count,
+    model_driven_catalog_detector_count: diagnostics.model_driven_catalog_detector_count,
+    deterministic_catalog_coverage_percent: diagnostics.deterministic_catalog_coverage_percent,
+    model_driven_catalog_coverage_percent: diagnostics.model_driven_catalog_coverage_percent,
     average_trust_score: trustSummary.averageTrustScore,
     high_trust_issue_count: trustSummary.highTrustIssueCount,
     strong_evidence_issue_count: trustSummary.strongEvidenceIssueCount,

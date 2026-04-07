@@ -9,6 +9,7 @@ import {
   mergeBatchResults
 } from '../auditPipeline';
 import { TOTAL_DETECTOR_COUNT } from '../detectorMetadata';
+import { DETERMINISTIC_RULE_DEFINITIONS } from '../ruleEngine/index';
 
 describe('Audit Pipeline Helpers', () => {
   it('builds truthful runtime detector coverage from findings and receipts', () => {
@@ -31,6 +32,13 @@ describe('Audit Pipeline Helpers', () => {
     expect(coverage.runtimeTouchedDetectorIds).toEqual(['L17-03', 'L17-04', 'L33-15']);
     expect(coverage.runtimeTouchedDetectorCount).toBe(3);
     expect(coverage.untouchedDetectorCount).toBe(TOTAL_DETECTOR_COUNT - 3);
+    expect(coverage.deterministicCatalogDetectorCount).toBeGreaterThan(0);
+    expect(coverage.deterministicCatalogDetectorCount).toBeLessThanOrEqual(DETERMINISTIC_RULE_DEFINITIONS.length);
+    expect(coverage.modelDrivenCatalogDetectorCount).toBe(
+      TOTAL_DETECTOR_COUNT - coverage.deterministicCatalogDetectorCount
+    );
+    expect(coverage.deterministicCatalogCoveragePercent).toBeGreaterThanOrEqual(0);
+    expect(coverage.modelDrivenCatalogCoveragePercent).toBeGreaterThanOrEqual(0);
 
     const summary = {};
     applyRuntimeDetectorCoverageSummary(summary, coverage);
@@ -41,6 +49,10 @@ describe('Audit Pipeline Helpers', () => {
     expect(summary.detectors_runtime_touched).toBe(3);
     expect(summary.detectors_evaluated).toBe(3);
     expect(summary.detectors_skipped).toBe(TOTAL_DETECTOR_COUNT - 3);
+    expect(summary.deterministic_catalog_detector_count).toBe(coverage.deterministicCatalogDetectorCount);
+    expect(summary.model_driven_catalog_detector_count).toBe(coverage.modelDrivenCatalogDetectorCount);
+    expect(summary.deterministic_catalog_coverage_percent).toBe(coverage.deterministicCatalogCoveragePercent);
+    expect(summary.model_driven_catalog_coverage_percent).toBe(coverage.modelDrivenCatalogCoveragePercent);
     expect(summary.detector_coverage_mode).toBe('receipt_backed_and_finding_backed');
   });
 

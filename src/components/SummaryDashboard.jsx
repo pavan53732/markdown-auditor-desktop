@@ -73,6 +73,20 @@ function buildRuntimeCards(summary, taxonomyDiagnostics, analysisStats, analysis
       tone: '#D8B4FE'
     },
     {
+      label: 'Deterministic %',
+      value: `${summary?.deterministic_catalog_coverage_percent
+        ?? taxonomyDiagnostics?.deterministic_catalog_coverage_percent
+        ?? 0}%`,
+      tone: '#C4B5FD'
+    },
+    {
+      label: 'Model %',
+      value: `${summary?.model_driven_catalog_coverage_percent
+        ?? taxonomyDiagnostics?.model_driven_catalog_coverage_percent
+        ?? 0}%`,
+      tone: '#FCD34D'
+    },
+    {
       label: 'Avg Trust',
       value: summary?.average_trust_score ?? 0,
       tone: '#FDE68A'

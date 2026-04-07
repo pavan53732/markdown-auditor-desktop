@@ -13,34 +13,12 @@ import brandIconDataUrl from './assets/brand-icon.png?inline';
 import { buildSystemPrompt } from './lib/systemPrompt';
 import {
   ANALYSIS_AGENT_COUNT,
-  ANALYSIS_AGENT_MESH,
-  mergeAnalysisMeshRuns
+  ANALYSIS_AGENT_MESH
 } from './lib/analysisAgents';
-import {
-  buildMarkdownProjectIndex,
-  enrichIssueWithMarkdownIndex,
-  enrichIssueWithEvidenceSpans
-} from './lib/markdownIndex';
-import { enrichIssueWithProofChains } from './lib/evidenceGraph';
-import { buildMarkdownProjectGraph, enrichIssueWithProjectGraph } from './lib/projectGraph';
-import { runDeterministicRuleEngine } from './lib/ruleEngine/index';
-import {
-  enrichIssueWithTrustSignals,
-  summarizeIssueTrustSignals,
-  compareIssuesByTrustStrength
-} from './lib/trustSignals';
-import {
-  buildRuntimeDetectorCoverage,
-  applyRuntimeDetectorCoverageSummary,
-  deduplicateIssues,
-  mergeBatchResults
-} from './lib/auditPipeline';
+import { runAuditOrchestrator } from './lib/auditOrchestrator';
 import {
   CHARS_PER_TOKEN,
-  MAX_AGENT_RESPONSE_ATTEMPTS,
-  estimateAnalysisTokens,
-  createFileBatches,
-  runAnalysisBatch
+  estimateAnalysisTokens
 } from './lib/agentMeshRuntime';
 import {
   normalizeFileDisplayNames
@@ -60,95 +38,22 @@ import {
   saveResultsToHistoryWorkbench
 } from './lib/workbenchController';
 import {
+  createProgressState,
+  buildAnalysisStartProgressState,
+  buildAnalysisErrorProgressState
+} from './lib/executionStateController';
+import {
   DEFAULT_RETRIES,
-  DEFAULT_SESSION_TOKEN_BUDGET,
   RECOMMENDED_BATCH_TARGET_TOKENS,
-  BATCH_TOKEN_BUFFER,
-  MIN_CHUNK_CHARS,
-  normalizeTokenBudget,
   normalizeTimeoutSeconds
 } from './lib/runtimeConfig';
 import {
   TOTAL_DETECTOR_COUNT,
-  normalizeIssueFromDetector, 
-  getAvailableSubcategories,
-  createInitialDiagnostics,
+  getAvailableSubcategories
 } from './lib/detectorMetadata';
 const BRAND_NAME = 'Markdown Intelligence Auditor';
 const BRAND_TAGLINE = 'Deterministic Markdown specification auditing';
 const MAX_DIAGNOSTIC_EVENTS_VISIBLE = 3;
-const ANALYSIS_STAGES = [
-  { id: 'indexing', label: 'Indexing Markdown' },
-  { id: 'project_graph', label: 'Building Project Graph' },
-  { id: 'rule_engine', label: 'Running Deterministic Rules' },
-  { id: 'agent_mesh', label: 'Running Analysis Mesh' },
-  { id: 'merge', label: 'Merging Findings' },
-  { id: 'finalize', label: 'Finalizing Results' }
-];
-
-function getProgressStage(stageId) {
-  const index = ANALYSIS_STAGES.findIndex((stage) => stage.id === stageId);
-  if (index === -1) {
-    return {
-      id: stageId || 'idle',
-      label: 'Idle',
-      stageIndex: 0,
-      stageCount: ANALYSIS_STAGES.length
-    };
-  }
-
-  const stage = ANALYSIS_STAGES[index];
-  return {
-    ...stage,
-    stageIndex: index + 1,
-    stageCount: ANALYSIS_STAGES.length
-  };
-}
-
-function createProgressState(overrides = {}) {
-  const stage = getProgressStage(overrides.stage || 'idle');
-  const baseState = {
-    stage: stage.id,
-    stageLabel: stage.label,
-    stageIndex: stage.stageIndex,
-    stageCount: stage.stageCount,
-    totalFiles: 0,
-    indexedFiles: 0,
-    currentBatch: 0,
-    totalBatches: 0,
-    filesInCurrentBatch: 0,
-    currentAgentId: '',
-    currentAgentLabel: '',
-    currentAgentOwnedLayers: 0,
-    currentAgentOwnedSubcategories: 0,
-    currentAgentOwnedDetectors: 0,
-    currentAttempt: 0,
-    maxAttempts: MAX_AGENT_RESPONSE_ATTEMPTS,
-    completedAgentPasses: 0,
-    totalAgentPasses: 0,
-    deterministicRuleIssues: 0,
-    deterministicRuleRuns: 0,
-    proofChainEdges: 0,
-    ownedDetectorHits: 0,
-    checkedOwnedDetectors: 0,
-    cleanOwnedDetectors: 0,
-    untouchedOwnedDetectors: 0,
-    outOfOwnedScopeIssues: 0,
-    graphGroups: 0,
-    graphDocuments: 0,
-    graphReferences: 0,
-    message: ''
-  };
-
-  return {
-    ...baseState,
-    ...overrides,
-    stage: stage.id,
-    stageLabel: stage.label,
-    stageIndex: stage.stageIndex,
-    stageCount: stage.stageCount
-  };
-}
 
 export default function App() {
   const [config, setConfig] = useState({ baseURL: '', apiKey: '', model: '' });
@@ -507,407 +412,68 @@ export default function App() {
     setDiffSummary(null);
     setContextWarning(null);
     setAnalysisStats({ reused: 0, reanalyzed: 0, agentPasses: 0 });
-    setProgressState(createProgressState({
-      stage: 'indexing',
-      totalFiles: files.length,
-      indexedFiles: 0,
-      message: 'Building deterministic Markdown index'
-    }));
-
-    const diagnostics = createInitialDiagnostics();
-    diagnostics.analysis_mesh_agents_configured = ANALYSIS_AGENT_COUNT;
+    setProgressState(buildAnalysisStartProgressState(files.length));
 
     try {
-      const markdownIndex = buildMarkdownProjectIndex(files);
-      diagnostics.indexed_document_count = markdownIndex.summary.documentCount;
-      diagnostics.indexed_heading_count = markdownIndex.summary.headingCount;
-      updateProgressState({
-        stage: 'indexing',
-        totalFiles: files.length,
-        indexedFiles: markdownIndex.summary.documentCount,
-        message: `Indexed ${markdownIndex.summary.documentCount} documents and ${markdownIndex.summary.headingCount} headings`
-      });
-
-      updateProgressState({
-        stage: 'project_graph',
-        totalFiles: files.length,
-        indexedFiles: markdownIndex.summary.documentCount,
-        graphDocuments: markdownIndex.summary.documentCount,
-        message: 'Building cross-file Markdown project graph'
-      });
-
-      const projectGraph = buildMarkdownProjectGraph(files);
-      diagnostics.project_graph_document_count = projectGraph.summary.documentCount;
-      diagnostics.project_graph_heading_group_count = projectGraph.summary.headingGroupCount;
-      diagnostics.project_graph_glossary_term_group_count = projectGraph.summary.glossaryTermGroupCount;
-      diagnostics.project_graph_identifier_group_count = projectGraph.summary.identifierGroupCount;
-      diagnostics.project_graph_workflow_group_count = projectGraph.summary.workflowGroupCount;
-      diagnostics.project_graph_requirement_group_count = projectGraph.summary.requirementGroupCount || 0;
-      diagnostics.project_graph_state_group_count = projectGraph.summary.stateGroupCount || 0;
-      diagnostics.project_graph_api_group_count = projectGraph.summary.apiGroupCount || 0;
-      diagnostics.project_graph_actor_group_count = projectGraph.summary.actorGroupCount || 0;
-      diagnostics.project_graph_reference_count = projectGraph.summary.referenceCount || 0;
-      diagnostics.project_graph_reference_group_count = projectGraph.summary.referenceGroupCount || 0;
-      diagnostics.project_graph_total_group_count =
-        diagnostics.project_graph_heading_group_count
-        + diagnostics.project_graph_glossary_term_group_count
-        + diagnostics.project_graph_identifier_group_count
-        + diagnostics.project_graph_workflow_group_count
-        + diagnostics.project_graph_requirement_group_count
-        + diagnostics.project_graph_state_group_count
-        + diagnostics.project_graph_api_group_count
-        + diagnostics.project_graph_actor_group_count
-        + diagnostics.project_graph_reference_group_count;
-      updateProgressState({
-        stage: 'project_graph',
-        totalFiles: files.length,
-        indexedFiles: markdownIndex.summary.documentCount,
-        graphDocuments: projectGraph.summary.documentCount,
-        graphGroups: diagnostics.project_graph_total_group_count,
-        graphReferences: diagnostics.project_graph_reference_count,
-        message: `Resolved ${diagnostics.project_graph_total_group_count} graph groups across ${projectGraph.summary.documentCount} documents`
-      });
-
-      const filesToAnalyze = [...files];
-      const reusedCount = 0;
-      const reanalyzedCount = files.length;
-
-      updateProgressState({
-        stage: 'rule_engine',
-        totalFiles: files.length,
-        indexedFiles: markdownIndex.summary.documentCount,
-        graphDocuments: projectGraph.summary.documentCount,
-        graphGroups: diagnostics.project_graph_total_group_count,
-        graphReferences: diagnostics.project_graph_reference_count,
-        message: 'Running deterministic subcategory-aware rules'
-      });
-
-      const deterministicRuleResult = runDeterministicRuleEngine({ files, projectGraph, diagnostics });
-      updateProgressState({
-        stage: 'rule_engine',
-        totalFiles: files.length,
-        indexedFiles: markdownIndex.summary.documentCount,
-        graphDocuments: projectGraph.summary.documentCount,
-        graphGroups: diagnostics.project_graph_total_group_count,
-        graphReferences: diagnostics.project_graph_reference_count,
-        deterministicRuleIssues: deterministicRuleResult.issues.length,
-        deterministicRuleRuns: diagnostics.deterministic_rule_runs || 1,
-        message: `Deterministic rules emitted ${deterministicRuleResult.issues.length} findings`
-      });
-
-      setAnalysisStats({ reused: reusedCount, reanalyzed: reanalyzedCount, agentPasses: 0 });
-
-      let finalBatchResults = [];
-      let completedAgentPasses = 0;
-      const analysisMeshRuns = [];
-      const batches = createFileBatches(filesToAnalyze, {
-        recommendedBatchTargetTokens: RECOMMENDED_BATCH_TARGET_TOKENS,
+      const {
+        merged,
+        diagnostics,
+        analysisStats: nextAnalysisStats,
+        diffSummary: nextDiffSummary
+      } = await runAuditOrchestrator({
+        files,
+        config,
+        capturedPrevious,
+        agentPromptEntries,
         maxSystemTokens,
-        batchTokenBuffer: BATCH_TOKEN_BUFFER,
-        minChunkChars: MIN_CHUNK_CHARS
+        estimateTokens,
+        updateProgressState,
+        callAPI: window.electronAPI.callAPI
       });
-      const totalAgentPasses = Math.max(batches.length * ANALYSIS_AGENT_COUNT, 0);
-
-      if (filesToAnalyze.length > 0) {
-        const { total } = estimateTokens(filesToAnalyze);
-        const sessionTokenBudget = normalizeTokenBudget(config.tokenBudget || DEFAULT_SESSION_TOKEN_BUDGET);
-        if (sessionTokenBudget && total > sessionTokenBudget) {
-          throw new Error(`Estimated ${total.toLocaleString()} tokens for new files exceeds session budget of ${sessionTokenBudget.toLocaleString()}.`);
-        }
-
-        updateProgressState({
-          stage: 'agent_mesh',
-          totalFiles: files.length,
-          indexedFiles: markdownIndex.summary.documentCount,
-          totalBatches: batches.length,
-          currentBatch: batches.length > 0 ? 1 : 0,
-          totalAgentPasses,
-          completedAgentPasses: 0,
-          deterministicRuleIssues: deterministicRuleResult.issues.length,
-          deterministicRuleRuns: diagnostics.deterministic_rule_runs || 1,
-          graphDocuments: projectGraph.summary.documentCount,
-          graphGroups: diagnostics.project_graph_total_group_count,
-          graphReferences: diagnostics.project_graph_reference_count,
-          message: 'Running analysis mesh'
-        });
-
-        for (let i = 0; i < batches.length; i++) {
-          const result = await runAnalysisBatch({
-            batch: batches[i],
-            batchIndex: i,
-            totalBatches: batches.length,
-            totalAgentPasses,
-            diagnostics,
-            detectorExecutionReceipts: deterministicRuleResult.summary?.detector_execution_receipts || [],
-            agentPromptEntries,
-            config,
-            callAPI: window.electronAPI.callAPI,
-            updateProgressState
-          });
-          completedAgentPasses += result._agentPasses || 0;
-          analysisMeshRuns.push(...(result._analysisMeshRuns || []));
-          updateProgressState({
-            stage: 'agent_mesh',
-            totalFiles: files.length,
-            indexedFiles: markdownIndex.summary.documentCount,
-            totalBatches: batches.length,
-            currentBatch: i + 1,
-            totalAgentPasses,
-            completedAgentPasses,
-            deterministicRuleIssues: deterministicRuleResult.issues.length,
-            deterministicRuleRuns: diagnostics.deterministic_rule_runs || 1,
-            graphDocuments: projectGraph.summary.documentCount,
-            graphGroups: diagnostics.project_graph_total_group_count,
-            graphReferences: diagnostics.project_graph_reference_count,
-            message: `Completed batch ${i + 1}/${batches.length}`
-          });
-
-          const perFileResults = {};
-          batches[i].forEach((f) => {
-            perFileResults[f.sourceName || f.name] = {
-              _sourceFiles: [f.sourceName || f.name],
-              summary: { ...result.summary, total: 0, critical: 0, high: 0, medium: 0, low: 0 },
-              issues: [],
-              root_causes: []
-            };
-          });
-
-          if (result.issues) {
-            result.issues.forEach(issue => {
-              const primaryFile = issue.files?.[0];
-              if (primaryFile && perFileResults[primaryFile]) {
-                perFileResults[primaryFile].issues.push(issue);
-                if (perFileResults[primaryFile].summary[issue.severity] !== undefined) {
-                  perFileResults[primaryFile].summary[issue.severity]++;
-                }
-                perFileResults[primaryFile].summary.total++;
-              }
-            });
-          }
-
-          if (result.root_causes) {
-            Object.entries(perFileResults).forEach(([fileName, fileResult]) => {
-              const issueIds = new Set(fileResult.issues.map((issue) => issue.id).filter(Boolean));
-              const rootCauseIds = new Set(fileResult.issues.map((issue) => issue.root_cause_id).filter(Boolean));
-
-              fileResult.root_causes = result.root_causes
-                .filter((rootCause) => {
-                  const matchesByRootCauseId = rootCauseIds.has(rootCause.id);
-                  const matchesByChildIssue = Array.isArray(rootCause.child_issues)
-                    && rootCause.child_issues.some((childIssueId) => issueIds.has(childIssueId));
-
-                  return matchesByRootCauseId || matchesByChildIssue;
-                })
-                .map((rootCause) => ({
-                  ...rootCause,
-                  child_issues: Array.isArray(rootCause.child_issues) && issueIds.size > 0
-                    ? rootCause.child_issues.filter((childIssueId) => issueIds.has(childIssueId))
-                    : rootCause.child_issues
-                }));
-            });
-          }
-          finalBatchResults.push(result);
-        }
-      }
-
-      finalBatchResults = [...finalBatchResults, deterministicRuleResult];
-      updateProgressState({
-        stage: 'merge',
-        totalFiles: files.length,
-        indexedFiles: markdownIndex.summary.documentCount,
-        totalAgentPasses,
-        completedAgentPasses,
-        deterministicRuleIssues: deterministicRuleResult.issues.length,
-        deterministicRuleRuns: diagnostics.deterministic_rule_runs || 1,
-        graphDocuments: projectGraph.summary.documentCount,
-        graphGroups: diagnostics.project_graph_total_group_count,
-        graphReferences: diagnostics.project_graph_reference_count,
-        message: 'Merging deterministic rules and fresh agent results'
-      });
-
-      const merged = mergeBatchResults(finalBatchResults);
-      merged.analysis_mesh = mergeAnalysisMeshRuns(analysisMeshRuns);
-      merged.summary.analysis_agents_run = ANALYSIS_AGENT_COUNT;
-      merged.summary.analysis_agent_passes = completedAgentPasses;
-      merged.summary.analysis_mesh_focus_layer_hits = merged.analysis_mesh.focus_layer_hits || 0;
-      merged.summary.analysis_mesh_focus_subcategory_hits = merged.analysis_mesh.focus_subcategory_hits || 0;
-      merged.summary.analysis_mesh_owned_layer_hits = merged.analysis_mesh.owned_layer_hits || 0;
-      merged.summary.analysis_mesh_owned_subcategory_hits = merged.analysis_mesh.owned_subcategory_hits || 0;
-      merged.summary.analysis_mesh_owned_detector_hits = merged.analysis_mesh.owned_detector_hits || 0;
-      merged.summary.analysis_mesh_out_of_owned_scope_issues = merged.analysis_mesh.out_of_owned_scope_issue_count || 0;
-      merged.summary.analysis_mesh_owned_detector_finding_coverage = merged.analysis_mesh.coverage_reconciliation?.finding_backed_detector_count || 0;
-      merged.summary.analysis_mesh_owned_detector_checked_count = merged.analysis_mesh.coverage_reconciliation?.checked_detector_count || 0;
-      merged.summary.analysis_mesh_owned_detector_clean_count = merged.analysis_mesh.coverage_reconciliation?.checked_clean_detector_count || 0;
-      merged.summary.analysis_mesh_owned_detector_untouched_count = merged.analysis_mesh.coverage_reconciliation?.untouched_detector_count || 0;
-      merged.summary.analysis_mesh_owned_detector_quiet_count = merged.analysis_mesh.coverage_reconciliation?.quiet_detector_count || 0;
-      merged.summary.analysis_mesh_validation_warnings = Number.isFinite(Number(merged.analysis_mesh.validation_warnings))
-        ? Number(merged.analysis_mesh.validation_warnings)
-        : 0;
-      merged.summary.project_graph_total_groups = diagnostics.project_graph_total_group_count;
-      merged.summary.project_graph_reference_count = diagnostics.project_graph_reference_count;
-      merged.summary.project_graph_reference_groups = diagnostics.project_graph_reference_group_count || 0;
-      merged.summary.deterministic_rule_runs = diagnostics.deterministic_rule_runs || 0;
-      merged.summary.deterministic_rule_issues = deterministicRuleResult.issues.length;
-      merged.summary.deterministic_rule_checked_detectors = deterministicRuleResult.summary?.detectors_checked || 0;
-      merged.summary.deterministic_rule_clean_detectors = deterministicRuleResult.summary?.detectors_clean || 0;
-      merged.summary.deterministic_rule_hit_detectors = deterministicRuleResult.summary?.detectors_hit || 0;
-      merged.summary.detector_execution_receipts = Array.isArray(deterministicRuleResult.summary?.detector_execution_receipts)
-        ? deterministicRuleResult.summary.detector_execution_receipts
-        : [];
-      merged.summary.timeout_agent_passes = diagnostics.timeout_agent_pass_count || 0;
-
-      if (merged.issues) {
-        merged.issues = merged.issues.map((issue) => {
-          const taxonomyNormalized = normalizeIssueFromDetector(issue, diagnostics);
-          const anchoredIssue = enrichIssueWithMarkdownIndex(taxonomyNormalized, markdownIndex, diagnostics);
-          const graphEnrichedIssue = enrichIssueWithProjectGraph(anchoredIssue, projectGraph, diagnostics);
-          const spannedIssue = enrichIssueWithEvidenceSpans(graphEnrichedIssue, markdownIndex, diagnostics);
-          return enrichIssueWithProofChains(spannedIssue, markdownIndex, diagnostics);
-        });
-        merged.issues = deduplicateIssues(merged.issues);
-        merged.issues = merged.issues.map((issue) => enrichIssueWithTrustSignals(issue));
-        merged.summary.proof_chain_edges = merged.issues.reduce(
-          (sum, issue) => sum + (Array.isArray(issue.proof_chains) ? issue.proof_chains.length : 0),
-          0
-        );
-        merged.summary.total = merged.issues.length;
-        merged.summary.critical = merged.issues.filter((issue) => issue.severity === 'critical').length;
-        merged.summary.high = merged.issues.filter((issue) => issue.severity === 'high').length;
-        merged.summary.medium = merged.issues.filter((issue) => issue.severity === 'medium').length;
-        merged.summary.low = merged.issues.filter((issue) => issue.severity === 'low').length;
-        const trustSummary = summarizeIssueTrustSignals(merged.issues);
-        merged.summary.average_trust_score = trustSummary.averageTrustScore;
-        merged.summary.high_trust_issue_count = trustSummary.highTrustIssueCount;
-        merged.summary.strong_evidence_issue_count = trustSummary.strongEvidenceIssueCount;
-        merged.summary.deterministic_proof_issue_count = trustSummary.deterministicProofIssueCount;
-        merged.summary.receipt_backed_issue_count = trustSummary.receiptBackedIssueCount;
-        merged.summary.hybrid_supported_issue_count = trustSummary.hybridSupportedIssueCount;
-        merged.summary.rule_backed_issue_count = trustSummary.ruleBackedIssueCount;
-        merged.summary.hybrid_backed_issue_count = trustSummary.hybridBackedIssueCount;
-        merged.summary.model_only_issue_count = trustSummary.modelOnlyIssueCount;
-      }
-      const runtimeCoverage = buildRuntimeDetectorCoverage({
-        issues: merged.issues,
-        deterministicReceipts: deterministicRuleResult.summary?.detector_execution_receipts || []
-      });
-      applyRuntimeDetectorCoverageSummary(merged.summary, runtimeCoverage);
-      diagnostics.analysis_mesh_passes_completed = completedAgentPasses;
-      diagnostics.analysis_mesh_focus_layer_hit_count = merged.analysis_mesh.focus_layer_hits || diagnostics.analysis_mesh_focus_layer_hit_count;
-      diagnostics.analysis_mesh_focus_subcategory_hit_count = merged.analysis_mesh.focus_subcategory_hits || diagnostics.analysis_mesh_focus_subcategory_hit_count;
-      diagnostics.analysis_mesh_owned_layer_hit_count = merged.analysis_mesh.owned_layer_hits || diagnostics.analysis_mesh_owned_layer_hit_count;
-      diagnostics.analysis_mesh_owned_subcategory_hit_count = merged.analysis_mesh.owned_subcategory_hits || diagnostics.analysis_mesh_owned_subcategory_hit_count;
-      diagnostics.analysis_mesh_owned_detector_hit_count = merged.analysis_mesh.owned_detector_hits || diagnostics.analysis_mesh_owned_detector_hit_count;
-      diagnostics.analysis_mesh_out_of_focus_issue_count = merged.analysis_mesh.out_of_focus_issue_count || diagnostics.analysis_mesh_out_of_focus_issue_count;
-      diagnostics.analysis_mesh_out_of_owned_scope_issue_count = merged.analysis_mesh.out_of_owned_scope_issue_count || diagnostics.analysis_mesh_out_of_owned_scope_issue_count;
-      diagnostics.analysis_mesh_owned_detector_checked_count = merged.analysis_mesh.coverage_reconciliation?.checked_detector_count || diagnostics.analysis_mesh_owned_detector_checked_count || 0;
-      diagnostics.analysis_mesh_owned_detector_clean_count = merged.analysis_mesh.coverage_reconciliation?.checked_clean_detector_count || diagnostics.analysis_mesh_owned_detector_clean_count || 0;
-      diagnostics.analysis_mesh_owned_detector_untouched_count = merged.analysis_mesh.coverage_reconciliation?.untouched_detector_count || diagnostics.analysis_mesh_owned_detector_untouched_count || 0;
-      diagnostics.analysis_mesh_owned_detector_quiet_count = merged.analysis_mesh.coverage_reconciliation?.quiet_detector_count || diagnostics.analysis_mesh_owned_detector_quiet_count;
-      diagnostics.analysis_mesh_coverage_reconciliation = merged.analysis_mesh.coverage_reconciliation || diagnostics.analysis_mesh_coverage_reconciliation;
-      diagnostics.analysis_mesh_validation_warning_count = Number.isFinite(Number(merged.analysis_mesh.validation_warnings))
-        ? Number(merged.analysis_mesh.validation_warnings)
-        : diagnostics.analysis_mesh_validation_warning_count;
-      diagnostics.analysis_mesh_agent_runs = Array.isArray(merged.analysis_mesh.agents)
-        ? merged.analysis_mesh.agents
-        : diagnostics.analysis_mesh_agent_runs;
-      diagnostics.runtime_detector_defined_count = runtimeCoverage.detectorsDefined;
-      diagnostics.runtime_detector_finding_backed_count = runtimeCoverage.findingBackedDetectorCount;
-      diagnostics.runtime_detector_model_finding_backed_count = runtimeCoverage.modelFindingBackedDetectorCount;
-      diagnostics.runtime_detector_locally_checked_count = runtimeCoverage.localCheckedDetectorCount;
-      diagnostics.runtime_detector_touched_count = runtimeCoverage.runtimeTouchedDetectorCount;
-      diagnostics.runtime_detector_untouched_count = runtimeCoverage.untouchedDetectorCount;
-      diagnostics.agent_findings_merged_count = Math.max(
-        0,
-        finalBatchResults.reduce((sum, result) => sum + (result._rawIssueCount || result.issues?.length || 0), 0) - (merged.issues?.length || 0)
-      );
-      diagnostics.proof_chain_edge_count = merged.summary.proof_chain_edges || diagnostics.proof_chain_edge_count || 0;
-      diagnostics.deterministic_rule_checked_detector_count = deterministicRuleResult.summary?.detectors_checked || diagnostics.deterministic_rule_checked_detector_count || 0;
-      diagnostics.deterministic_rule_clean_detector_count = deterministicRuleResult.summary?.detectors_clean || diagnostics.deterministic_rule_clean_detector_count || 0;
-      diagnostics.deterministic_rule_hit_detector_count = deterministicRuleResult.summary?.detectors_hit || diagnostics.deterministic_rule_hit_detector_count || 0;
-      updateProgressState({
-        stage: 'finalize',
-        totalFiles: files.length,
-        indexedFiles: markdownIndex.summary.documentCount,
-        totalAgentPasses,
-        completedAgentPasses,
-        deterministicRuleIssues: deterministicRuleResult.issues.length,
-        deterministicRuleRuns: diagnostics.deterministic_rule_runs || 1,
-        proofChainEdges: merged.summary.proof_chain_edges || 0,
-        ownedDetectorHits: merged.summary.analysis_mesh_owned_detector_hits || 0,
-        checkedOwnedDetectors: merged.summary.analysis_mesh_owned_detector_checked_count || 0,
-        cleanOwnedDetectors: merged.summary.analysis_mesh_owned_detector_clean_count || 0,
-        untouchedOwnedDetectors: merged.summary.analysis_mesh_owned_detector_untouched_count || 0,
-        outOfOwnedScopeIssues: merged.summary.analysis_mesh_out_of_owned_scope_issues || 0,
-        graphDocuments: projectGraph.summary.documentCount,
-        graphGroups: diagnostics.project_graph_total_group_count,
-        graphReferences: diagnostics.project_graph_reference_count,
-        message: `Finalized ${merged.summary.total} issues with ${merged.root_causes?.length || 0} root causes`
-      });
-      setTaxonomyDiagnostics(diagnostics);
-      setAnalysisStats({ reused: reusedCount, reanalyzed: reanalyzedCount, agentPasses: completedAgentPasses });
-
-      const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
-      if (merged.issues) {
-        merged.issues.sort((a, b) => {
-          const sevDiff = (severityOrder[a.severity] ?? 4) - (severityOrder[b.severity] ?? 4);
-          if (sevDiff !== 0) return sevDiff;
-          const trustStrengthDiff = compareIssuesByTrustStrength(a, b);
-          if (trustStrengthDiff !== 0) return trustStrengthDiff;
-          return (a.category || '').localeCompare(b.category || '');
-        });
-      }
 
       setResults(merged);
-      
-      // Auto-save to history
-      const historyPayload = buildHistoryPersistencePayload({
+      setTaxonomyDiagnostics(diagnostics);
+      setAnalysisStats(nextAnalysisStats);
+      setDiffSummary(nextDiffSummary);
+
+      const updatedHistory = await saveResultsToHistoryWorkbench({
+        electronAPI: window.electronAPI,
         results: merged,
         taxonomyDiagnostics: diagnostics,
         files,
-        config
+        config,
+        sourceType: 'fresh_analysis'
       });
-      if (historyPayload) {
-        await window.electronAPI.addHistorySession(historyPayload);
-        await window.electronAPI.pruneHistory(50);
-        const updatedHistory = await window.electronAPI.listHistory();
+      if (updatedHistory) {
         setHistoryList(updatedHistory);
       }
-
-      if (capturedPrevious) {
-        setDiffSummary(compareAudits(merged, capturedPrevious));
-      } else {
-        setDiffSummary(null);
-      }
     } catch (err) {
+      const diagnostics = err?.diagnostics || null;
       if (
-        diagnostics.agent_failure_events.length > 0 ||
-        diagnostics.warnings.length > 0 ||
-        diagnostics.analysis_mesh_passes_completed > 0
+        diagnostics
+        && (
+          diagnostics.agent_failure_events?.length > 0
+          || diagnostics.warnings?.length > 0
+          || diagnostics.analysis_mesh_passes_completed > 0
+        )
       ) {
         setTaxonomyDiagnostics(diagnostics);
       }
-      const diagnosticSuffix = diagnostics.last_agent_failure
+      const diagnosticSuffix = diagnostics?.last_agent_failure
         ? ' See Analysis Diagnostics below for the captured malformed agent response preview.'
         : '';
       setError(`Analysis error: ${err.message}${diagnosticSuffix}`);
-      setProgressState(createProgressState({
-        stage: 'finalize',
-        totalFiles: files.length,
-        indexedFiles: diagnostics.indexed_document_count,
-        graphDocuments: diagnostics.project_graph_document_count,
-        graphGroups: diagnostics.project_graph_total_group_count,
-        graphReferences: diagnostics.project_graph_reference_count,
-        deterministicRuleIssues: diagnostics.deterministic_rule_issue_count,
-        deterministicRuleRuns: diagnostics.deterministic_rule_runs,
-        ownedDetectorHits: diagnostics.analysis_mesh_owned_detector_hit_count,
-        outOfOwnedScopeIssues: diagnostics.analysis_mesh_out_of_owned_scope_issue_count,
-        totalAgentPasses: diagnostics.analysis_mesh_agents_configured,
-        completedAgentPasses: diagnostics.analysis_mesh_passes_completed,
-        message: 'Analysis stopped due to an error'
-      }));
+      setProgressState(
+        err?.progressState
+          || buildAnalysisErrorProgressState({
+            totalFiles: files.length,
+            diagnostics,
+            message: 'Analysis stopped due to an error'
+          })
+      );
+    } finally {
+      setAnalyzing(false);
     }
-
-    setAnalyzing(false);
   };
 
   const handleReset = () => {

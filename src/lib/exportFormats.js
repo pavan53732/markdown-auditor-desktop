@@ -52,10 +52,14 @@ export function buildMarkdownReport({
   if (Number.isFinite(Number(results.summary.detectors_runtime_touched))) {
     md += `- **Detectors Defined:** ${results.summary.detectors_defined || totalDetectorCount}\n`;
     md += `- **Deterministic Local Rules:** ${DETERMINISTIC_RULE_COUNT}\n`;
+    md += `- **Deterministic Catalog Detectors:** ${results.summary.deterministic_catalog_detector_count || 0}\n`;
+    md += `- **Model-Driven Catalog Detectors:** ${results.summary.model_driven_catalog_detector_count || 0}\n`;
     md += `- **Runtime Detector Coverage:** ${results.summary.detectors_runtime_touched}\n`;
     md += `- **Model Finding-Backed Detectors:** ${results.summary.detectors_model_finding_backed || 0}\n`;
     md += `- **Locally Checked Detectors:** ${results.summary.detectors_locally_checked || 0}\n`;
     md += `- **Untouched Detectors:** ${results.summary.detectors_untouched || 0}\n`;
+    md += `- **Deterministic Catalog Coverage %:** ${results.summary.deterministic_catalog_coverage_percent || 0}\n`;
+    md += `- **Model-Driven Catalog Coverage %:** ${results.summary.model_driven_catalog_coverage_percent || 0}\n`;
   }
   md += `- **Trust Tier Semantics:** heuristic runtime weighting, not formal proof\n`;
   md += `- **Deterministic Coverage Mode:** partial local-rule spine plus hybrid/model synthesis\n`;
@@ -219,6 +223,10 @@ export function buildMarkdownReport({
     md += `- **Runtime Locally Checked Detectors:** ${taxonomyDiagnostics.runtime_detector_locally_checked_count || 0}\n`;
     md += `- **Runtime Touched Detectors:** ${taxonomyDiagnostics.runtime_detector_touched_count || 0}\n`;
     md += `- **Runtime Untouched Detectors:** ${taxonomyDiagnostics.runtime_detector_untouched_count || 0}\n`;
+    md += `- **Deterministic Catalog Detectors:** ${taxonomyDiagnostics.deterministic_catalog_detector_count || 0}\n`;
+    md += `- **Model-Driven Catalog Detectors:** ${taxonomyDiagnostics.model_driven_catalog_detector_count || 0}\n`;
+    md += `- **Deterministic Catalog Coverage %:** ${taxonomyDiagnostics.deterministic_catalog_coverage_percent || 0}\n`;
+    md += `- **Model-Driven Catalog Coverage %:** ${taxonomyDiagnostics.model_driven_catalog_coverage_percent || 0}\n`;
     md += `- **Configured Analysis Agents:** ${taxonomyDiagnostics.analysis_mesh_agents_configured}\n`;
     md += `- **Completed Agent Passes:** ${taxonomyDiagnostics.analysis_mesh_passes_completed}\n`;
     md += `- **Analysis Mesh Focus Layer Hits:** ${taxonomyDiagnostics.analysis_mesh_focus_layer_hit_count || 0}\n`;

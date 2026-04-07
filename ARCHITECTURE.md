@@ -16,10 +16,10 @@ The current architecture supports:
 - chunk-aware batching for large files
 - deterministic runtime normalization
 - deterministic Markdown indexing and anchor enrichment for file/section/line evidence, heading-inference fallback, multi-anchor cross-file resolution, and evidence-span construction
-- deterministic local rule-engine enforcement for duplicate headings, broken cross-references, RFC2119 misuse, ambiguous requirement wording, duplicated requirements, requirement-strength conflicts, missing terminal states, rollback gaps, workflow ordering/terminal-state issues, governance checkpoint gaps, governance bypass patterns, audit-trail requirements, execution-owner boundary clarity, control-plane override guard gaps, retry/backoff policy gaps, deterministic replay requirements, commit-hash binding, state-transition preconditions/postconditions, task-graph DAG/cycle validation, dependency-order checks, dependency ownership/lifecycle checks, disconnected task-node detection, priority propagation checks, parallel resource ordering checks, intent ambiguity detection, change-scope boundary checks, user-intent consistency validation, interaction conflict detection, unresolved UI-state mappings, undefined reused identifiers, unresolved glossary bindings, API return/error/idempotency/rate-limit/auth contract gaps, terminology-registry gaps, malformed terminology registries, symbol inconsistency, state-space definition gaps, and input/output contract determinism
+- deterministic local rule-engine enforcement for duplicate headings, broken cross-references, RFC2119 misuse, ambiguous requirement wording, duplicated requirements, requirement-strength conflicts, missing terminal states, rollback gaps, workflow ordering/terminal-state issues, governance checkpoint gaps, governance bypass patterns, compliance-gate omissions, audit-trail requirements, execution-owner boundary clarity, control-plane override guard gaps, retry/backoff policy gaps, deterministic replay requirements, execution-determinism gaps, commit-hash binding, transition-determinism failures, state-transition preconditions/postconditions, task-graph DAG/cycle validation, missing prerequisite-node detection, dependency-order checks, optional-vs-required dependency ambiguity, dependency ownership/lifecycle checks, disconnected task-node detection, priority propagation checks, parallel resource ordering checks, intent ambiguity detection, change-scope boundary checks, user-intent consistency validation, interaction conflict detection, unresolved UI-state mappings, undefined reused identifiers, unresolved glossary bindings, API return/error/idempotency/rate-limit/auth contract gaps, terminology-registry gaps, malformed terminology registries, symbol inconsistency, state-space definition gaps, and input/output contract determinism
 - deterministic cross-file project graph enrichment for headings, glossary terms, identifiers, workflows, requirements, states, APIs, actors, and document references, including first-class reference grouping
 - deterministic typed proof-chain enrichment with span-to-span evidence edges
-- truthful receipt-backed runtime coverage accounting for taxonomy-defined, locally checked, model finding-backed, runtime-touched, and untouched detectors
+- truthful receipt-backed runtime coverage accounting for taxonomy-defined, locally checked, model finding-backed, runtime-touched, untouched detectors, and deterministic-vs-model-driven catalog coverage percentages
 - deterministic trust-score, proof-status, trust-basis, trust-tier, and evidence-grade enrichment so issues can be ranked by structural support and source-backed strength instead of severity alone, with trust tiers presented as heuristic weighting rather than formal proof, proof status explicitly distinguishing deterministic proof, deterministic receipts, hybrid support, and model-only inference, and `model_only` findings in `api_contract`, `specification_formalism`, `dependency_graph`, `execution_path`, `governance`, `deterministic_execution`, `control_plane_authority`, and `world_state_governance` capped so unsupported formal-contract claims cannot overstate severity
 - fresh per-upload analysis without runtime reuse of cached findings
 - session diffing and root-cause grouping
@@ -39,7 +39,7 @@ Electron Main Process
 
 Renderer Process (React)
 - file intake and local UI state
-- batching, merge orchestration, and diffing
+- thin UI orchestration over extracted runtime controllers for batching, merge orchestration, and diffing
 - taxonomy orchestration (layers, universal audit mode, bundles, subcategories, detectors, agent mesh)
 - deterministic 8-pass agent execution with first-class per-agent validation, merge strategies, and focus-hit summaries
 - taxonomy-driven normalization: metadata backfilling and severity clamping
@@ -47,7 +47,7 @@ Renderer Process (React)
 - renderer-branded asset usage for the top bar, progress state, and Markdown export header
 - deterministic rule-engine, project-graph enrichment, and cross-file/evidence-span preservation in exports/history
 - History Workbench UI (search, filter, sort, edit, compare)
-- export generation and workbench/session orchestration (JSON, Markdown, CSV, history/session workflows) using dedicated `exportFormats.js`, `workbenchController.js`, and extracted audit-pipeline helpers for runtime coverage accounting and post-merge escalation
+- export generation and workbench/session orchestration (JSON, Markdown, CSV, history/session workflows) using dedicated `exportFormats.js`, `workbenchController.js`, `auditOrchestrator.js`, `pipelineController.js`, `resultAggregator.js`, `executionStateController.js`, and extracted audit-pipeline helpers for runtime coverage accounting and post-merge escalation
 
 Provider Layer
 - OpenAI-compatible endpoint
@@ -89,16 +89,20 @@ Provider Layer
 |   `-- lib/
 |       |-- analysisAgents.js
 |       |-- agentMeshRuntime.js (Batch sizing, chunking, and per-agent batch execution)
+|       |-- auditOrchestrator.js (High-level staged audit orchestration)
 |       |-- auditPipeline.js (Runtime coverage accounting and post-merge escalation helpers)
 |       |-- crossLayerBundles.js
 |       |-- detectorMetadata.js (Source of truth for 701 detectors)
 |       |-- auditMode.js
 |       |-- evidenceGraph.js (Deterministic typed proof-chain enrichment)
+|       |-- executionStateController.js (Stage-aware progress-state construction helpers)
 |       |-- exportFormats.js (Markdown and CSV report generation)
 |       |-- jsonRepair.js (Advanced semantic validation)
 |       |-- layers.js
 |       |-- markdownIndex.js (Deterministic Markdown heading/anchor indexing and evidence spans)
+|       |-- pipelineController.js (Index/graph/rule/mesh stage helpers)
 |       |-- projectGraph.js (Deterministic cross-file Markdown relationship graph)
+|       |-- resultAggregator.js (Result merge, enrichment, and summary shaping)
 |       |-- ruleEngine/
 |       |   `-- index.js (Deterministic local rule engine)
 |       |-- sessionService.js (Session/history payload normalization and persistence helpers)
@@ -113,7 +117,7 @@ The system supports a local verification workflow with deepened 53-layer coverag
 1.  **Integrity Validation**: Local automated tests verify the 701-detector catalog against the 53-layer schema.
 2.  **Semantic Enforcement**: Validation logic ensures that AI-reported detector IDs, layers, and subcategories are mutually consistent.
 3.  **Benchmark Evaluation**: Canonical Markdown fixtures across `taxonomyBenchmark.test.js`, `deepSpecBenchmarks.test.js`, and `extendedUniversalBenchmarks.test.js` exercise deterministic taxonomy validation, normalization, and detector mapping behavior across 29 benchmark fixtures.
-4.  **Expanded Coverage**: The benchmark suites now cover deep-spec and universal-audit scenarios such as authority bypass, workflow skips, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty drops, artifact reproducibility gaps, toolchain leakage, recovery loop collapse, operational UX leakage, prompt compaction behavior, history metadata migration, runtime budget normalization, deterministic Markdown anchor enrichment, deterministic rule-engine enforcement, deterministic project-graph linking, typed proof-chain generation, proof-chain fallback generation, multi-anchor cross-file resolution, unified layer numbering, explicit agent-ownership reconciliation, receipt-backed detector coverage, adaptive timeout handling, deterministic trust-signal enrichment, proof-status/trust-basis validation, trust-tier/source-priority ordering, proof-aware severity gating, extracted report-format generation, extracted audit-pipeline coverage/escalation/merge coverage, extracted agent-mesh runtime behavior, extracted session-service normalization behavior, extracted workbench-controller behavior, deterministic task-graph validation, deterministic interaction-intelligence validation, deeper governance/execution/dependency rule coverage, and first-class analysis-mesh validation. The full local suite currently contains 230 tests across 23 files.
+4.  **Expanded Coverage**: The benchmark suites now cover deep-spec and universal-audit scenarios such as authority bypass, workflow skips, export non-determinism, simulation governance mismatch, tool side-effect leakage, UI fatal state, uncertainty drops, artifact reproducibility gaps, toolchain leakage, recovery loop collapse, operational UX leakage, prompt compaction behavior, history metadata migration, runtime budget normalization, deterministic Markdown anchor enrichment, deterministic rule-engine enforcement, deterministic project-graph linking, typed proof-chain generation, proof-chain fallback generation, multi-anchor cross-file resolution, unified layer numbering, explicit agent-ownership reconciliation, receipt-backed detector coverage, adaptive timeout handling, deterministic trust-signal enrichment, proof-status/trust-basis validation, trust-tier/source-priority ordering, proof-aware severity gating, extracted report-format generation, extracted audit-pipeline coverage/escalation/merge coverage, extracted audit-orchestrator / pipeline-controller behavior, extracted agent-mesh runtime behavior, extracted session-service normalization behavior, extracted workbench-controller behavior, deterministic task-graph validation, deterministic interaction-intelligence validation, deeper governance/execution/dependency rule coverage, and first-class analysis-mesh validation. The full local suite currently contains 232 tests across 23 files.
 5.  **Enhanced Taxonomy Coverage Helper**: `taxonomyCoverageHelper.js` provides per-layer density analysis, richness metrics, subcategory coverage tracking, bundle coverage analysis, and `related_layers` coverage reporting for comprehensive taxonomy observability.
 6.  **Runtime Diagnostics**: The application tracks enrichment, parsing, clamping, Markdown indexing, deterministic anchor assignment, evidence-span construction, typed proof-chain construction, multi-anchor resolution, fallback anchor assignment, rule-engine issue counts, rule-engine checked/clean/hit detector receipts, project-graph grouping, reference-group counts, graph-link enrichment, per-agent focus-layer and focus-subcategory hits, owned-layer / owned-detector hits, checked-clean-untouched ownership metrics, truthful runtime detector coverage metrics, trust-score/proof-status/trust-basis/trust-tier/evidence-grade enrichment, source-backed trust summary splits, cross-scope findings, and first-class analysis-mesh validation metrics during analysis and session loading.
 7.  **Observability**: Diagnostics are surfaced in the UI results summary and exports to ensure pipeline transparency, including indexed files, indexed headings, project-graph grouping counts for headings/terms/identifiers/workflows/requirements/states/APIs/actors/references, deterministic anchor assignments, evidence-span enrichments, typed proof-chain counts, deterministic rule counts and execution receipts, graph-link enrichments, multi-anchor counts, fallback-anchor counts, configured agent count, completed passes, owned-detector reconciliation metrics, runtime detector coverage metrics, trust metrics, mesh warnings, and merged findings.
@@ -150,21 +154,15 @@ The system supports a local verification workflow with deepened 53-layer coverag
 
 ### React Renderer
 
-`src/App.jsx` is the orchestration layer for:
+`src/App.jsx` is the UI composition layer for:
 
 - file intake
-- chunking and batching
-- API request orchestration
-- deterministic Markdown indexing
-- deterministic local rule-engine evaluation
-- deterministic cross-file project-graph construction
-- 8-pass deterministic agent execution using `analysisAgents.js`
-- extracted batch execution and retry handling through `agentMeshRuntime.js`
-- JSON repair and response validation
-- deterministic Markdown indexing and evidence-to-line enrichment
-- deterministic project-graph construction and cross-file related-location enrichment
-- evidence-span enrichment, typed proof-chain construction, and evidence-source normalization
-- merge, deduplication, escalation, and cross-layer validation
+- stage-aware progress wiring and screen state
+- file intake, filters, diff state, and history/workbench actions
+- handoff to `auditOrchestrator.js` for staged analysis execution
+- handoff to `pipelineController.js` for indexing / graph / rule / mesh stages
+- handoff to `resultAggregator.js` for merge, enrichment, escalation, and summary shaping
+- handoff to `executionStateController.js` for progress-state construction
 - history management and comparison workflows
 - extracted session/history payload shaping through `sessionService.js`
 - extracted export/history/session workflow handling through `workbenchController.js`

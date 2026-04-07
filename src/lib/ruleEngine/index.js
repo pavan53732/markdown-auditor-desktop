@@ -35,8 +35,12 @@ const POSTCONDITION_PATTERN = /\b(after\b|then\b|results? in|ensures?|postcondit
 const BACKOFF_POLICY_PATTERN = /\b(backoff|delay|wait(?:ing)?|jitter|cooldown|max retries|retry budget|retry limit|exponential)\b/i;
 const REPLAY_REQUIREMENT_PATTERN = /\b(replay|deterministic replay|reproduce|re-run|rerun|receipt|event log|journal|idempotency|idempotent)\b/i;
 const DEPENDENCY_LIFECYCLE_PATTERN = /\b(setup|install|provision|initialize|update|upgrade|version|rollback|remove|deprecate|retire|cleanup|teardown|lifecycle)\b/i;
+const OPTIONAL_DEPENDENCY_PATTERN = /\b(optional|optionally|may skip|can skip|if available|when available|best effort|nice to have)\b/i;
+const REQUIRED_DEPENDENCY_PATTERN = /\b(required|required for|must|mandatory|blocking|blocked by|depends on|prerequisite)\b/i;
+const COMPLIANCE_GATE_PATTERN = /\b(compliance|regulatory|policy|control|audit|sox|soc ?2|gdpr|hipaa|iso|pci)\b/i;
 const PARALLEL_EXECUTION_PATTERN = /\b(parallel|concurrent|simultaneous|in parallel)\b/i;
 const RESOURCE_ORDERING_PATTERN = /\b(ordered|serialize|serialized|queue|queued|lock|mutex|one at a time|exclusive|resource order|sequentially)\b/i;
+const EXECUTION_NON_DETERMINISM_PATTERN = /\b(any order|whichever|random(?:ly)?|best effort|as available|eventual(?:ly)?|first available|opportunistic|non-deterministic)\b/i;
 const VAGUE_REQUIREMENT_PATTERN = /\b(appropriate(?:ly)?|fast enough|quickly|soon|as needed|where possible|if necessary|normal(?:ly)?|reasonable|minimal|minimize|optimi[sz]e|efficient(?:ly)?|robust|seamless|intuitive|user-friendly)\b/i;
 const OBJECTIVE_HEADING_PATTERN = /\b(goal|goals|objective|objectives|intent|purpose|outcome|outcomes|user intent|mission)\b/i;
 const OBJECTIVE_VAGUE_PATTERN = /\b(improve|better|simple|simplify|easier|streamline|frictionless|smooth|quick(?:ly)?|faster|intuitive|user-friendly)\b/i;
@@ -49,6 +53,7 @@ const ACTOR_ROLE_PATTERN = /\b(User|Users|System|Operator|Admin|Client|Server|Ho
 const TASK_GRAPH_HEADING_PATTERN = /\b(task(?:s| graph)?|dependency|dependencies|dag|graph|execution graph|plan|priority)\b/i;
 const TASK_DEPENDENCY_HINT_PATTERN = /\b(depends on|after|requires|blocked by|waits for|following|prerequisite|predecessor)\b/i;
 const TASK_DEPENDENCY_REFERENCE_PATTERN = /\b(?:depends on|after|requires|blocked by|waits for|following|after completion of|prerequisite(?: is)?|predecessor(?: is)?)\s+(?:step|task)?\s*(\d+)\b/gi;
+const TRANSITION_CONDITION_PATTERN = /\b(if|when|on|unless|after|before|only if|guard|condition|trigger(?:ed)? by)\b/i;
 const AUTO_INTERACTION_PATTERN = /\b(automatic(?:ally)?|auto[- ]?(?:apply|approve|submit|progress|advance)|self[- ]?serve|without user intervention|no user action|zero-click|hands[- ]?free|approval-free)\b/i;
 const MANUAL_INTERACTION_PATTERN = /\b(user must|operator must|click|confirm|approve|approval|review|manual(?:ly)?|select|choose|submit|fill out|enter|sign[- ]?off)\b/i;
 const NO_APPROVAL_PATTERN = /\b(no approval|without approval|approval-free)\b/i;
@@ -327,6 +332,30 @@ export const DETERMINISTIC_RULE_DEFINITIONS = [
     owningAgent: 'execution_simulation_agent'
   },
   {
+    id: 'task_graph_missing_dependency_rule',
+    detectorId: 'L18-03',
+    layer: 'dependency_graph',
+    subcategory: 'undeclared dependencies',
+    stage: 'task_graph_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'task_graph_optional_required_confusion_rule',
+    detectorId: 'L18-05',
+    layer: 'dependency_graph',
+    subcategory: 'undeclared dependencies',
+    stage: 'task_graph_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'compliance_gate_omission_rule',
+    detectorId: 'L29-16',
+    layer: 'governance',
+    subcategory: 'checkpoint omissions',
+    stage: 'governance_rules',
+    owningAgent: 'architecture_authority_agent'
+  },
+  {
     id: 'retry_backoff_policy_rule',
     detectorId: 'L43-05',
     layer: 'deterministic_execution',
@@ -347,6 +376,22 @@ export const DETERMINISTIC_RULE_DEFINITIONS = [
     detectorId: 'L43-13',
     layer: 'deterministic_execution',
     subcategory: 'deterministic replay requirements',
+    stage: 'execution_invariant_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'execution_determinism_gap_rule',
+    detectorId: 'L43-09',
+    layer: 'deterministic_execution',
+    subcategory: 'scheduling determinism',
+    stage: 'execution_invariant_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'transition_determinism_failure_rule',
+    detectorId: 'L43-11',
+    layer: 'deterministic_execution',
+    subcategory: 'transition determinism',
     stage: 'execution_invariant_rules',
     owningAgent: 'execution_simulation_agent'
   },
@@ -1065,10 +1110,28 @@ function buildTaskGraphContext(taskSection) {
   const reverseAdjacency = new Map(numberedSteps.map((step) => [step.number, []]));
   const validEdges = [];
   const invalidForwardDependencies = [];
+  const missingDependencies = [];
+  const optionalDependencySteps = [];
+  const requiredDependencySteps = [];
 
   numberedSteps.forEach((step) => {
+    if (step.dependencies.length > 0) {
+      if (OPTIONAL_DEPENDENCY_PATTERN.test(step.text)) {
+        optionalDependencySteps.push(step);
+      }
+      if (REQUIRED_DEPENDENCY_PATTERN.test(step.text)) {
+        requiredDependencySteps.push(step);
+      }
+    }
+
     step.dependencies.forEach((dependencyNumber) => {
-      if (!stepMap.has(dependencyNumber)) return;
+      if (!stepMap.has(dependencyNumber)) {
+        missingDependencies.push({
+          dependencyNumber,
+          stepNumber: step.number
+        });
+        return;
+      }
       adjacency.get(dependencyNumber).push(step.number);
       reverseAdjacency.get(step.number).push(dependencyNumber);
       validEdges.push({
@@ -1090,7 +1153,10 @@ function buildTaskGraphContext(taskSection) {
     adjacency,
     reverseAdjacency,
     validEdges,
-    invalidForwardDependencies
+    invalidForwardDependencies,
+    missingDependencies,
+    optionalDependencySteps,
+    requiredDependencySteps
   };
 }
 
@@ -1504,6 +1570,92 @@ function runTaskGraphPriorityPropagationRule(projectGraph, issues) {
   });
 }
 
+function runTaskGraphMissingDependencyRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectTaskGraphSections(documentIndex).forEach((taskSection) => {
+      const { heading, lineStart, lineEnd } = taskSection;
+      const graphContext = buildTaskGraphContext(taskSection);
+      if (graphContext.missingDependencies.length === 0) return;
+
+      const evidenceSteps = Array.from(
+        new Set(graphContext.missingDependencies.map(({ stepNumber }) => stepNumber))
+      )
+        .map((stepNumber) => graphContext.stepMap.get(stepNumber))
+        .filter(Boolean)
+        .sort((left, right) => left.number - right.number);
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'task_graph_missing_dependency_rule',
+        detectorId: 'L18-03',
+        severity: 'high',
+        description: `Task graph section "${heading?.title || documentIndex.name}" in ${documentIndex.name} references prerequisite steps that are not defined in the graph.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: graphContext.missingDependencies
+          .map(({ stepNumber, dependencyNumber }) => `Step ${stepNumber} depends on missing step ${dependencyNumber}.`)
+          .join('\n'),
+        whyTriggered: 'The task graph names prerequisite steps that do not exist anywhere in the declared numbered task sequence.',
+        evidenceSpans: evidenceSteps.map((step, index) => createEvidenceSpan({
+          file: documentIndex.name,
+          section: heading?.title || '',
+          sectionSlug: heading?.slug || '',
+          lineStart: step.lineNumber,
+          role: index === 0 ? 'primary' : 'supporting',
+          source: 'task_graph_missing_dependency_rule',
+          excerpt: `${step.number}. ${step.text}`
+        })),
+        deterministicFix: 'Define the missing prerequisite steps or update the dependency references to point at real task nodes.',
+        recommendedFix: 'Keep every dependency reference anchored to an existing numbered task in the same deterministic graph.'
+      }));
+    });
+  });
+}
+
+function runTaskGraphOptionalRequiredConfusionRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectTaskGraphSections(documentIndex).forEach((taskSection) => {
+      const { heading, lineStart, lineEnd } = taskSection;
+      const graphContext = buildTaskGraphContext(taskSection);
+      if (graphContext.optionalDependencySteps.length === 0 || graphContext.requiredDependencySteps.length === 0) return;
+
+      const evidenceSteps = Array.from(
+        new Map(
+          [...graphContext.optionalDependencySteps, ...graphContext.requiredDependencySteps]
+            .map((step) => [step.number, step])
+        ).values()
+      ).sort((left, right) => left.number - right.number);
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'task_graph_optional_required_confusion_rule',
+        detectorId: 'L18-05',
+        severity: 'low',
+        description: `Task graph section "${heading?.title || documentIndex.name}" in ${documentIndex.name} mixes optional and required dependency language without a deterministic boundary.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: evidenceSteps.map((step) => `${step.number}. ${step.text}`).join('\n'),
+        whyTriggered: 'Some prerequisite lines describe dependencies as optional or best-effort while others describe them as mandatory, which weakens deterministic execution semantics.',
+        evidenceSpans: evidenceSteps.map((step, index) => createEvidenceSpan({
+          file: documentIndex.name,
+          section: heading?.title || '',
+          sectionSlug: heading?.slug || '',
+          lineStart: step.lineNumber,
+          role: index === 0 ? 'primary' : 'supporting',
+          source: 'task_graph_optional_required_confusion_rule',
+          excerpt: `${step.number}. ${step.text}`
+        })),
+        deterministicFix: 'Choose one dependency contract for each prerequisite edge: required, or explicitly optional with bounded fallback behavior.',
+        recommendedFix: 'Rewrite the task graph so prerequisites are either mandatory or explicitly optional under named conditions, not both.'
+      }));
+    });
+  });
+}
+
 function runDependencyOwnershipRule(projectGraph, issues) {
   projectGraph.projectIndex.documents.forEach((documentIndex) => {
     collectTaskGraphSections(documentIndex).forEach((taskSection) => {
@@ -1849,6 +2001,45 @@ function runControlPlaneOverrideConditionRule(projectGraph, issues) {
   });
 }
 
+function runComplianceGateOmissionRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const headingTitle = heading?.title || '';
+      const complianceMutationPattern = /\b(apply|applies|commit|commits|delete|deletes|deploy|deploys|execute|executes|export|exports|migrate|migrates|mutate|mutates|release|releases|remove|removes|write|writes)\b/i;
+      if (!(COMPLIANCE_GATE_PATTERN.test(headingTitle) || COMPLIANCE_GATE_PATTERN.test(sectionText))) return;
+      if (!(ACTION_PATTERN.test(sectionText) || complianceMutationPattern.test(sectionText))) return;
+      if (GOVERNANCE_CHECKPOINT_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'compliance_gate_omission_rule',
+        detectorId: 'L29-16',
+        severity: 'critical',
+        description: `Section "${headingTitle || documentIndex.name}" in ${documentIndex.name} describes compliance-governed execution without a documented compliance gate.`,
+        files: [documentIndex.name],
+        section: headingTitle,
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section invokes compliance, regulatory, audit, or control requirements while also driving execution or mutation steps, but it never defines where the compliance gate is enforced.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: headingTitle,
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'compliance_gate_omission_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Add an explicit compliance checkpoint that names the gate, authority, and approval condition before execution proceeds.',
+        recommendedFix: 'Document the exact control/compliance validation step and where it blocks or permits the workflow.'
+      }));
+    });
+  });
+}
+
 function runRetryBackoffPolicyRule(projectGraph, issues) {
   projectGraph.projectIndex.documents.forEach((documentIndex) => {
     collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
@@ -1919,6 +2110,49 @@ function runParallelResourceOrderRule(projectGraph, issues) {
         ],
         deterministicFix: 'Define how parallel work is serialized, queued, or otherwise ordered at the shared-resource boundary.',
         recommendedFix: 'Document queueing, lock order, or exclusivity rules so concurrent execution cannot race on shared resources.'
+      }));
+    });
+  });
+}
+
+function runExecutionDeterminismGapRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const headingTitle = heading?.title || '';
+      const executionLikeSection = (
+        WORKFLOW_HEADING_PATTERN.test(headingTitle)
+        || TASK_GRAPH_HEADING_PATTERN.test(headingTitle)
+        || ACTION_PATTERN.test(sectionText)
+      );
+      if (!executionLikeSection) return;
+      if (!EXECUTION_NON_DETERMINISM_PATTERN.test(sectionText)) return;
+      if (RESOURCE_ORDERING_PATTERN.test(sectionText) || REPLAY_REQUIREMENT_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'execution_determinism_gap_rule',
+        detectorId: 'L43-09',
+        severity: 'high',
+        description: `Section "${headingTitle || documentIndex.name}" in ${documentIndex.name} describes execution ordering in non-deterministic terms without a stabilizing invariant.`,
+        files: [documentIndex.name],
+        section: headingTitle,
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section allows execution in any order, opportunistically, or on a best-effort basis without defining a deterministic scheduler, ordering rule, or replay boundary.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: headingTitle,
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'execution_determinism_gap_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Specify the deterministic ordering, scheduling, or replay contract that resolves the non-deterministic execution wording.',
+        recommendedFix: 'Replace vague execution wording with an explicit sequencing or scheduling invariant.'
       }));
     });
   });
@@ -2100,6 +2334,62 @@ function runStateTransitionPostconditionRule(projectGraph, issues) {
         })),
         deterministicFix: 'Define the resulting state or postcondition for each documented transition.',
         recommendedFix: 'Document the exact post-transition state, effect, or committed outcome that follows each transition.'
+      }));
+    });
+  });
+}
+
+function runTransitionDeterminismFailureRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectStateTransitionGroups(documentIndex).forEach(({ section, transitions, lineStart, lineEnd, sectionText }) => {
+      if (!Array.isArray(transitions) || transitions.length < 2) return;
+      if (TRANSITION_CONDITION_PATTERN.test(sectionText)) return;
+
+      const outgoingTransitions = new Map();
+      transitions.forEach((transition) => {
+        const source = transition.tokens[0];
+        const target = transition.tokens[transition.tokens.length - 1];
+        if (!source || !target || source === target) return;
+        if (!outgoingTransitions.has(source)) {
+          outgoingTransitions.set(source, []);
+        }
+        outgoingTransitions.get(source).push({
+          source,
+          target,
+          lineNumber: transition.lineNumber,
+          line: transition.line
+        });
+      });
+
+      const ambiguousTransitions = Array.from(outgoingTransitions.values()).find((entries) => {
+        const uniqueTargets = Array.from(new Set(entries.map((entry) => entry.target)));
+        return uniqueTargets.length > 1;
+      });
+      if (!ambiguousTransitions) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'transition_determinism_failure_rule',
+        detectorId: 'L43-11',
+        severity: 'critical',
+        description: `State transitions in ${documentIndex.name}${section?.title ? ` section "${section.title}"` : ''} branch from the same source state without a deterministic guard.`,
+        files: [documentIndex.name],
+        section: section?.title || '',
+        sectionSlug: section?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: ambiguousTransitions.map((transition) => `${documentIndex.name}:${transition.lineNumber} ${transition.line}`).join('\n'),
+        whyTriggered: `State ${ambiguousTransitions[0].source} transitions to multiple targets (${Array.from(new Set(ambiguousTransitions.map((transition) => transition.target))).join(', ')}) without any documented condition or guard.`,
+        evidenceSpans: ambiguousTransitions.map((transition, index) => createEvidenceSpan({
+          file: documentIndex.name,
+          section: section?.title || '',
+          sectionSlug: section?.slug || '',
+          lineStart: transition.lineNumber,
+          role: index === 0 ? 'primary' : 'supporting',
+          source: 'transition_determinism_failure_rule',
+          excerpt: transition.line
+        })),
+        deterministicFix: 'Add explicit guards or conditions that decide which outgoing transition is valid from the shared source state.',
+        recommendedFix: 'Keep each source state deterministic by documenting a unique transition rule or naming the mutually exclusive conditions.'
       }));
     });
   });
@@ -2924,17 +3214,22 @@ export function runDeterministicRuleEngine({ files = [], projectGraph, diagnosti
   runWorkflowExitCriteriaRule(projectGraph, issues);
   runGovernanceCheckpointRule(projectGraph, issues);
   runGovernanceBypassRule(projectGraph, issues);
+  runComplianceGateOmissionRule(projectGraph, issues);
   runAuditTrailRequirementRule(projectGraph, issues);
   runControlPlaneOverrideConditionRule(projectGraph, issues);
   runExecutionOwnerBoundaryRule(projectGraph, issues);
   runRetryBackoffPolicyRule(projectGraph, issues);
   runParallelResourceOrderRule(projectGraph, issues);
   runDeterministicReplayRequirementsRule(projectGraph, issues);
+  runExecutionDeterminismGapRule(projectGraph, issues);
   runCommitHashBindingRule(projectGraph, issues);
   runStateTransitionPreconditionRule(projectGraph, issues);
   runStateTransitionPostconditionRule(projectGraph, issues);
+  runTransitionDeterminismFailureRule(projectGraph, issues);
   runTaskGraphCycleRule(projectGraph, issues);
+  runTaskGraphMissingDependencyRule(projectGraph, issues);
   runTaskGraphDependencyOrderRule(projectGraph, issues);
+  runTaskGraphOptionalRequiredConfusionRule(projectGraph, issues);
   runTaskGraphUnreachableNodeRule(projectGraph, issues);
   runTaskGraphPriorityPropagationRule(projectGraph, issues);
   runDependencyOwnershipRule(projectGraph, issues);

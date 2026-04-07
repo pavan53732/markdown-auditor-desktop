@@ -1,6 +1,24 @@
 import { normalizeEvidenceSpans } from './markdownIndex';
 import { normalizeProofChains } from './evidenceGraph';
 import { TOTAL_DETECTOR_COUNT, getIssueIdentity } from './detectorMetadata';
+import { DETERMINISTIC_RULE_DEFINITIONS } from './ruleEngine/index';
+
+const DETERMINISTIC_CATALOG_DETECTOR_COUNT = Array.from(
+  new Set(
+    (Array.isArray(DETERMINISTIC_RULE_DEFINITIONS) ? DETERMINISTIC_RULE_DEFINITIONS : [])
+      .map((rule) => (typeof rule?.detectorId === 'string' ? rule.detectorId.trim() : ''))
+      .filter(Boolean)
+  )
+).length;
+const MODEL_DRIVEN_CATALOG_DETECTOR_COUNT = Math.max(
+  0,
+  TOTAL_DETECTOR_COUNT - DETERMINISTIC_CATALOG_DETECTOR_COUNT
+);
+
+function toCoveragePercent(covered, total) {
+  if (!Number.isFinite(Number(total)) || Number(total) <= 0) return 0;
+  return Number((((Number(covered) || 0) / Number(total)) * 100).toFixed(1));
+}
 
 function collectUniqueDetectorIds(issues = [], predicate = null) {
   const detectorIds = new Set();
@@ -51,7 +69,17 @@ export function buildRuntimeDetectorCoverage({ issues = [], deterministicReceipt
     localCheckedDetectorCount: localCheckedDetectorIds.length,
     runtimeTouchedDetectorIds,
     runtimeTouchedDetectorCount: runtimeTouchedDetectorIds.length,
-    untouchedDetectorCount: Math.max(0, TOTAL_DETECTOR_COUNT - runtimeTouchedDetectorIds.length)
+    untouchedDetectorCount: Math.max(0, TOTAL_DETECTOR_COUNT - runtimeTouchedDetectorIds.length),
+    deterministicCatalogDetectorCount: DETERMINISTIC_CATALOG_DETECTOR_COUNT,
+    modelDrivenCatalogDetectorCount: MODEL_DRIVEN_CATALOG_DETECTOR_COUNT,
+    deterministicCatalogCoveragePercent: toCoveragePercent(
+      localCheckedDetectorIds.length,
+      DETERMINISTIC_CATALOG_DETECTOR_COUNT
+    ),
+    modelDrivenCatalogCoveragePercent: toCoveragePercent(
+      modelFindingBackedDetectorIds.length,
+      MODEL_DRIVEN_CATALOG_DETECTOR_COUNT
+    )
   };
 }
 
@@ -64,6 +92,10 @@ export function applyRuntimeDetectorCoverageSummary(summary, coverage) {
   summary.detectors_locally_checked = coverage.localCheckedDetectorCount;
   summary.detectors_runtime_touched = coverage.runtimeTouchedDetectorCount;
   summary.detectors_untouched = coverage.untouchedDetectorCount;
+  summary.deterministic_catalog_detector_count = coverage.deterministicCatalogDetectorCount;
+  summary.model_driven_catalog_detector_count = coverage.modelDrivenCatalogDetectorCount;
+  summary.deterministic_catalog_coverage_percent = coverage.deterministicCatalogCoveragePercent;
+  summary.model_driven_catalog_coverage_percent = coverage.modelDrivenCatalogCoveragePercent;
   summary.detectors_evaluated = coverage.runtimeTouchedDetectorCount;
   summary.detectors_skipped = coverage.untouchedDetectorCount;
   summary.detector_coverage_mode = 'receipt_backed_and_finding_backed';

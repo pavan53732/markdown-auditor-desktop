@@ -311,4 +311,62 @@ describe('Deterministic Rule Engine', () => {
     expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L10-03' && receipt.status === 'hit')).toBe(true);
     expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L42-03' && receipt.status === 'hit')).toBe(true);
   });
+
+  it('emits deterministic dependency-graph issues for missing prerequisite nodes and optional-vs-required dependency drift', () => {
+    const files = [
+      {
+        name: 'dependencies.md',
+        content: [
+          '# Planner',
+          '## Task Graph',
+          '1. Bootstrap runtime',
+          '2. Optionally sync cache depends on step 7 if available',
+          '3. Mandatory publish report depends on step 1'
+        ].join('\n')
+      }
+    ];
+
+    const projectGraph = buildMarkdownProjectGraph(files);
+    const result = runDeterministicRuleEngine({ files, projectGraph });
+    const detectorIds = result.issues.map((issue) => issue.detector_id);
+
+    expect(detectorIds).toEqual(expect.arrayContaining([
+      'L18-03',
+      'L18-05'
+    ]));
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L18-03' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L18-05' && receipt.status === 'hit')).toBe(true);
+  });
+
+  it('emits deterministic compliance, execution-determinism, and transition-determinism issues from ambiguous control flow', () => {
+    const files = [
+      {
+        name: 'controls.md',
+        content: [
+          '# Governance',
+          '## Compliance Flow',
+          'SOC 2 compliance requires audit controls.',
+          '1. System writes compliance state',
+          '2. Runtime applies policy changes in any order',
+          '',
+          '## State Machine',
+          'PENDING -> APPROVED',
+          'PENDING -> REJECTED'
+        ].join('\n')
+      }
+    ];
+
+    const projectGraph = buildMarkdownProjectGraph(files);
+    const result = runDeterministicRuleEngine({ files, projectGraph });
+    const detectorIds = result.issues.map((issue) => issue.detector_id);
+
+    expect(detectorIds).toEqual(expect.arrayContaining([
+      'L29-16',
+      'L43-09',
+      'L43-11'
+    ]));
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L29-16' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L43-09' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L43-11' && receipt.status === 'hit')).toBe(true);
+  });
 });

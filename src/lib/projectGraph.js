@@ -311,7 +311,11 @@ function extractIssueTextContext(issue = {}) {
     issue.evidence,
     issue.section,
     issue.detector_name,
-    issue.why_triggered
+    issue.why_triggered,
+    issue.violation_reference,
+    issue.evidence_reference,
+    issue.document_anchor,
+    ...(Array.isArray(issue.document_anchors) ? issue.document_anchors : [])
   ]
     .filter(Boolean)
     .map((value) => String(value));
@@ -320,6 +324,7 @@ function extractIssueTextContext(issue = {}) {
 function buildCrossFileLinkScore(link) {
   const typeScores = {
     shared_identifier: 90,
+    document_reference: 88,
     shared_term: 80,
     workflow_step: 75,
     requirement_clause: 85,
@@ -373,6 +378,11 @@ function buildGroupLinks({ groups, issueText, excludeFiles, primaryAnchors }) {
       const normalizedText = normalizeComparableText(text);
       if (normalizedText.includes(normalizedKey)) return true;
 
+      if (representative.type === 'document_reference') {
+        const normalizedLabel = normalizeComparableText(representative.label);
+        return Boolean(normalizedLabel && normalizedText.includes(normalizedLabel));
+      }
+
       if (representative.type === 'requirement_clause') {
         const normalizedRequirementText = normalizeRequirementKey(text);
         return Boolean(normalizedRequirementText && normalizedRequirementText.includes(normalizedKey));
@@ -425,6 +435,7 @@ export function buildMarkdownProjectGraph(files = []) {
   const stateStore = { byKey: new Map() };
   const apiStore = { byKey: new Map() };
   const actorStore = { byKey: new Map() };
+  const referenceStore = { byKey: new Map() };
 
   const headingOccurrences = buildHeadingOccurrences(projectIndex);
   const glossaryOccurrences = [];
@@ -463,6 +474,7 @@ export function buildMarkdownProjectGraph(files = []) {
     stateResults.forEach((occurrence) => addGroupOccurrence(stateStore, occurrence.key, occurrence));
     apiResults.forEach((occurrence) => addGroupOccurrence(apiStore, occurrence.key, occurrence));
     actorResults.forEach((occurrence) => addGroupOccurrence(actorStore, occurrence.key, occurrence));
+    referenceResults.forEach((occurrence) => addGroupOccurrence(referenceStore, occurrence.key, occurrence));
   });
 
   const headingGroups = buildGroupSummary(headingStore);
@@ -473,6 +485,7 @@ export function buildMarkdownProjectGraph(files = []) {
   const stateGroups = buildGroupSummary(stateStore);
   const apiGroups = buildGroupSummary(apiStore);
   const actorGroups = buildGroupSummary(actorStore);
+  const referenceGroups = buildGroupSummary(referenceStore);
 
   return {
     projectIndex,
@@ -493,6 +506,7 @@ export function buildMarkdownProjectGraph(files = []) {
     stateGroups,
     apiGroups,
     actorGroups,
+    referenceGroups,
     summary: {
       documentCount: projectIndex.summary.documentCount,
       headingGroupCount: headingGroups.length,
@@ -503,7 +517,8 @@ export function buildMarkdownProjectGraph(files = []) {
       stateGroupCount: stateGroups.length,
       apiGroupCount: apiGroups.length,
       actorGroupCount: actorGroups.length,
-      referenceCount: referenceOccurrences.length
+      referenceCount: referenceOccurrences.length,
+      referenceGroupCount: referenceGroups.length
     }
   };
 }
@@ -568,6 +583,12 @@ export function enrichIssueWithProjectGraph(issue, projectGraph, diagnostics = n
     }),
     buildGroupLinks({
       groups: projectGraph.actorGroups,
+      issueText,
+      excludeFiles,
+      primaryAnchors
+    }),
+    buildGroupLinks({
+      groups: projectGraph.referenceGroups,
       issueText,
       excludeFiles,
       primaryAnchors

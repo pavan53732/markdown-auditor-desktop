@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { getLayerById, SEVERITY_STYLE } from '../lib/layers';
+import { getProofStatusLabel, getTrustTierLabel } from '../lib/trustSignals';
 
 export default function IssueCard({ issue }) {
   const [expanded, setExpanded] = useState(false);
@@ -25,6 +26,14 @@ export default function IssueCard({ issue }) {
   const getDifficultyColor = (difficulty) => {
     if (difficulty === 'easy') return '#22C55E';
     if (difficulty === 'moderate') return '#EAB308';
+    return '#EF4444';
+  };
+
+  const getTrustColor = (score) => {
+    if (score >= 85) return '#22C55E';
+    if (score >= 70) return '#84CC16';
+    if (score >= 55) return '#EAB308';
+    if (score >= 40) return '#F97316';
     return '#EF4444';
   };
 
@@ -71,6 +80,32 @@ export default function IssueCard({ issue }) {
                 }}
               >
                 {Math.round(issue.confidence * 100)}% confidence
+              </span>
+            )}
+            {issue.trust_score !== undefined && (
+              <span
+                className="px-2 py-0.5 rounded-full text-xs font-medium"
+                style={{
+                  color: getTrustColor(issue.trust_score),
+                  backgroundColor: `${getTrustColor(issue.trust_score)}20`
+                }}
+                >
+                  Trust {issue.trust_score}
+                </span>
+              )}
+            {issue.trust_tier && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#0F172A] text-[#CBD5E1] border border-[#334155]">
+                {getTrustTierLabel(issue.trust_tier)}
+              </span>
+            )}
+            {issue.proof_status && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#0B1220] text-[#FDE68A] border border-[#3F3F46]">
+                {getProofStatusLabel(issue.proof_status)}
+              </span>
+            )}
+            {issue.evidence_grade && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#1F2937] text-[#D1D5DB] border border-[#4B5563]">
+                Evidence {issue.evidence_grade}
               </span>
             )}
             {issue.diffStatus && (
@@ -140,6 +175,17 @@ export default function IssueCard({ issue }) {
               <div className="flex items-center gap-2">
                 <span className="text-xs text-[#9CA3AF]">Effort:</span>
                 <span className="text-xs font-medium text-[#F9FAFB]">{issue.estimated_effort}</span>
+              </div>
+            )}
+            {issue.trust_score !== undefined && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[#9CA3AF]">Trust:</span>
+                <span className="text-xs font-medium" style={{ color: getTrustColor(issue.trust_score) }}>
+                  {issue.trust_score}/100
+                </span>
+                {issue.evidence_grade && (
+                  <span className="text-xs text-[#6B7280]">(Evidence {issue.evidence_grade})</span>
+                )}
               </div>
             )}
           </div>
@@ -213,6 +259,41 @@ export default function IssueCard({ issue }) {
                   <div>
                     <p className="text-xs font-semibold text-[#9CA3AF] mb-0.5">Detection source:</p>
                     <p className="text-xs text-[#D1D5DB]">{issue.detection_source}</p>
+                  </div>
+                )}
+                {(issue.trust_score !== undefined || issue.evidence_grade || issue.trust_reasons?.length || issue.evidence_grade_reason) && (
+                  <div>
+                    <p className="text-xs font-semibold text-[#9CA3AF] mb-1">Trust & evidence:</p>
+                    <div className="space-y-1">
+                      {issue.trust_score !== undefined && (
+                        <p className="text-xs text-[#D1D5DB]">Trust score: <span style={{ color: getTrustColor(issue.trust_score) }}>{issue.trust_score}/100</span></p>
+                      )}
+                      {issue.trust_tier && (
+                        <p className="text-xs text-[#D1D5DB]">Trust tier: {getTrustTierLabel(issue.trust_tier)}</p>
+                      )}
+                      {issue.proof_status && (
+                        <p className="text-xs text-[#D1D5DB]">Proof status: {getProofStatusLabel(issue.proof_status)}</p>
+                      )}
+                      {issue.evidence_grade && (
+                        <p className="text-xs text-[#D1D5DB]">Evidence grade: {issue.evidence_grade}</p>
+                      )}
+                      <p className="text-[11px] text-[#6B7280] leading-relaxed">
+                        Trust tier is a deterministic runtime weighting, not formal proof.
+                      </p>
+                      {issue.evidence_grade_reason && (
+                        <p className="text-xs text-[#CBD5E1] leading-relaxed">{issue.evidence_grade_reason}</p>
+                      )}
+                      {issue.trust_reasons?.length > 0 && (
+                        <p className="text-[11px] text-[#6B7280] leading-relaxed">
+                          Signals: {issue.trust_reasons.join(', ')}
+                        </p>
+                      )}
+                      {issue.trust_basis?.length > 0 && (
+                        <p className="text-[11px] text-[#6B7280] leading-relaxed">
+                          Basis: {issue.trust_basis.join(', ')}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 )}
                 {issue.invariant_broken && (

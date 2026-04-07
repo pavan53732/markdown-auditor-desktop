@@ -1,4 +1,5 @@
 import React from 'react';
+import { DETERMINISTIC_RULE_COUNT } from '../lib/ruleEngine/index';
 
 const SEVERITY_CARDS = [
   { key: 'total', label: 'Total Issues', color: '#F9FAFB' },
@@ -31,6 +32,11 @@ function buildRuntimeCards(summary, taxonomyDiagnostics, analysisStats, analysis
       tone: '#F9A8D4'
     },
     {
+      label: 'Ref Groups',
+      value: summary?.project_graph_reference_groups ?? taxonomyDiagnostics?.project_graph_reference_group_count ?? 0,
+      tone: '#F5D0FE'
+    },
+    {
       label: 'Proof Chains',
       value: summary?.proof_chain_edges ?? taxonomyDiagnostics?.proof_chain_edge_count ?? 0,
       tone: '#A5F3FC'
@@ -39,6 +45,67 @@ function buildRuntimeCards(summary, taxonomyDiagnostics, analysisStats, analysis
       label: 'Agent Passes',
       value: summary?.analysis_agent_passes ?? analysisStats?.agentPasses ?? 0,
       tone: '#93C5FD'
+    },
+    {
+      label: 'Touched Detectors',
+      value: summary?.detectors_runtime_touched
+        ?? taxonomyDiagnostics?.runtime_detector_touched_count
+        ?? 0,
+      tone: '#67E8F9'
+    },
+    {
+      label: 'Model-Backed',
+      value: summary?.detectors_model_finding_backed
+        ?? taxonomyDiagnostics?.runtime_detector_model_finding_backed_count
+        ?? 0,
+      tone: '#FCD34D'
+    },
+    {
+      label: 'Local Checked',
+      value: summary?.detectors_locally_checked
+        ?? taxonomyDiagnostics?.runtime_detector_locally_checked_count
+        ?? 0,
+      tone: '#86EFAC'
+    },
+    {
+      label: 'Local Rule Catalog',
+      value: DETERMINISTIC_RULE_COUNT,
+      tone: '#D8B4FE'
+    },
+    {
+      label: 'Avg Trust',
+      value: summary?.average_trust_score ?? 0,
+      tone: '#FDE68A'
+    },
+    {
+      label: 'High Trust',
+      value: summary?.high_trust_issue_count ?? 0,
+      tone: '#84CC16'
+    },
+    {
+      label: 'Strong Evidence',
+      value: summary?.strong_evidence_issue_count ?? 0,
+      tone: '#A5F3FC'
+    },
+    {
+      label: 'Proof-Backed',
+      value: summary?.deterministic_proof_issue_count ?? 0,
+      tone: '#FDE68A'
+    },
+    {
+      label: 'Receipt-Backed',
+      value: summary?.receipt_backed_issue_count ?? 0,
+      tone: '#D8B4FE'
+    },
+    {
+      label: 'Hybrid-Supported',
+      value: summary?.hybrid_supported_issue_count ?? 0,
+      tone: '#93C5FD'
+    },
+    {
+      label: 'Model-Only',
+      value: summary?.model_only_issue_count ?? 0,
+      tone: '#FCA5A5'
     },
     {
       label: 'Focus Hits',
@@ -163,6 +230,14 @@ export default function SummaryDashboard({
             </p>
           </div>
         ))}
+      </div>
+
+      <div className="bg-[#111827] border border-[#374151] rounded-lg px-4 py-3">
+        <p className="text-xs text-[#CBD5E1] leading-relaxed">
+          Trust tiers are heuristic runtime weights. Proof-backed and receipt-backed findings indicate deterministic support,
+          while hybrid-supported and model-only findings still rely on model reasoning. Deterministic local rules are the trust
+          spine, but local rule coverage is still partial relative to the full detector catalog.
+        </p>
       </div>
     </div>
   );

@@ -169,7 +169,8 @@ describe('Prompt Generation', () => {
 
       expect(prompt).toContain(`**${layerCount} analytical layers and ${detectorCount} micro-detectors**`);
       expect(prompt).toContain(`evaluate all ${detectorCount} detectors across all ${layerCount} layers`);
-      expect(prompt).toContain(`include detectors_evaluated count (must be <=${detectorCount})`);
+      expect(prompt).toContain('large files may be chunked into bounded slices');
+      expect(prompt).toContain('provided batch context');
     });
 
     it('agent-specific prompt includes the active mesh role', () => {

@@ -179,6 +179,31 @@ export function validateResults(results) {
     if (issue.anchor_source && typeof issue.anchor_source !== 'string') {
       throw new Error(`Issue at index ${index} has invalid anchor_source type`);
     }
+    if (issue.trust_score !== undefined && !Number.isFinite(Number(issue.trust_score))) {
+      throw new Error(`Issue at index ${index} has invalid trust_score type`);
+    }
+    if (issue.evidence_grade && !['A', 'B', 'C', 'D', 'F'].includes(issue.evidence_grade)) {
+      throw new Error(`Issue at index ${index} has invalid evidence_grade value`);
+    }
+    if (issue.proof_status && !['deterministic_proof', 'receipt_backed', 'hybrid_supported', 'model_only'].includes(issue.proof_status)) {
+      throw new Error(`Issue at index ${index} has invalid proof_status value`);
+    }
+    if (issue.trust_tier && !['very_strong', 'strong', 'supported', 'tentative', 'weak'].includes(issue.trust_tier)) {
+      throw new Error(`Issue at index ${index} has invalid trust_tier value`);
+    }
+    if (issue.trust_basis) {
+      if (!Array.isArray(issue.trust_basis) || issue.trust_basis.some((basis) => typeof basis !== 'string')) {
+        throw new Error(`Issue at index ${index} has invalid trust_basis type`);
+      }
+    }
+    if (issue.trust_reasons) {
+      if (!Array.isArray(issue.trust_reasons) || issue.trust_reasons.some((reason) => typeof reason !== 'string')) {
+        throw new Error(`Issue at index ${index} has invalid trust_reasons type`);
+      }
+    }
+    if (issue.evidence_grade_reason && typeof issue.evidence_grade_reason !== 'string') {
+      throw new Error(`Issue at index ${index} has invalid evidence_grade_reason type`);
+    }
     if (issue.detection_source !== undefined) {
       if (typeof issue.detection_source !== 'string') {
         throw new Error(`Issue at index ${index} has invalid detection_source type`);

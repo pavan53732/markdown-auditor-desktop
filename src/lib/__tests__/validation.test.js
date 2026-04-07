@@ -197,6 +197,70 @@ describe('Result Validation', () => {
     };
     expect(() => validateResults(results)).toThrow('proof_chains[0].target_span');
   });
+
+  it('should reject malformed trust signal payloads', () => {
+    const results = {
+      summary: { total: 1 },
+      issues: [
+        {
+          severity: 'high',
+          category: 'contradiction',
+          description: 'x',
+          detector_id: 'L1-01',
+          trust_score: 'not-a-number'
+        }
+      ]
+    };
+    expect(() => validateResults(results)).toThrow('trust_score');
+  });
+
+  it('should reject invalid trust tier values', () => {
+    const results = {
+      summary: { total: 1 },
+      issues: [
+        {
+          severity: 'high',
+          category: 'contradiction',
+          description: 'x',
+          detector_id: 'L1-01',
+          trust_tier: 'maximal'
+        }
+      ]
+    };
+    expect(() => validateResults(results)).toThrow('trust_tier');
+  });
+
+  it('should reject invalid proof status values', () => {
+    const results = {
+      summary: { total: 1 },
+      issues: [
+        {
+          severity: 'high',
+          category: 'contradiction',
+          description: 'x',
+          detector_id: 'L1-01',
+          proof_status: 'asserted_proof'
+        }
+      ]
+    };
+    expect(() => validateResults(results)).toThrow('proof_status');
+  });
+
+  it('should reject malformed trust basis payloads', () => {
+    const results = {
+      summary: { total: 1 },
+      issues: [
+        {
+          severity: 'high',
+          category: 'contradiction',
+          description: 'x',
+          detector_id: 'L1-01',
+          trust_basis: ['document_anchor', 7]
+        }
+      ]
+    };
+    expect(() => validateResults(results)).toThrow('trust_basis');
+  });
 });
 
 describe('Taxonomy Normalization', () => {

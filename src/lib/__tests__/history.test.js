@@ -123,6 +123,9 @@ describe('History Normalization', () => {
         })
       ])
     );
+    expect(normalized.results.issues[0].trust_score).toBeGreaterThan(0);
+    expect(normalized.results.issues[0].evidence_grade).toMatch(/[A-F]/);
+    expect(Array.isArray(normalized.results.issues[0].trust_reasons)).toBe(true);
     expect(normalized.taxonomyDiagnostics.severity_clamped_count).toBe(1);
     expect(normalized.taxonomyDiagnostics.total_issues_loaded).toBe(1);
     expect(normalized.taxonomyDiagnostics.indexed_document_count).toBe(2);
@@ -133,6 +136,7 @@ describe('History Normalization', () => {
     expect(normalized.taxonomyDiagnostics.deterministic_graph_link_enrichment_count).toBe(1);
     expect(normalized.taxonomyDiagnostics.deterministic_proof_chain_enrichment_count).toBe(1);
     expect(normalized.taxonomyDiagnostics.proof_chain_edge_count).toBeGreaterThanOrEqual(1);
+    expect(normalized.taxonomyDiagnostics.runtime_detector_touched_count).toBeGreaterThanOrEqual(1);
     expect(normalized.taxonomyDiagnostics.agent_failure_events).toHaveLength(1);
     expect(normalized.taxonomyDiagnostics.agent_failure_events[0].agent_id).toBe('reasoning_evidence_agent');
   });

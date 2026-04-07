@@ -6,7 +6,7 @@ Windows desktop application for auditing Markdown documentation with AI across 5
 
 Markdown Intelligence Auditor is an Electron + React desktop app that accepts one or more `.md` / `.markdown` files, sends them to an OpenAI-compatible provider, and returns a structured report of documentation issues with severity, traceability, remediation guidance, and export support.
 
-The current build includes chunk-aware batching, deterministic multi-pass post-processing, deterministic Markdown indexing for line-and-section anchors, a deterministic cross-file Markdown project graph for related-location enrichment, typed proof-chain enrichment with deterministic span-to-span edges, a staged deterministic rule engine, incremental result reuse, session diffing, root-cause grouping, a structured 701-detector catalog, and portable Windows packaging.
+The current build includes chunk-aware batching, deterministic multi-pass post-processing, deterministic Markdown indexing for line-and-section anchors, a deterministic cross-file Markdown project graph with first-class reference grouping for related-location enrichment, typed proof-chain enrichment with deterministic span-to-span edges, a staged deterministic rule engine, truthful receipt-backed runtime coverage accounting, incremental result reuse, session diffing, root-cause grouping, a structured 701-detector catalog, and portable Windows packaging.
 
 ## Current Capabilities
 
@@ -15,14 +15,16 @@ The current build includes chunk-aware batching, deterministic multi-pass post-p
 - 701 code-defined micro-detectors across all 53 layers, including the deep-spec core plus 8 universal governance and reproducibility extensions
 - Full structured detector metadata for all detectors, including trigger patterns, evidence requirements, false-positive guards, and `related_layers` cross-references for 255 detectors across the specification-intensive layers
 - Taxonomy benchmark fixtures supporting deterministic evaluation of taxonomy validation, normalization, and detector mapping correctness
-- 29 deterministic benchmark fixtures inside a 197-test local suite across 18 test files, including deep-spec and universal-audit scenarios for authority bypass, workflow skips, artifact reproducibility, toolchain isolation, recovery loop collapse, operational UX leakage, deterministic anchor enrichment, local rule-engine enforcement, cross-file graph linking, typed proof-chain generation, proof-chain fallback generation, multi-anchor cross-file resolution, unified layer numbering, explicit agent-ownership reconciliation, receipt-backed detector coverage, adaptive timeout handling, and first-class analysis-mesh validation
+- 29 deterministic benchmark fixtures inside a 213-test local suite across 20 test files, including deep-spec and universal-audit scenarios for authority bypass, workflow skips, artifact reproducibility, toolchain isolation, recovery loop collapse, operational UX leakage, deterministic anchor enrichment, local rule-engine enforcement, cross-file graph linking, typed proof-chain generation, proof-chain fallback generation, multi-anchor cross-file resolution, unified layer numbering, explicit agent-ownership reconciliation, receipt-backed detector coverage, adaptive timeout handling, first-class analysis-mesh validation, deterministic trust-signal enrichment, proof-status/trust-basis validation, trust-tier/source-priority ordering, proof-aware severity gating, extracted report-format generation coverage, and extracted audit-pipeline coverage/escalation/merge coverage
 - Programmatic system prompt generation from structured taxonomy and metadata
 - Agent-scoped prompt compaction for the 8-agent mesh: each pass receives a compact full-taxonomy detector index plus richer detector metadata for its focus layers
 - Taxonomy-driven runtime normalization: backfilling metadata and enforcing severity bounds
 - Deterministic Markdown indexing: heading parsing, section-range mapping, evidence-to-line anchor enrichment, heading-inference fallback, and multi-anchor cross-file resolution across loaded Markdown files
-- Deterministic cross-file project graph: terms, requirements, states, APIs, actors, workflows, and references are modeled across loaded Markdown files, with related-location enrichment for cross-file findings
+- Deterministic cross-file project graph: terms, requirements, states, APIs, actors, workflows, and references are modeled across loaded Markdown files, with first-class reference groups and related-location enrichment for cross-file findings
 - Typed proof-chain enrichment: findings now preserve deterministic span-to-span edges such as `supports`, `contradicts`, `defines`, `depends_on`, `references`, and `violates`
-- Deterministic local rule engine for broken heading hierarchy, orphan sections, duplicate headings, broken cross-references, RFC2119 misuse, missing rollback paths, workflow ordering gaps, workflow exit criteria, undefined identifiers, and unresolved glossary bindings, with per-detector checked/clean/hit execution receipts
+- Deterministic local rule engine with 23 receipt-backed rules for broken heading hierarchy, orphan sections, duplicate headings, broken cross-references, RFC2119 misuse, duplicated requirements, conflicting requirement strength, missing terminal states, missing rollback paths, workflow ordering gaps, workflow exit criteria, undefined identifiers, unresolved glossary bindings, API return/error/idempotency/rate-limit/auth contract gaps, terminology registry gaps, malformed terminology registries, symbol inconsistency, state-space definition gaps, and input/output contract determinism, with per-detector checked/clean/hit execution receipts
+- Truthful runtime detector coverage: result summaries and diagnostics now distinguish taxonomy-defined detectors from locally checked detectors, model finding-backed detectors, overall runtime-touched detectors, and untouched detectors instead of force-reporting full-catalog coverage
+- Deterministic trust scoring, proof status, trust basis, trust tiers, and evidence grading per issue, derived from rule backing, anchors, evidence spans, proof chains, cross-file links, and assumption leakage; trust tiers are heuristic runtime weights rather than formal proof, while proof status distinguishes deterministic proof, receipt-backed support, hybrid support, and model-only inference. In `api_contract` and `specification_formalism`, pure `model_only` findings are severity-capped so unsupported contract claims cannot overstate risk.
 - Advanced semantic validation enforcing category -> subcategory -> detector consistency
 - Local regression suite verifying taxonomy integrity and normalization logic
 - Runtime taxonomy diagnostics surfaced in UI, Markdown reports, and JSON exports for pipeline observability
@@ -50,6 +52,7 @@ The current build includes chunk-aware batching, deterministic multi-pass post-p
 - Strict issue schema fields including `failure_type`, `constraint_reference`, `violation_reference`, `contract_step`, `invariant_broken`, `authority_boundary`, `closed_world_status`, `analysis_agents`, and `deterministic_fix`
 - Deterministic anchor fields including `section_slug`, `line_end`, `document_anchor`, `document_anchors`, and `anchor_source`
 - Cross-file evidence fields including `detection_source`, `cross_file_links`, `evidence_spans`, and typed `proof_chains`
+- Trust and proof fields including `trust_score`, `proof_status`, `trust_basis`, `trust_tier`, `evidence_grade`, `trust_reasons`, and `evidence_grade_reason`
 - Remediation guidance including `recommended_fix`, `fix_steps`, `estimated_effort`, `verification_steps`, and deterministic fix guidance
 - Search, layer filtering, and grouping by file, severity, layer, or root cause
 - Export to JSON, Markdown, and CSV
@@ -180,6 +183,7 @@ Each runtime agent now also owns an explicit slice of the taxonomy via a determi
 - Evidence-first enrichment adds `evidence_spans` so issues retain structured proof locations instead of only free-text evidence
 - Typed proof-chain enrichment adds deterministic span-to-span edges so related evidence is preserved as explicit proof links instead of only related locations
 - Unknown detector IDs are rejected during validation instead of being treated as soft warnings
+- Trust-tier semantics are surfaced as heuristic runtime weighting, and the deterministic local-rule layer is presented explicitly as a partial trust spine rather than full-catalog formal verification
 
 ### Deterministic Escalation Rules
 
@@ -328,8 +332,21 @@ Top-level result output may also include:
     "low": 0,
     "files_analyzed": 0,
     "layers_triggered": [],
+    "detectors_defined": 701,
+    "detectors_finding_backed": 0,
+    "detectors_model_finding_backed": 0,
+    "detectors_locally_checked": 0,
+    "detectors_runtime_touched": 0,
+    "detectors_untouched": 701,
     "detectors_evaluated": 0,
-    "detectors_skipped": 0,
+    "detectors_skipped": 701,
+    "average_trust_score": 0,
+    "high_trust_issue_count": 0,
+    "strong_evidence_issue_count": 0,
+    "deterministic_proof_issue_count": 0,
+    "receipt_backed_issue_count": 0,
+    "hybrid_supported_issue_count": 0,
+    "model_only_issue_count": 0,
     "analysis_agents_run": 8,
     "analysis_agent_passes": 8,
     "overall_score": 0,
@@ -347,6 +364,13 @@ Top-level result output may also include:
       "files": ["file.md"],
       "section": "Architecture",
       "line_number": 42,
+      "trust_score": 87,
+      "proof_status": "hybrid_supported",
+      "trust_basis": ["model_inference", "document_anchor", "evidence_span", "proof_chain"],
+      "trust_tier": "supported",
+      "evidence_grade": "A",
+      "trust_reasons": ["hybrid rule/model evidence", "document anchor", "evidence spans"],
+      "evidence_grade_reason": "A-grade evidence driven by hybrid rule/model evidence, document anchor, evidence spans.",
       "description": "[L8-02] Missing component: API gateway not defined in architecture",
       "evidence": "Direct quote from the documentation",
       "why_triggered": "The document references traffic routing but does not define the gateway layer.",

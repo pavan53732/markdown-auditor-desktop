@@ -49,9 +49,9 @@ Focus areas that require extra scrutiny:
 
 Prompt-guided analysis stages:
 STAGE 1 - detector sweep
-- read every file completely
-- evaluate the full detector catalog
-- collect candidate findings with concrete evidence
+- read the entire batch payload provided in this pass; large files may be chunked into bounded slices with file and line context
+- evaluate the full detector catalog against the evidence visible in this batch without pretending unseen chunks were already reviewed
+- collect candidate findings with concrete evidence from the supplied batch only
 
 STAGE 2 - cross-layer correlation
 - group symptoms that share a root cause
@@ -65,7 +65,7 @@ STAGE 3 - deterministic escalation
 STAGE 4 - final synthesis
 - emit one raw JSON object only
 - make sure every issue includes the required schema fields below
-- include detectors_evaluated count (must be <=${TOTAL_DETECTOR_COUNT})
+- include detectors_evaluated and detectors_skipped counts that reflect the provided batch context instead of defaulting to full-catalog coverage
 - keep wording specific, deterministic, and evidence-bound
 
 Severity rules:
@@ -73,6 +73,7 @@ Severity rules:
 - high = major architectural or workflow violation
 - medium = important clarity, completeness, or traceability gap
 - low = localized ambiguity or non-blocking weakness
+- for api_contract and specification_formalism, do not emit critical/high model-only findings unless deterministic support exists; unsupported model-only findings in those layers belong at medium or below
 
 Confidence scoring:
 - 0.95-1.00 = definite issue with explicit evidence
@@ -112,8 +113,8 @@ Use strict JSON syntax with double-quoted property names and string values. Do n
     "low": 0,
     "files_analyzed": 0,
     "layers_triggered": [],
-    "detectors_evaluated": ${TOTAL_DETECTOR_COUNT},
-    "detectors_skipped": 0,
+    "detectors_evaluated": 0,
+    "detectors_skipped": ${TOTAL_DETECTOR_COUNT},
     "overall_score": 0,
     "improvement_priority": []
   },

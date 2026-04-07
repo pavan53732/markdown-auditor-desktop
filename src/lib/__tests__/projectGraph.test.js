@@ -35,6 +35,7 @@ describe('Markdown Project Graph', () => {
           'GET /api/projects',
           'STATE_A -> STATE_B',
           'The system MUST record the transition.',
+          'See [Workflow](beta.md#execution-flow).',
           '',
           '## Terminology Registry',
           '**Project State Graph**: Canonical state model.',
@@ -57,9 +58,10 @@ describe('Markdown Project Graph', () => {
     expect(graph.summary.stateGroupCount).toBeGreaterThanOrEqual(1);
     expect(graph.summary.apiGroupCount).toBeGreaterThanOrEqual(1);
     expect(graph.summary.referenceCount).toBeGreaterThanOrEqual(1);
+    expect(graph.summary.referenceGroupCount).toBeGreaterThanOrEqual(1);
   });
 
-  it('enriches issues with cross-file links and hybrid graph detection source', () => {
+  it('enriches issues with cross-file links, including first-class document references, and hybrid graph detection source', () => {
     const graph = buildMarkdownProjectGraph([
       {
         name: 'plan-a.md',
@@ -68,6 +70,8 @@ describe('Markdown Project Graph', () => {
           '',
           '1. Agent Proposal',
           '2. Governance Enforcement Interface',
+          '',
+          'See [Execution Flow](plan-b.md#execution-flow).',
           '',
           'PSG-CORE enforces state sync.'
         ].join('\n')
@@ -80,6 +84,8 @@ describe('Markdown Project Graph', () => {
           '1. Agent Proposal',
           '2. Governance Enforcement Interface',
           '',
+          'See [Execution Flow](plan-b.md#execution-flow).',
+          '',
           'PSG-CORE records commits.'
         ].join('\n')
       }
@@ -90,8 +96,8 @@ describe('Markdown Project Graph', () => {
       {
         detector_id: 'L47-01',
         severity: 'high',
-        description: 'Governance Enforcement Interface ordering is inconsistent for PSG-CORE.',
-        evidence: '2. Governance Enforcement Interface',
+        description: 'Governance Enforcement Interface ordering is inconsistent for PSG-CORE and the Execution Flow reference points to plan-b.md#execution-flow.',
+        evidence: '2. Governance Enforcement Interface\nSee [Execution Flow](plan-b.md#execution-flow).',
         files: ['plan-a.md'],
         document_anchor: 'plan-a.md#execution-flow:L4',
         document_anchors: ['plan-a.md#execution-flow:L4'],
@@ -105,6 +111,10 @@ describe('Markdown Project Graph', () => {
     expect(enriched.cross_file_links).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
+          file: 'plan-b.md'
+        }),
+        expect.objectContaining({
+          type: 'document_reference',
           file: 'plan-b.md'
         })
       ])

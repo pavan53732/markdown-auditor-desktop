@@ -6,6 +6,7 @@ import {
 } from './markdownIndex.js';
 import { enrichIssueWithProofChains } from './evidenceGraph.js';
 import { buildMarkdownProjectGraph, enrichIssueWithProjectGraph } from './projectGraph.js';
+import { enrichIssueWithTrustSignals, summarizeIssueTrustSignals } from './trustSignals.js';
 import { ORDERED_LAYER_IDS, getLayerIdByNumber } from './layers.js';
 
 export const LAYER_SUBCATEGORIES = {
@@ -1221,6 +1222,7 @@ export function createInitialDiagnostics() {
     project_graph_api_group_count: 0,
     project_graph_actor_group_count: 0,
     project_graph_reference_count: 0,
+    project_graph_reference_group_count: 0,
     project_graph_total_group_count: 0,
     deterministic_anchor_enrichment_count: 0,
     deterministic_file_assignment_count: 0,
@@ -1238,6 +1240,12 @@ export function createInitialDiagnostics() {
     deterministic_rule_clean_detector_count: 0,
     deterministic_rule_hit_detector_count: 0,
     deterministic_rule_detector_receipts: [],
+    runtime_detector_defined_count: TOTAL_DETECTOR_COUNT,
+    runtime_detector_finding_backed_count: 0,
+    runtime_detector_model_finding_backed_count: 0,
+    runtime_detector_locally_checked_count: 0,
+    runtime_detector_touched_count: 0,
+    runtime_detector_untouched_count: TOTAL_DETECTOR_COUNT,
     analysis_mesh_focus_layer_hit_count: 0,
     analysis_mesh_focus_subcategory_hit_count: 0,
     analysis_mesh_owned_layer_hit_count: 0,
@@ -1533,6 +1541,57 @@ export const getIssueIdentity = (issue) => {
   return `${detectorId}::${primaryFile}::${section}::fp:${hashDescription(fingerprintSource)}`;
 };
 
+function collectRuntimeCoverageDetectorIdsFromIssues(issues = [], predicate = null) {
+  const detectorIds = new Set();
+
+  (Array.isArray(issues) ? issues : []).forEach((issue) => {
+    if (typeof predicate === 'function' && !predicate(issue)) return;
+    const detectorId = typeof issue?.detector_id === 'string' ? issue.detector_id.trim() : '';
+    if (detectorId) {
+      detectorIds.add(detectorId);
+    }
+  });
+
+  return Array.from(detectorIds);
+}
+
+function collectRuntimeCoverageDetectorIdsFromReceipts(receipts = []) {
+  const detectorIds = new Set();
+
+  (Array.isArray(receipts) ? receipts : []).forEach((receipt) => {
+    const detectorId = typeof receipt?.detector_id === 'string' ? receipt.detector_id.trim() : '';
+    if (detectorId) {
+      detectorIds.add(detectorId);
+    }
+  });
+
+  return Array.from(detectorIds);
+}
+
+function buildRuntimeCoverageSnapshot(issues = [], detectorExecutionReceipts = []) {
+  const findingBackedDetectorIds = collectRuntimeCoverageDetectorIdsFromIssues(issues);
+  const modelFindingBackedDetectorIds = collectRuntimeCoverageDetectorIdsFromIssues(
+    issues,
+    (issue) => String(issue?.detection_source || '').trim().toLowerCase() !== 'rule'
+  );
+  const localCheckedDetectorIds = collectRuntimeCoverageDetectorIdsFromReceipts(detectorExecutionReceipts);
+  const runtimeTouchedDetectorIds = Array.from(
+    new Set([...findingBackedDetectorIds, ...localCheckedDetectorIds])
+  );
+
+  return {
+    detectors_defined: TOTAL_DETECTOR_COUNT,
+    detectors_finding_backed: findingBackedDetectorIds.length,
+    detectors_model_finding_backed: modelFindingBackedDetectorIds.length,
+    detectors_locally_checked: localCheckedDetectorIds.length,
+    detectors_runtime_touched: runtimeTouchedDetectorIds.length,
+    detectors_untouched: Math.max(0, TOTAL_DETECTOR_COUNT - runtimeTouchedDetectorIds.length),
+    detectors_evaluated: runtimeTouchedDetectorIds.length,
+    detectors_skipped: Math.max(0, TOTAL_DETECTOR_COUNT - runtimeTouchedDetectorIds.length),
+    detector_coverage_mode: 'receipt_backed_and_finding_backed'
+  };
+}
+
 export const compareAudits = (current, previous) => {
   if (!previous || !current || !current.issues) return null;
   const currIssuesMap = new Map();
@@ -1605,6 +1664,7 @@ export function normalizeLoadedSession(session) {
   diagnostics.project_graph_api_group_count = projectGraph.summary.apiGroupCount || 0;
   diagnostics.project_graph_actor_group_count = projectGraph.summary.actorGroupCount || 0;
   diagnostics.project_graph_reference_count = projectGraph.summary.referenceCount || 0;
+  diagnostics.project_graph_reference_group_count = projectGraph.summary.referenceGroupCount || 0;
   diagnostics.project_graph_total_group_count =
     diagnostics.project_graph_heading_group_count
     + diagnostics.project_graph_glossary_term_group_count
@@ -1613,7 +1673,8 @@ export function normalizeLoadedSession(session) {
     + diagnostics.project_graph_requirement_group_count
     + diagnostics.project_graph_state_group_count
     + diagnostics.project_graph_api_group_count
-    + diagnostics.project_graph_actor_group_count;
+    + diagnostics.project_graph_actor_group_count
+    + diagnostics.project_graph_reference_group_count;
   if (normalized.results.issues) {
     normalized.results.issues = normalized.results.issues.map(issue => {
       const enriched = normalizeIssueFromDetector(issue, diagnostics);
@@ -1621,7 +1682,8 @@ export function normalizeLoadedSession(session) {
       const anchored = enrichIssueWithMarkdownIndex(enriched, markdownIndex, diagnostics);
       const graphEnriched = enrichIssueWithProjectGraph(anchored, projectGraph, diagnostics);
       const spanned = enrichIssueWithEvidenceSpans(graphEnriched, markdownIndex, diagnostics);
-      return enrichIssueWithProofChains(spanned, markdownIndex, diagnostics);
+      const proofed = enrichIssueWithProofChains(spanned, markdownIndex, diagnostics);
+      return enrichIssueWithTrustSignals(proofed);
     });
     diagnostics.deterministic_rule_issue_count = normalized.results.issues.filter((issue) => issue.detection_source === 'rule').length;
     diagnostics.proof_chain_edge_count = normalized.results.issues.reduce(
@@ -1638,6 +1700,17 @@ export function normalizeLoadedSession(session) {
   diagnostics.deterministic_rule_detector_receipts = Array.isArray(normalized.results.summary?.detector_execution_receipts)
     ? normalized.results.summary.detector_execution_receipts
     : [];
+  const runtimeCoverage = buildRuntimeCoverageSnapshot(
+    normalized.results.issues || [],
+    diagnostics.deterministic_rule_detector_receipts
+  );
+  const trustSummary = summarizeIssueTrustSignals(normalized.results.issues || []);
+  diagnostics.runtime_detector_defined_count = runtimeCoverage.detectors_defined;
+  diagnostics.runtime_detector_finding_backed_count = runtimeCoverage.detectors_finding_backed;
+  diagnostics.runtime_detector_model_finding_backed_count = runtimeCoverage.detectors_model_finding_backed;
+  diagnostics.runtime_detector_locally_checked_count = runtimeCoverage.detectors_locally_checked;
+  diagnostics.runtime_detector_touched_count = runtimeCoverage.detectors_runtime_touched;
+  diagnostics.runtime_detector_untouched_count = runtimeCoverage.detectors_untouched;
   diagnostics.analysis_mesh_focus_layer_hit_count = normalized.results.analysis_mesh?.focus_layer_hits || 0;
   diagnostics.analysis_mesh_focus_subcategory_hit_count = normalized.results.analysis_mesh?.focus_subcategory_hits || 0;
   diagnostics.analysis_mesh_owned_layer_hit_count = normalized.results.analysis_mesh?.owned_layer_hits || 0;
@@ -1656,6 +1729,20 @@ export function normalizeLoadedSession(session) {
   diagnostics.analysis_mesh_agent_runs = Array.isArray(normalized.results.analysis_mesh?.agents)
     ? normalized.results.analysis_mesh.agents
     : [];
+  normalized.results.summary = {
+    ...(normalized.results.summary || {}),
+    ...runtimeCoverage,
+    average_trust_score: trustSummary.averageTrustScore,
+    high_trust_issue_count: trustSummary.highTrustIssueCount,
+    strong_evidence_issue_count: trustSummary.strongEvidenceIssueCount,
+    deterministic_proof_issue_count: trustSummary.deterministicProofIssueCount,
+    receipt_backed_issue_count: trustSummary.receiptBackedIssueCount,
+    hybrid_supported_issue_count: trustSummary.hybridSupportedIssueCount,
+    rule_backed_issue_count: trustSummary.ruleBackedIssueCount,
+    hybrid_backed_issue_count: trustSummary.hybridBackedIssueCount,
+    model_only_issue_count: trustSummary.modelOnlyIssueCount,
+    project_graph_reference_groups: diagnostics.project_graph_reference_group_count
+  };
   normalized.taxonomyDiagnostics = diagnostics;
   return normalized;
 }

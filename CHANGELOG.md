@@ -17,6 +17,7 @@ This changelog establishes the current production-ready baseline for the app as 
 
 ### Fixed
 
+- **Stale Report Reuse On Upload**: The renderer no longer reuses cached per-file findings during analysis runs, so every upload is analyzed fresh instead of surfacing an old report for matching file content.
 - **Loose Agent Ownership Integration**: The 8-agent mesh now assigns every layer and detector to an explicit owning runtime agent, surfaces owned detector ranges per pass, and reconciles finding-backed owned coverage versus cross-scope findings after merge instead of relying only on focus metadata.
 - **Packaged Main-Process Startup Crash**: Replaced the ESM-only `uuid` import in `electron/historyService.js` with Node's built-in `crypto.randomUUID()` so the packaged Electron main process no longer crashes on startup with `ERR_REQUIRE_ESM`.
 - **Large Markdown Budget Wall**: Raised the minimum/default session token budget above 5 million and switched the old 6,000-token warning to a much higher batch target so large specs are chunked and batched instead of failing immediately on outdated defaults.

@@ -15,7 +15,6 @@ import { repairJSON, validateResults } from './lib/jsonRepair';
 import {
   ANALYSIS_AGENT_COUNT,
   ANALYSIS_AGENT_MESH,
-  ANALYSIS_MESH_VERSION,
   validateAnalysisAgentResult,
   createEmptyAnalysisMeshSummary,
   mergeAnalysisMeshRuns
@@ -61,7 +60,6 @@ import {
   buildExportData,
   buildSessionData,
   normalizeLoadedSession,
-  resolveInitialCache,
   buildHistoryMetadata,
   compareAudits
 } from './lib/detectorMetadata';
@@ -227,8 +225,6 @@ export default function App() {
   const [baselineEntry, setBaselineEntry] = useState(null); // { id, results, title }
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [contextWarning, setContextWarning] = useState(null);
-  const [fileHashes, setFileHashes] = useState({});
-  const [cachedResults, setCachedResults] = useState({}); // { hash: { issues, summary } }
   const [analysisStats, setAnalysisStats] = useState({ reused: 0, reanalyzed: 0, agentPasses: 0 });
   const [progressState, setProgressState] = useState(createProgressState());
 
@@ -253,29 +249,8 @@ export default function App() {
         window.electronAPI.writeConfig(normalized);
       }
     });
-    
-    // Migration logic: Load from file first, fallback to localStorage if file is empty
-    window.electronAPI.readCache().then((fileCache) => {
-      const legacyCacheString = localStorage.getItem('audit_cache');
-      const { cache, shouldMigrate } = resolveInitialCache(fileCache, legacyCacheString);
-      
-      setCachedResults(cache);
-      
-      if (shouldMigrate) {
-        console.log('[Cache] Migrating legacy localStorage cache to file storage');
-        window.electronAPI.writeCache(cache);
-      } else if (Object.keys(cache).length > 0) {
-        console.log('[Cache] Loaded from file-backed store');
-      }
-    });
-
     // Load history list
     window.electronAPI.listHistory().then(setHistoryList);
-  }, []);
-
-  const saveCache = useCallback((newCache) => {
-    setCachedResults(newCache);
-    window.electronAPI.writeCache(newCache);
   }, []);
 
   const updateProgressState = useCallback((patch) => {
@@ -288,21 +263,7 @@ export default function App() {
   const handleClearCache = async () => {
     await window.electronAPI.clearCache();
     localStorage.removeItem('audit_cache');
-    setCachedResults({});
     console.log('[Cache] Analysis cache cleared');
-  };
-
-  const calculateHash = async (text) => {
-    const cacheIdentity = [
-      ANALYSIS_MESH_VERSION,
-      config.baseURL || 'no-base-url',
-      config.model || 'no-model',
-      text
-    ].join('\n');
-    const msgUint8 = new TextEncoder().encode(cacheIdentity);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
   const canAnalyze = !!(config.baseURL && config.model);
@@ -762,10 +723,9 @@ export default function App() {
         message: `Resolved ${diagnostics.project_graph_total_group_count} graph groups across ${projectGraph.summary.documentCount} documents`
       });
 
-      const filesToAnalyze = [];
-      const reusedBatchResults = [];
-      let reusedCount = 0;
-      let reanalyzedCount = 0;
+      const filesToAnalyze = [...files];
+      const reusedCount = 0;
+      const reanalyzedCount = files.length;
 
       updateProgressState({
         stage: 'rule_engine',
@@ -790,26 +750,9 @@ export default function App() {
         message: `Deterministic rules emitted ${deterministicRuleResult.issues.length} findings`
       });
 
-      const currentHashes = {};
-      for (const file of files) {
-        const hash = await calculateHash(file.content);
-        currentHashes[file.name] = hash;
-        
-        if (cachedResults[hash]) {
-          console.log(`[Cache] Reusing results for ${file.name}`);
-          reusedBatchResults.push(cachedResults[hash]);
-          reusedCount++;
-        } else {
-          console.log(`[Cache] Cache miss for ${file.name}, adding to analysis`);
-          filesToAnalyze.push(file);
-          reanalyzedCount++;
-        }
-      }
-      setFileHashes(currentHashes);
       setAnalysisStats({ reused: reusedCount, reanalyzed: reanalyzedCount, agentPasses: 0 });
 
-      let finalBatchResults = [...reusedBatchResults];
-      let currentCache = { ...cachedResults };
+      let finalBatchResults = [];
       let completedAgentPasses = 0;
       const analysisMeshRuns = [];
       const totalAgentPasses = Math.max(filesToAnalyze.length > 0 ? batchFiles(filesToAnalyze).length * ANALYSIS_AGENT_COUNT : 0, 0);
@@ -909,15 +852,6 @@ export default function App() {
                 }));
             });
           }
-
-          for (const fileName in perFileResults) {
-            const hash = currentHashes[fileName];
-            if (hash) {
-              currentCache[hash] = perFileResults[fileName];
-            }
-          }
-          saveCache(currentCache);
-
           finalBatchResults.push(result);
         }
       }
@@ -934,7 +868,7 @@ export default function App() {
         graphDocuments: projectGraph.summary.documentCount,
         graphGroups: diagnostics.project_graph_total_group_count,
         graphReferences: diagnostics.project_graph_reference_count,
-        message: 'Merging deterministic rules, cached findings, and agent results'
+        message: 'Merging deterministic rules and fresh agent results'
       });
 
       const merged = mergeBatchResults(finalBatchResults);

@@ -6,11 +6,12 @@ Windows desktop application for auditing Markdown documentation with AI across 5
 
 Markdown Intelligence Auditor is an Electron + React desktop app that accepts one or more `.md` / `.markdown` files, sends them to an OpenAI-compatible provider, and returns a structured report of documentation issues with severity, traceability, remediation guidance, and export support.
 
-The current build includes chunk-aware batching, deterministic multi-pass post-processing, deterministic Markdown indexing for line-and-section anchors, a deterministic cross-file Markdown project graph with first-class reference grouping for related-location enrichment, typed proof-chain enrichment with deterministic span-to-span edges, a staged deterministic rule engine, truthful receipt-backed runtime coverage accounting, incremental result reuse, session diffing, root-cause grouping, a structured 701-detector catalog, and portable Windows packaging.
+The current build includes chunk-aware batching, deterministic multi-pass post-processing, deterministic Markdown indexing for line-and-section anchors, a deterministic cross-file Markdown project graph with first-class reference grouping for related-location enrichment, typed proof-chain enrichment with deterministic span-to-span edges, a staged deterministic rule engine, truthful receipt-backed runtime coverage accounting, fresh per-upload analysis, session diffing, root-cause grouping, a structured 701-detector catalog, and portable Windows packaging.
 
 ## Current Capabilities
 
 - Drag-and-drop upload for `.md` and `.markdown` files
+- Fresh analysis on every upload/run: the app no longer reuses old cached findings for matching file content
 - 53 analytical layers with explicit, deepened subcategories preventing thematic ambiguity
 - 701 code-defined micro-detectors across all 53 layers, including the deep-spec core plus 8 universal governance and reproducibility extensions
 - Full structured detector metadata for all detectors, including trigger patterns, evidence requirements, false-positive guards, and `related_layers` cross-references for 255 detectors across the specification-intensive layers
@@ -91,9 +92,9 @@ Example:
 }
 ```
 
-Incremental analysis cache is stored in `analysis_cache.json` in the same directory. This file-backed storage ensures reliability for large projects and persists across app updates. The system uses **atomic writes** to prevent cache corruption.
+Legacy cache data may still exist in `analysis_cache.json` in the same directory from older builds. The file-backed storage uses **atomic writes** to prevent corruption, but current uploads are analyzed fresh rather than reusing those cached findings.
 
-Users can clear this cache at any time through the **Clear Cache** button in the Settings modal.
+Users can clear this legacy cache data at any time through the **Clear Cache** button in the Settings modal.
 
 For large Markdown specifications, the app chunks and batches file content automatically. The default session token budget is intentionally high (`10,000,000`) so long-form audits can proceed instead of failing early on conservative defaults, the runtime uses scoped per-agent prompts so the same 701-detector taxonomy does not get re-sent in full detail on every pass, and the Electron main process now uses an adaptive analysis output-token budget instead of a fixed `8000` cap.
 
@@ -174,7 +175,7 @@ Each runtime agent now also owns an explicit slice of the taxonomy via a determi
 - Cross-layer validation after escalation
 - Deterministic cross-file project-graph enrichment after anchor normalization
 - Evidence-span enrichment after anchor and graph normalization
-- Cached result reuse for unchanged files (file-backed)
+- Fresh analysis on every upload instead of cached result reuse
 - Session diffing against the previous in-memory audit
 - Known detector IDs are validated against the structured taxonomy
 - Strict schema normalization backfills `failure_type`, `constraint_reference`, `violation_reference`, `contract_step`, `invariant_broken`, `authority_boundary`, `closed_world_status`, `assumption_detected`, `evidence_reference`, and `deterministic_fix`

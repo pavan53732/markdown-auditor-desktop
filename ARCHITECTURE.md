@@ -21,7 +21,7 @@ The current architecture supports:
 - deterministic typed proof-chain enrichment with span-to-span evidence edges
 - truthful receipt-backed runtime coverage accounting for taxonomy-defined, locally checked, model finding-backed, runtime-touched, and untouched detectors
 - deterministic trust-score, proof-status, trust-basis, trust-tier, and evidence-grade enrichment so issues can be ranked by structural support and source-backed strength instead of severity alone, with trust tiers presented as heuristic weighting rather than formal proof, proof status explicitly distinguishing deterministic proof, deterministic receipts, hybrid support, and model-only inference, and `model_only` findings in `api_contract` / `specification_formalism` capped so unsupported formal-contract claims cannot overstate severity
-- incremental cache reuse for unchanged files
+- fresh per-upload analysis without runtime reuse of cached findings
 - session diffing and root-cause grouping
 - **Audit History Workbench** for local session management
 - portable Windows packaging
@@ -233,9 +233,6 @@ App
 | `diffSummary` | computed comparison summary |
 | `historyOpen` | history workbench visibility |
 | `historyList` | metadata index of past audits |
-| `fileHashes` | current per-file SHA-256 hashes |
-| `cachedResults` | incremental cache keyed by file hash |
-
 ## Persistence
 
 ### Config

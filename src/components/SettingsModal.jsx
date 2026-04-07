@@ -66,7 +66,7 @@ export default function SettingsModal({ open, config, onSave, onCancel, onClearC
   };
 
   const handleClearCache = async () => {
-    if (confirm('Are you sure you want to clear the analysis cache? Unchanged files will need to be re-analyzed.')) {
+    if (confirm('Are you sure you want to clear the stored cache data? Uploads are analyzed fresh now, so this only removes legacy local cache entries.')) {
       await onClearCache();
       const stats = await window.electronAPI.getCacheStats();
       setCacheStats(stats);
@@ -223,11 +223,11 @@ export default function SettingsModal({ open, config, onSave, onCancel, onClearC
             <h3 className="text-xs font-bold text-[#6B7280] uppercase tracking-widest">Cache Management</h3>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-[#F9FAFB]">Analysis Cache</p>
+                <p className="text-sm text-[#F9FAFB]">Legacy Cache Data</p>
                 <p className="text-xs text-[#9CA3AF]">
-                  {cacheStats?.exists 
-                    ? `${cacheStats.entryCount} items stored locally`
-                    : 'No cache file found'}
+                  {cacheStats?.exists
+                    ? `${cacheStats.entryCount} stored legacy entries. New uploads are analyzed fresh.`
+                    : 'No legacy cache file found. New uploads are analyzed fresh.'}
                 </p>
               </div>
               <button

@@ -37,6 +37,7 @@ import { buildMarkdownReport, buildCsvReport } from './lib/exportFormats';
 import {
   buildRuntimeDetectorCoverage,
   applyRuntimeDetectorCoverageSummary,
+  deduplicateIssues,
   mergeBatchResults
 } from './lib/auditPipeline';
 import {
@@ -650,7 +651,7 @@ export default function App() {
       });
     }
 
-    const mergedAgentResult = mergeResults(agentResults);
+    const mergedAgentResult = mergeBatchResults(agentResults);
     if (Array.isArray(mergedAgentResult.issues)) {
       mergedAgentResult.issues = mergedAgentResult.issues.map((issue) => enrichIssueWithTrustSignals(issue));
       const trustSummary = summarizeIssueTrustSignals(mergedAgentResult.issues);

@@ -11,12 +11,9 @@ import DiffSummaryPanel from './components/DiffSummaryPanel';
 import HistoryModal from './components/HistoryModal';
 import brandIconDataUrl from './assets/brand-icon.png?inline';
 import { buildSystemPrompt } from './lib/systemPrompt';
-import { repairJSON, validateResults } from './lib/jsonRepair';
 import {
   ANALYSIS_AGENT_COUNT,
   ANALYSIS_AGENT_MESH,
-  validateAnalysisAgentResult,
-  createEmptyAnalysisMeshSummary,
   mergeAnalysisMeshRuns
 } from './lib/analysisAgents';
 import {
@@ -32,7 +29,6 @@ import {
   summarizeIssueTrustSignals,
   compareIssuesByTrustStrength
 } from './lib/trustSignals';
-import { buildMarkdownReport, buildCsvReport } from './lib/exportFormats';
 import {
   buildRuntimeDetectorCoverage,
   applyRuntimeDetectorCoverageSummary,
@@ -40,9 +36,32 @@ import {
   mergeBatchResults
 } from './lib/auditPipeline';
 import {
+  CHARS_PER_TOKEN,
+  MAX_AGENT_RESPONSE_ATTEMPTS,
+  estimateAnalysisTokens,
+  createFileBatches,
+  runAnalysisBatch
+} from './lib/agentMeshRuntime';
+import {
+  normalizeFileDisplayNames
+} from './lib/sessionService';
+import {
+  exportAuditJson,
+  exportAuditMarkdown,
+  exportAuditCsv,
+  exportAuditSession,
+  parseLoadedSessionText,
+  buildHistoryComparisonOutcome,
+  loadHistoryEntryAppState,
+  clearHistoryWorkbench,
+  deleteHistoryWorkbenchEntry,
+  updateHistoryWorkbenchEntry,
+  buildBaselineHistoryEntry,
+  saveResultsToHistoryWorkbench
+} from './lib/workbenchController';
+import {
   DEFAULT_RETRIES,
   DEFAULT_SESSION_TOKEN_BUDGET,
-  DEFAULT_TIMEOUT_SECONDS,
   RECOMMENDED_BATCH_TARGET_TOKENS,
   BATCH_TOKEN_BUFFER,
   MIN_CHUNK_CHARS,
@@ -54,19 +73,9 @@ import {
   normalizeIssueFromDetector, 
   getAvailableSubcategories,
   createInitialDiagnostics,
-  recordAgentFailure,
-  recordAgentRecovery,
-  recordAgentSkip,
-  buildExportData,
-  buildSessionData,
-  normalizeLoadedSession,
-  buildHistoryMetadata,
-  compareAudits
 } from './lib/detectorMetadata';
-const CHARS_PER_TOKEN = 4;
 const BRAND_NAME = 'Markdown Intelligence Auditor';
 const BRAND_TAGLINE = 'Deterministic Markdown specification auditing';
-const MAX_AGENT_RESPONSE_ATTEMPTS = 2;
 const MAX_DIAGNOSTIC_EVENTS_VISIBLE = 3;
 const ANALYSIS_STAGES = [
   { id: 'indexing', label: 'Indexing Markdown' },
@@ -139,69 +148,6 @@ function createProgressState(overrides = {}) {
     stageIndex: stage.stageIndex,
     stageCount: stage.stageCount
   };
-}
-
-function getAgentFailureStage(error) {
-  const message = error?.message || '';
-  if (message.toLowerCase().includes('timed out') || message.toLowerCase().includes('timeout')) {
-    return 'provider_timeout';
-  }
-  if (message.includes('Invalid JSON') || message.includes('No JSON object found')) {
-    return 'json_parse';
-  }
-  if (
-    message.includes('missing required') ||
-    message.includes('Response is not a JSON object') ||
-    message.includes('invalid')
-  ) {
-    return 'schema_validation';
-  }
-  return 'response_validation';
-}
-
-function isTimeoutErrorMessage(message) {
-  const normalized = typeof message === 'string' ? message.toLowerCase() : '';
-  return normalized.includes('timed out') || normalized.includes('timeout');
-}
-
-function buildAgentRetryMessage(baseUserMessage, agent, error, attempt) {
-  return `${baseUserMessage}
-
-=== FORMAT RETRY REQUIRED ===
-The previous ${agent.label} response for this same batch was rejected on attempt ${attempt}.
-Validator message: ${error.message}
-
-Return exactly one raw JSON object matching the required schema.
-- Use double quotes for every property name and string value
-- Do not return markdown fences
-- Do not return commentary before or after the JSON object
-- Keep the same audit scope and evidence discipline as the original request`;
-}
-
-function normalizeFileDisplayNames(fileList) {
-  const totals = new Map();
-  fileList.forEach((file) => {
-    const baseName = file.originalName || file.name;
-    totals.set(baseName, (totals.get(baseName) || 0) + 1);
-  });
-
-  const seen = new Map();
-  return fileList.map((file) => {
-    const baseName = file.originalName || file.name;
-    const nextIndex = (seen.get(baseName) || 0) + 1;
-    seen.set(baseName, nextIndex);
-
-    return {
-      ...file,
-      originalName: baseName,
-      name: totals.get(baseName) > 1 ? `${baseName} [${nextIndex}]` : baseName
-    };
-  });
-}
-
-function normalizeHistorySessionPayload(session) {
-  if (!session) return null;
-  return session.results ? session : { results: session };
 }
 
 export default function App() {
@@ -284,15 +230,7 @@ export default function App() {
   }, [agentPromptEntries]);
 
   const estimateTokens = useCallback((fileList) => {
-    const systemTokens = maxSystemTokens;
-    const userTokens = fileList.reduce((sum, f) => sum + Math.ceil(f.content.length / CHARS_PER_TOKEN), 0);
-    const perPassTotal = systemTokens + userTokens;
-    return {
-      systemTokens,
-      userTokens,
-      perPassTotal,
-      total: perPassTotal * ANALYSIS_AGENT_COUNT
-    };
+    return estimateAnalysisTokens(fileList, maxSystemTokens, ANALYSIS_AGENT_COUNT);
   }, [maxSystemTokens]);
 
   useEffect(() => {
@@ -316,128 +254,35 @@ export default function App() {
     setFiles((prev) => normalizeFileDisplayNames(prev.filter((_, i) => i !== index)));
   }, []);
 
-  const getAvailableTokens = useCallback(() => {
-    return Math.max(1, RECOMMENDED_BATCH_TARGET_TOKENS - maxSystemTokens - BATCH_TOKEN_BUFFER);
-  }, [maxSystemTokens]);
-
-  const splitOversizedFile = useCallback((file, maxTokens) => {
-    const fileTokens = Math.ceil(file.content.length / CHARS_PER_TOKEN);
-    const baseFile = {
-      name: file.name,
-      path: file.path,
-      size: file.size,
-      lastModified: file.lastModified
-    };
-
-    if (fileTokens <= maxTokens) {
-      return [{
-        ...baseFile,
-        content: file.content,
-        chunkIndex: 1,
-        chunkCount: 1,
-        lineStart: 1,
-        lineEnd: Math.max(1, file.content.split('\n').length),
-        isChunked: false
-      }];
+  const applyLoadedState = useCallback((loadedState, { closeHistory = false } = {}) => {
+    if (!loadedState) return false;
+    setFiles(loadedState.files);
+    setResults(loadedState.results);
+    setTaxonomyDiagnostics(loadedState.taxonomyDiagnostics);
+    setAnalysisStats(loadedState.analysisStats);
+    setProgressState(createProgressState());
+    setError(null);
+    setDiffSummary(null);
+    setDiffMode(false);
+    if (closeHistory) {
+      setHistoryOpen(false);
     }
-
-    const maxChars = Math.max(MIN_CHUNK_CHARS, maxTokens * CHARS_PER_TOKEN);
-    const overlapChars = Math.floor(maxChars * 0.1); // 10% overlap
-    const newlineOffsets = [];
-    for (let i = 0; i < file.content.length; i++) {
-      if (file.content[i] === '\n') {
-        newlineOffsets.push(i);
-      }
-    }
-    const getLineNumberAtOffset = (offset) => {
-      let low = 0;
-      let high = newlineOffsets.length;
-
-      while (low < high) {
-        const mid = Math.floor((low + high) / 2);
-        if (newlineOffsets[mid] < offset) {
-          low = mid + 1;
-        } else {
-          high = mid;
-        }
-      }
-
-      return low + 1;
-    };
-    const rawChunks = [];
-    let start = 0;
-
-    while (start < file.content.length) {
-      const maxEnd = Math.min(start + maxChars, file.content.length);
-      let end = maxEnd;
-
-      if (end < file.content.length) {
-        const newlineBoundary = file.content.lastIndexOf('\n', maxEnd - 1);
-        if (newlineBoundary >= start + Math.floor(maxChars * 0.5)) {
-          end = newlineBoundary + 1;
-        }
-      }
-
-      if (end <= start) {
-        end = maxEnd;
-      }
-
-      const content = file.content.slice(start, end);
-      const lineStart = getLineNumberAtOffset(start);
-      const lineCount = Math.max(1, content.split('\n').length);
-      const lineEnd = lineStart + lineCount - 1;
-
-      rawChunks.push({
-        ...baseFile,
-        content,
-        lineStart,
-        lineEnd
-      });
-
-      // Move start back by overlap amount, but ensure progress
-      const nextStart = end - overlapChars;
-      if (nextStart <= start) {
-        start = end;
-      } else {
-        start = nextStart;
-      }
-    }
-
-    const chunkCount = rawChunks.length;
-    return rawChunks.map((chunk, index) => ({
-      ...chunk,
-      chunkIndex: index + 1,
-      chunkCount,
-      isChunked: true
-    }));
+    return true;
   }, []);
 
-  const batchFiles = (fileList) => {
-    const availableTokens = getAvailableTokens();
-    const batches = [];
-    let currentBatch = [];
-    let currentTokens = 0;
-
-    const flattenedFiles = fileList.flatMap(f => splitOversizedFile(f, availableTokens));
-
-    flattenedFiles.forEach((file) => {
-      const fileTokens = Math.ceil(file.content.length / CHARS_PER_TOKEN);
-      
-      if (currentTokens + fileTokens > availableTokens && currentBatch.length > 0) {
-        batches.push(currentBatch);
-        currentBatch = [file];
-        currentTokens = fileTokens;
-      } else {
-        currentBatch.push(file);
-        currentTokens += fileTokens;
-      }
-    });
-
-    if (currentBatch.length > 0) batches.push(currentBatch);
-    return batches;
-  };
-
   const analyzeBatch = async (batch, batchIndex, totalBatches, diagnostics, detectorExecutionReceipts = []) => {
+    return runAnalysisBatch({
+      batch,
+      batchIndex,
+      totalBatches,
+      totalAgentPasses: totalBatches * ANALYSIS_AGENT_COUNT,
+      diagnostics,
+      detectorExecutionReceipts,
+      agentPromptEntries,
+      config,
+      callAPI: window.electronAPI.callAPI,
+      updateProgressState
+    });
     const userMessage = batch
       .map((f) => `=== FILE: ${f.name}${f.isChunked ? ` (Chunk ${f.chunkIndex}/${f.chunkCount})` : ''} ===\n\n${f.content}\n\n${'─'.repeat(60)}\n`)
       .join('');
@@ -755,7 +600,13 @@ export default function App() {
       let finalBatchResults = [];
       let completedAgentPasses = 0;
       const analysisMeshRuns = [];
-      const totalAgentPasses = Math.max(filesToAnalyze.length > 0 ? batchFiles(filesToAnalyze).length * ANALYSIS_AGENT_COUNT : 0, 0);
+      const batches = createFileBatches(filesToAnalyze, {
+        recommendedBatchTargetTokens: RECOMMENDED_BATCH_TARGET_TOKENS,
+        maxSystemTokens,
+        batchTokenBuffer: BATCH_TOKEN_BUFFER,
+        minChunkChars: MIN_CHUNK_CHARS
+      });
+      const totalAgentPasses = Math.max(batches.length * ANALYSIS_AGENT_COUNT, 0);
 
       if (filesToAnalyze.length > 0) {
         const { total } = estimateTokens(filesToAnalyze);
@@ -763,8 +614,6 @@ export default function App() {
         if (sessionTokenBudget && total > sessionTokenBudget) {
           throw new Error(`Estimated ${total.toLocaleString()} tokens for new files exceeds session budget of ${sessionTokenBudget.toLocaleString()}.`);
         }
-
-        const batches = batchFiles(filesToAnalyze);
 
         updateProgressState({
           stage: 'agent_mesh',
@@ -783,13 +632,18 @@ export default function App() {
         });
 
         for (let i = 0; i < batches.length; i++) {
-          const result = await analyzeBatch(
-            batches[i],
-            i,
-            batches.length,
+          const result = await runAnalysisBatch({
+            batch: batches[i],
+            batchIndex: i,
+            totalBatches: batches.length,
+            totalAgentPasses,
             diagnostics,
-            deterministicRuleResult.summary?.detector_execution_receipts || []
-          );
+            detectorExecutionReceipts: deterministicRuleResult.summary?.detector_execution_receipts || [],
+            agentPromptEntries,
+            config,
+            callAPI: window.electronAPI.callAPI,
+            updateProgressState
+          });
           completedAgentPasses += result._agentPasses || 0;
           analysisMeshRuns.push(...(result._analysisMeshRuns || []));
           updateProgressState({
@@ -1006,12 +860,18 @@ export default function App() {
       setResults(merged);
       
       // Auto-save to history
-      const historyMetadata = buildHistoryMetadata(merged, files, config);
-      const historySession = buildSessionData({ results: merged, taxonomyDiagnostics: diagnostics, files, config });
-      await window.electronAPI.addHistorySession({ metadata: historyMetadata, session: historySession });
-      await window.electronAPI.pruneHistory(50);
-      const updatedHistory = await window.electronAPI.listHistory();
-      setHistoryList(updatedHistory);
+      const historyPayload = buildHistoryPersistencePayload({
+        results: merged,
+        taxonomyDiagnostics: diagnostics,
+        files,
+        config
+      });
+      if (historyPayload) {
+        await window.electronAPI.addHistorySession(historyPayload);
+        await window.electronAPI.pruneHistory(50);
+        const updatedHistory = await window.electronAPI.listHistory();
+        setHistoryList(updatedHistory);
+      }
 
       if (capturedPrevious) {
         setDiffSummary(compareAudits(merged, capturedPrevious));
@@ -1654,21 +1514,12 @@ export default function App() {
   };
 
   const exportJSON = () => {
-    if (!results) return;
-    const exportData = buildExportData(results, taxonomyDiagnostics);
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `audit-results-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    exportAuditJson({ results, taxonomyDiagnostics });
     setExportMenuOpen(false);
   };
 
   const exportMarkdown = () => {
-    if (!results) return;
-    const md = buildMarkdownReport({
+    exportAuditMarkdown({
       results,
       taxonomyDiagnostics,
       brandName: BRAND_NAME,
@@ -1678,40 +1529,16 @@ export default function App() {
       analysisAgentCount: ANALYSIS_AGENT_COUNT,
       totalDetectorCount: TOTAL_DETECTOR_COUNT
     });
-
-    const blob = new Blob([md], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `audit-report-${new Date().toISOString().slice(0, 10)}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
     setExportMenuOpen(false);
   };
 
   const exportCSV = () => {
-    if (!results) return;
-    const csvContent = buildCsvReport(results);
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `audit-results-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    exportAuditCsv({ results });
     setExportMenuOpen(false);
   };
 
   const saveSession = () => {
-    if (!results) return;
-    const session = buildSessionData({ results, taxonomyDiagnostics, files, config });
-    const blob = new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `audit-session-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    exportAuditSession({ results, taxonomyDiagnostics, files, config });
   };
 
   const loadSession = () => {
@@ -1724,22 +1551,8 @@ export default function App() {
       const reader = new FileReader();
       reader.onload = (event) => {
         try {
-          const rawSession = JSON.parse(event.target.result);
-          const session = normalizeLoadedSession(rawSession);
-          if (session.results) {
-            setFiles(normalizeFileDisplayNames(session.files || []));
-            setResults(session.results);
-            setTaxonomyDiagnostics(session.taxonomyDiagnostics);
-            setAnalysisStats({
-              reused: 0,
-              reanalyzed: session.results.summary?.files_analyzed || session.files?.length || 0,
-              agentPasses: session.results.summary?.analysis_agent_passes || 0
-            });
-            setProgressState(createProgressState());
-            setError(null);
-            setDiffSummary(null);
-            setDiffMode(false);
-          }
+          const loadedState = parseLoadedSessionText(event.target.result);
+          applyLoadedState(loadedState);
         } catch (e) {
           setError('Failed to load session: Invalid JSON');
         }
@@ -1750,19 +1563,17 @@ export default function App() {
   };
 
   const handleClearHistory = async () => {
-    await window.electronAPI.clearHistory();
-    setHistoryList([]);
+    const updated = await clearHistoryWorkbench(window.electronAPI);
+    setHistoryList(updated);
   };
 
   const handleDeleteHistory = async (id) => {
-    await window.electronAPI.deleteHistorySession(id);
-    const updated = await window.electronAPI.listHistory();
+    const updated = await deleteHistoryWorkbenchEntry(window.electronAPI, id);
     setHistoryList(updated);
   };
 
   const handleUpdateHistoryEntry = async (id, updates) => {
-    await window.electronAPI.updateHistorySession(id, updates);
-    const updated = await window.electronAPI.listHistory();
+    const updated = await updateHistoryWorkbenchEntry(window.electronAPI, id, updates);
     setHistoryList(updated);
     if (baselineEntry?.id === id) {
       setBaselineEntry(prev => ({ ...prev, ...updates }));
@@ -1774,69 +1585,50 @@ export default function App() {
       setBaselineEntry(null);
       return;
     }
-    const session = await window.electronAPI.readHistorySession(id);
-    if (session) {
-      const meta = historyList.find(e => e.id === id);
-      const normalized = normalizeLoadedSession(normalizeHistorySessionPayload(session));
-      setBaselineEntry({ id, results: normalized.results, title: meta?.title || 'Selected Baseline' });
+    const loadedState = await loadHistoryEntryAppState(window.electronAPI, id);
+    if (loadedState) {
+      setBaselineEntry(buildBaselineHistoryEntry({ id, loadedState, historyList }));
     }
   };
 
   const handleCompareHistoryEntry = async (id) => {
-    const session = await window.electronAPI.readHistorySession(id);
-    if (!session) return;
-
-    const targetNormalized = normalizeLoadedSession(normalizeHistorySessionPayload(session));
+    const loadedState = await loadHistoryEntryAppState(window.electronAPI, id);
+    if (!loadedState) return;
     const targetMeta = historyList.find(e => e.id === id);
     const targetTitle = targetMeta?.title || 'Selected Audit';
 
-    if (baselineEntry) {
-      // History-to-History comparison
-      setDiffSummary(compareAudits(targetNormalized.results, baselineEntry.results));
-      setContextWarning(`Comparing History: "${baselineEntry.title}" (Baseline) vs History: "${targetTitle}"`);
-    } else if (results) {
-      // Current-to-History comparison
-      setDiffSummary(compareAudits(results, targetNormalized.results));
-      setContextWarning(`Comparing Current Run vs History: "${targetTitle}"`);
-    } else {
+    const comparisonOutcome = buildHistoryComparisonOutcome({
+      baselineEntry,
+      currentResults: results,
+      targetResults: loadedState.results,
+      targetTitle
+    });
+    if (!comparisonOutcome) {
       alert('Please run an audit first or set a baseline from history to compare against.');
       return;
     }
 
+    setDiffSummary(comparisonOutcome.diffSummary);
+    setContextWarning(comparisonOutcome.contextWarning);
     setDiffMode(true);
     setHistoryOpen(false);
   };
 
   const handleOpenHistoryEntry = async (id) => {
-    const session = await window.electronAPI.readHistorySession(id);
-    if (session) {
-      const normalized = normalizeLoadedSession(normalizeHistorySessionPayload(session));
-      setFiles(normalizeFileDisplayNames(normalized.files || []));
-      setResults(normalized.results);
-      setTaxonomyDiagnostics(normalized.taxonomyDiagnostics);
-      setAnalysisStats({
-        reused: 0,
-        reanalyzed: normalized.results.summary?.files_analyzed || normalized.files?.length || 0,
-        agentPasses: normalized.results.summary?.analysis_agent_passes || 0
-      });
-      setProgressState(createProgressState());
-      setError(null);
-      setDiffSummary(null);
-      setDiffMode(false);
-      setHistoryOpen(false);
-    }
+    const loadedState = await loadHistoryEntryAppState(window.electronAPI, id);
+    applyLoadedState(loadedState, { closeHistory: true });
   };
 
   const saveToHistory = async () => {
-    if (!results) return;
-    const historyMetadata = buildHistoryMetadata(results, files, config, 'imported_session');
-    const historySession = buildSessionData({ results, taxonomyDiagnostics, files, config });
-    await window.electronAPI.addHistorySession({ metadata: historyMetadata, session: historySession });
-    
-    // Prune history to keep only last 50 entries
-    await window.electronAPI.pruneHistory(50);
-    
-    const updatedHistory = await window.electronAPI.listHistory();
+    const updatedHistory = await saveResultsToHistoryWorkbench({
+      electronAPI: window.electronAPI,
+      results,
+      taxonomyDiagnostics,
+      files,
+      config,
+      sourceType: 'imported_session'
+    });
+    if (!updatedHistory) return;
     setHistoryList(updatedHistory);
     alert('Session saved to local history.');
   };

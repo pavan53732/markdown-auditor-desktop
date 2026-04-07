@@ -24,6 +24,34 @@ const API_AUTH_MECHANISM_PATTERN = /\bAuthorization\b|\bBearer\b|\bOAuth\b|\bJWT
 const API_RETRY_PATTERN = /\b(retry|retries|retryable|resend|replayed|duplicate request|at[- ]least[- ]once)\b/i;
 const API_IDEMPOTENCY_PATTERN = /\b(idempotent|idempotency|idempotency[- ]key|dedup(?:lication)?|safe to retry)\b/i;
 const UPPERCASE_DEFINITION_PATTERN = /^\s*([A-Z][A-Z0-9_]{1,31})\s*[:\-]\s+(.+)$/;
+const GOVERNANCE_CHECKPOINT_PATTERN = /\b(approve|approval|review(?:ed)?|verify|verification|validate|validation|sign[- ]?off|checkpoint|gate|gating|governance|policy check)\b/i;
+const AUDIT_TRAIL_PATTERN = /\b(audit trail|audit log|receipt|receipts|record(?:ed|ing)?|journal|trace(?:ability)?|logged?|log entry|commit[- ]?hash|revision id|change id)\b/i;
+const GOVERNANCE_BYPASS_PATTERN = /\b(bypass|skip approval|without approval|approval-free|break[- ]?glass|emergency override|force(?:d)? apply|direct write|override)\b/i;
+const OWNER_BOUNDARY_PATTERN = /\b(owner|owned by|responsible|responsibility|authority|authorized by|executed by|gatekeeper|controller|custodian)\b/i;
+const OVERRIDE_GUARD_PATTERN = /\b(only if|when\b|under\b|approved by|expires?|time[- ]?bound|temporary|justification|ticket|audit trail|logged?|receipt|rollback|revert)\b/i;
+const COMMIT_HASH_PATTERN = /\b(commit[_ -]?hash|commit sha|sha[- ]?(?:1|256)|revision id|change id|artifact digest|build hash|version pin)\b/i;
+const PRECONDITION_PATTERN = /\b(only if|if\b|when\b|before\b|precondition|requires?|guard(?:ed)? by|must be in)\b/i;
+const POSTCONDITION_PATTERN = /\b(after\b|then\b|results? in|ensures?|postcondition|becomes?|sets?\b|produces?|emits?|persists?)\b/i;
+const BACKOFF_POLICY_PATTERN = /\b(backoff|delay|wait(?:ing)?|jitter|cooldown|max retries|retry budget|retry limit|exponential)\b/i;
+const REPLAY_REQUIREMENT_PATTERN = /\b(replay|deterministic replay|reproduce|re-run|rerun|receipt|event log|journal|idempotency|idempotent)\b/i;
+const DEPENDENCY_LIFECYCLE_PATTERN = /\b(setup|install|provision|initialize|update|upgrade|version|rollback|remove|deprecate|retire|cleanup|teardown|lifecycle)\b/i;
+const PARALLEL_EXECUTION_PATTERN = /\b(parallel|concurrent|simultaneous|in parallel)\b/i;
+const RESOURCE_ORDERING_PATTERN = /\b(ordered|serialize|serialized|queue|queued|lock|mutex|one at a time|exclusive|resource order|sequentially)\b/i;
+const VAGUE_REQUIREMENT_PATTERN = /\b(appropriate(?:ly)?|fast enough|quickly|soon|as needed|where possible|if necessary|normal(?:ly)?|reasonable|minimal|minimize|optimi[sz]e|efficient(?:ly)?|robust|seamless|intuitive|user-friendly)\b/i;
+const OBJECTIVE_HEADING_PATTERN = /\b(goal|goals|objective|objectives|intent|purpose|outcome|outcomes|user intent|mission)\b/i;
+const OBJECTIVE_VAGUE_PATTERN = /\b(improve|better|simple|simplify|easier|streamline|frictionless|smooth|quick(?:ly)?|faster|intuitive|user-friendly)\b/i;
+const CHANGE_SCOPE_HEADING_PATTERN = /\b(scope|change|changes|migration|migrate|rollout|update|updates|modification|modify|refactor|impact|affected)\b/i;
+const CHANGE_ACTION_PATTERN = /\b(change|changes|update|updates|modify|modification|migration|migrate|rollout|refactor|replace|remove|add|introduce|touch(?:es|ing)?|affects?)\b/i;
+const SCOPE_BOUNDARY_PATTERN = /\b(in scope|out of scope|not in scope|non-goals?|does not change|will not change|limited to|only affects|only changes|scope boundary|modification boundary|excluded|unchanged)\b/i;
+const UI_COMPONENT_PATTERN = /\b(button|form|input|dialog|modal|table|list|panel|screen|page|view|banner|toast|dropdown|checkbox|toggle|wizard|stepper|dashboard)\b/i;
+const UI_STATE_PATTERN = /\b(state|status|loading|loaded|success|error|disabled|enabled|empty|selected|active|pending|failed|complete(?:d)?)\b/i;
+const ACTOR_ROLE_PATTERN = /\b(User|Users|System|Operator|Admin|Client|Server|Host|Runtime|Agent|Agents)\b/g;
+const TASK_GRAPH_HEADING_PATTERN = /\b(task(?:s| graph)?|dependency|dependencies|dag|graph|execution graph|plan|priority)\b/i;
+const TASK_DEPENDENCY_HINT_PATTERN = /\b(depends on|after|requires|blocked by|waits for|following|prerequisite|predecessor)\b/i;
+const TASK_DEPENDENCY_REFERENCE_PATTERN = /\b(?:depends on|after|requires|blocked by|waits for|following|after completion of|prerequisite(?: is)?|predecessor(?: is)?)\s+(?:step|task)?\s*(\d+)\b/gi;
+const AUTO_INTERACTION_PATTERN = /\b(automatic(?:ally)?|auto[- ]?(?:apply|approve|submit|progress|advance)|self[- ]?serve|without user intervention|no user action|zero-click|hands[- ]?free|approval-free)\b/i;
+const MANUAL_INTERACTION_PATTERN = /\b(user must|operator must|click|confirm|approve|approval|review|manual(?:ly)?|select|choose|submit|fill out|enter|sign[- ]?off)\b/i;
+const NO_APPROVAL_PATTERN = /\b(no approval|without approval|approval-free)\b/i;
 
 export const DETERMINISTIC_RULE_DEFINITIONS = [
   {
@@ -209,6 +237,190 @@ export const DETERMINISTIC_RULE_DEFINITIONS = [
     subcategory: 'input/output contract determinism',
     stage: 'formalism_rules',
     owningAgent: 'spec_absoluteness_agent'
+  },
+  {
+    id: 'ambiguous_requirement_wording_rule',
+    detectorId: 'L4-01',
+    layer: 'semantic',
+    subcategory: 'semantic ambiguity',
+    stage: 'interaction_rules',
+    owningAgent: 'spec_absoluteness_agent'
+  },
+  {
+    id: 'governance_checkpoint_rule',
+    detectorId: 'L29-18',
+    layer: 'governance',
+    subcategory: 'governance checkpoint gaps',
+    stage: 'governance_rules',
+    owningAgent: 'architecture_authority_agent'
+  },
+  {
+    id: 'governance_bypass_rule',
+    detectorId: 'L29-15',
+    layer: 'governance',
+    subcategory: 'governance bypass path',
+    stage: 'governance_rules',
+    owningAgent: 'architecture_authority_agent'
+  },
+  {
+    id: 'audit_trail_requirement_rule',
+    detectorId: 'L44-10',
+    layer: 'control_plane_authority',
+    subcategory: 'audit trail requirements',
+    stage: 'governance_rules',
+    owningAgent: 'architecture_authority_agent'
+  },
+  {
+    id: 'control_plane_override_condition_rule',
+    detectorId: 'L44-12',
+    layer: 'control_plane_authority',
+    subcategory: 'control-plane override conditions',
+    stage: 'governance_rules',
+    owningAgent: 'architecture_authority_agent'
+  },
+  {
+    id: 'execution_owner_boundary_rule',
+    detectorId: 'L44-13',
+    layer: 'control_plane_authority',
+    subcategory: 'execution owner boundary clarity',
+    stage: 'governance_rules',
+    owningAgent: 'architecture_authority_agent'
+  },
+  {
+    id: 'commit_hash_binding_rule',
+    detectorId: 'L45-03',
+    layer: 'world_state_governance',
+    subcategory: 'commit_hash binding',
+    stage: 'world_state_rules',
+    owningAgent: 'memory_world_state_agent'
+  },
+  {
+    id: 'state_transition_precondition_rule',
+    detectorId: 'L45-15',
+    layer: 'world_state_governance',
+    subcategory: 'state mutation invariants detail',
+    stage: 'world_state_rules',
+    owningAgent: 'memory_world_state_agent'
+  },
+  {
+    id: 'state_transition_postcondition_rule',
+    detectorId: 'L45-16',
+    layer: 'world_state_governance',
+    subcategory: 'state mutation invariants detail',
+    stage: 'world_state_rules',
+    owningAgent: 'memory_world_state_agent'
+  },
+  {
+    id: 'dependency_ownership_rule',
+    detectorId: 'L18-13',
+    layer: 'dependency_graph',
+    subcategory: 'ownership ambiguity',
+    stage: 'task_graph_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'dependency_lifecycle_rule',
+    detectorId: 'L18-11',
+    layer: 'dependency_graph',
+    subcategory: 'dependency lifecycle gap',
+    stage: 'task_graph_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'retry_backoff_policy_rule',
+    detectorId: 'L43-05',
+    layer: 'deterministic_execution',
+    subcategory: 'retry and backoff policy',
+    stage: 'execution_invariant_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'parallel_resource_order_rule',
+    detectorId: 'L43-08',
+    layer: 'deterministic_execution',
+    subcategory: 'resource ordering',
+    stage: 'execution_invariant_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'deterministic_replay_requirements_rule',
+    detectorId: 'L43-13',
+    layer: 'deterministic_execution',
+    subcategory: 'deterministic replay requirements',
+    stage: 'execution_invariant_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'ui_state_mapping_contract_rule',
+    detectorId: 'L42-03',
+    layer: 'ui_surface_contract',
+    subcategory: 'UI-to-system-state mapping',
+    stage: 'interaction_rules',
+    owningAgent: 'ui_operational_agent'
+  },
+  {
+    id: 'task_graph_cycle_rule',
+    detectorId: 'L18-01',
+    layer: 'dependency_graph',
+    subcategory: 'circular dependencies',
+    stage: 'task_graph_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'task_graph_dependency_order_rule',
+    detectorId: 'L18-04',
+    layer: 'dependency_graph',
+    subcategory: 'undeclared dependencies',
+    stage: 'task_graph_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'task_graph_unreachable_node_rule',
+    detectorId: 'L20-01',
+    layer: 'execution_path',
+    subcategory: 'unreachable paths',
+    stage: 'task_graph_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'task_graph_priority_propagation_rule',
+    detectorId: 'L10-07',
+    layer: 'intent',
+    subcategory: 'goal drift',
+    stage: 'task_graph_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'intent_ambiguity_rule',
+    detectorId: 'L10-10',
+    layer: 'intent',
+    subcategory: 'objective ambiguity',
+    stage: 'interaction_rules',
+    owningAgent: 'ui_operational_agent'
+  },
+  {
+    id: 'change_scope_boundary_rule',
+    detectorId: 'L10-01',
+    layer: 'intent',
+    subcategory: 'scope creep',
+    stage: 'interaction_rules',
+    owningAgent: 'ui_operational_agent'
+  },
+  {
+    id: 'user_intent_consistency_rule',
+    detectorId: 'L10-02',
+    layer: 'intent',
+    subcategory: 'business-vs-implementation mismatch',
+    stage: 'interaction_rules',
+    owningAgent: 'ui_operational_agent'
+  },
+  {
+    id: 'interaction_conflict_rule',
+    detectorId: 'L10-03',
+    layer: 'intent',
+    subcategory: 'goal drift',
+    stage: 'interaction_rules',
+    owningAgent: 'ui_operational_agent'
   }
 ];
 
@@ -256,6 +468,56 @@ function extractRequirementKeywords(text = '') {
   return Array.from(
     new Set((String(text || '').match(RFC_KEYWORD_PATTERN) || []).map((keyword) => keyword.toUpperCase()))
   );
+}
+
+function extractNumberedSteps(lines = []) {
+  return lines
+    .map(({ lineNumber, text }) => {
+      const match = String(text || '').match(/^\s*(\d+)\.\s+(.+)$/);
+      if (!match) return null;
+      return {
+        number: Number(match[1]),
+        text: match[2].trim(),
+        lineNumber
+      };
+    })
+    .filter(Boolean);
+}
+
+function extractTaskDependencies(text = '') {
+  return Array.from(
+    new Set(
+      Array.from(String(text || '').matchAll(TASK_DEPENDENCY_REFERENCE_PATTERN))
+        .map((match) => Number(match[1]))
+        .filter((value) => Number.isFinite(value))
+    )
+  );
+}
+
+function parsePriorityLevel(text = '') {
+  const explicitPriority = String(text || '').match(/\bpriority\s*[:=-]?\s*(critical|high|medium|low|p\d+|\d+)\b/i);
+  const tokenPriority = String(text || '').match(/\bP(\d+)\b/i);
+  const raw = explicitPriority?.[1] || (tokenPriority ? `P${tokenPriority[1]}` : '');
+  if (!raw) return null;
+
+  const normalized = String(raw).trim().toLowerCase();
+  if (normalized === 'critical') return 0;
+  if (normalized === 'high') return 1;
+  if (normalized === 'medium') return 2;
+  if (normalized === 'low') return 3;
+  if (/^p\d+$/.test(normalized)) return Number(normalized.slice(1));
+  if (/^\d+$/.test(normalized)) return Number(normalized);
+  return null;
+}
+
+function classifyInteractionMode(text = '') {
+  return {
+    automatic: AUTO_INTERACTION_PATTERN.test(text),
+    manual: MANUAL_INTERACTION_PATTERN.test(text),
+    noApproval: NO_APPROVAL_PATTERN.test(text),
+    approvalRequired: /\b(approve|approval|review|sign[- ]?off)\b/i.test(text),
+    selfServe: /\bself[- ]?serve\b/i.test(text)
+  };
 }
 
 function normalizeRequirementClause(text = '') {
@@ -589,6 +851,43 @@ function runRfc2119Rule(projectGraph, issues) {
   });
 }
 
+function runAmbiguousRequirementWordingRule(projectGraph, issues) {
+  const documentsByName = new Map(
+    (projectGraph?.projectIndex?.documents || []).map((documentIndex) => [documentIndex.name, documentIndex])
+  );
+
+  (projectGraph?.requirementOccurrences || []).forEach((occurrence) => {
+    const documentIndex = documentsByName.get(occurrence.file);
+    if (!documentIndex) return;
+    if (!VAGUE_REQUIREMENT_PATTERN.test(occurrence.label)) return;
+
+    pushIssue(issues, createRuleIssue({
+      ruleId: 'ambiguous_requirement_wording_rule',
+      detectorId: 'L4-01',
+      severity: 'medium',
+      description: `Requirement clause in ${occurrence.file} uses vague wording that weakens deterministic interpretation.`,
+      files: [occurrence.file],
+      section: occurrence.section,
+      sectionSlug: occurrence.section_slug,
+      lineNumber: occurrence.line_number,
+      evidence: occurrence.label,
+      whyTriggered: 'The requirement contains open-ended wording such as "appropriate", "quickly", or "as needed", which leaves the requirement semantically ambiguous.',
+      evidenceSpans: [
+        createEvidenceSpan({
+          file: occurrence.file,
+          section: occurrence.section,
+          sectionSlug: occurrence.section_slug,
+          lineStart: occurrence.line_number,
+          source: 'ambiguous_requirement_wording_rule',
+          excerpt: occurrence.label
+        })
+      ],
+      deterministicFix: 'Replace vague requirement wording with explicit measurable, bounded, or conditionally-scoped language.',
+      recommendedFix: 'State the exact threshold, timing, quantity, or boundary instead of relying on subjective language.'
+    }));
+  });
+}
+
 function runDuplicatedRequirementRule(projectGraph, issues) {
   projectGraph.requirementGroups.forEach((occurrences) => {
     if (!Array.isArray(occurrences) || occurrences.length < 2) return;
@@ -677,19 +976,206 @@ function collectWorkflowSections(documentIndex) {
       });
     }
 
-    const numberedSteps = lines
-      .map(({ lineNumber, text }) => {
-        const match = text.match(/^\s*(\d+)\.\s+(.+)$/);
-        if (!match) return null;
-        return {
-          number: Number(match[1]),
-          text: match[2].trim(),
-          lineNumber
-        };
-      })
-      .filter(Boolean);
+    const numberedSteps = extractNumberedSteps(lines);
 
     return { heading, lines, numberedSteps };
+  });
+}
+
+function collectDocumentSections(documentIndex) {
+  if (!documentIndex) return [];
+
+  if (!Array.isArray(documentIndex.headings) || documentIndex.headings.length === 0) {
+    const lines = documentIndex.lines.map((text, index) => ({
+      lineNumber: index + 1,
+      text
+    }));
+
+    return [{
+      heading: null,
+      lines,
+      lineStart: 1,
+      lineEnd: documentIndex.lines.length,
+      sectionText: lines.map(({ text }) => text).join('\n')
+    }];
+  }
+
+  return documentIndex.headings.map((heading) => {
+    const lines = [];
+    for (let lineNumber = heading.lineStart; lineNumber <= heading.lineEnd; lineNumber += 1) {
+      lines.push({
+        lineNumber,
+        text: documentIndex.lines[lineNumber - 1] || ''
+      });
+    }
+
+    return {
+      heading,
+      lines,
+      lineStart: heading.lineStart,
+      lineEnd: heading.lineEnd,
+      sectionText: lines.map(({ text }) => text).join('\n')
+    };
+  });
+}
+
+function collectTaskGraphSections(documentIndex) {
+  return collectDocumentSections(documentIndex)
+    .map(({ heading, lines, lineStart, lineEnd, sectionText }) => {
+      const numberedSteps = extractNumberedSteps(lines).map((step) => ({
+        ...step,
+        dependencies: extractTaskDependencies(step.text),
+        priority: parsePriorityLevel(step.text)
+      }));
+
+      return {
+        heading,
+        lines,
+        lineStart,
+        lineEnd,
+        sectionText,
+        numberedSteps
+      };
+    })
+    .filter(({ heading, sectionText, numberedSteps }) => (
+      numberedSteps.length >= 2
+      && (
+        TASK_GRAPH_HEADING_PATTERN.test(heading?.title || '')
+        || TASK_DEPENDENCY_HINT_PATTERN.test(sectionText)
+      )
+    ));
+}
+
+function extractActorRoles(text = '') {
+  const matches = String(text || '').match(ACTOR_ROLE_PATTERN) || [];
+  return Array.from(
+    new Set(
+      matches.map((match) => {
+        const lowered = String(match).toLowerCase();
+        return lowered.endsWith('s') ? lowered.slice(0, -1) : lowered;
+      })
+    )
+  );
+}
+
+function buildTaskGraphContext(taskSection) {
+  const numberedSteps = Array.isArray(taskSection?.numberedSteps) ? taskSection.numberedSteps : [];
+  const stepMap = new Map(numberedSteps.map((step) => [step.number, step]));
+  const adjacency = new Map(numberedSteps.map((step) => [step.number, []]));
+  const reverseAdjacency = new Map(numberedSteps.map((step) => [step.number, []]));
+  const validEdges = [];
+  const invalidForwardDependencies = [];
+
+  numberedSteps.forEach((step) => {
+    step.dependencies.forEach((dependencyNumber) => {
+      if (!stepMap.has(dependencyNumber)) return;
+      adjacency.get(dependencyNumber).push(step.number);
+      reverseAdjacency.get(step.number).push(dependencyNumber);
+      validEdges.push({
+        dependencyNumber,
+        stepNumber: step.number
+      });
+      if (dependencyNumber > step.number) {
+        invalidForwardDependencies.push({
+          dependencyNumber,
+          stepNumber: step.number
+        });
+      }
+    });
+  });
+
+  return {
+    numberedSteps,
+    stepMap,
+    adjacency,
+    reverseAdjacency,
+    validEdges,
+    invalidForwardDependencies
+  };
+}
+
+function findTaskGraphCycle(adjacency) {
+  const visited = new Set();
+  const stack = [];
+  const inStack = new Set();
+
+  function visit(node) {
+    visited.add(node);
+    stack.push(node);
+    inStack.add(node);
+
+    for (const next of adjacency.get(node) || []) {
+      if (!visited.has(next)) {
+        const found = visit(next);
+        if (found) return found;
+      } else if (inStack.has(next)) {
+        const startIndex = stack.indexOf(next);
+        return stack.slice(startIndex).concat(next);
+      }
+    }
+
+    stack.pop();
+    inStack.delete(node);
+    return null;
+  }
+
+  for (const node of adjacency.keys()) {
+    if (visited.has(node)) continue;
+    const cycle = visit(node);
+    if (cycle) return cycle;
+  }
+
+  return null;
+}
+
+function collectStateTransitionGroups(documentIndex) {
+  const transitionGroups = new Map();
+
+  documentIndex.lines.forEach((line, index) => {
+    if (!/(->|\u2192)/.test(line)) return;
+
+    const tokens = Array.from(line.matchAll(/\b([A-Z][A-Z0-9_]{1,31})\b/g))
+      .map((match) => match[1].toUpperCase())
+      .filter((token) => token.length >= 3);
+    if (tokens.length < 2) return;
+
+    const section = getSectionForLine(documentIndex, index + 1);
+    const groupKey = section?.slug || '__document__';
+    if (!transitionGroups.has(groupKey)) {
+      transitionGroups.set(groupKey, {
+        section,
+        transitions: []
+      });
+    }
+
+    transitionGroups.get(groupKey).transitions.push({
+      lineNumber: index + 1,
+      line: String(line || '').trim(),
+      tokens
+    });
+  });
+
+  return Array.from(transitionGroups.values()).map(({ section, transitions }) => {
+    const first = transitions[0];
+    const last = transitions[transitions.length - 1];
+    const lineStart = section?.lineStart || first?.lineNumber || 1;
+    const lineEnd = section?.lineEnd || last?.lineNumber || lineStart;
+    const lines = [];
+
+    for (let lineNumber = lineStart; lineNumber <= lineEnd; lineNumber += 1) {
+      lines.push({
+        lineNumber,
+        text: documentIndex.lines[lineNumber - 1] || ''
+      });
+    }
+
+    return {
+      section,
+      transitions,
+      lineStart,
+      lineEnd,
+      sectionText: lines.map(({ text }) => text).join('\n')
+    };
   });
 }
 
@@ -814,6 +1300,286 @@ function runWorkflowOrderingRule(projectGraph, issues) {
   });
 }
 
+function runTaskGraphCycleRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectTaskGraphSections(documentIndex).forEach((taskSection) => {
+      const { heading, lineStart, lineEnd } = taskSection;
+      const graphContext = buildTaskGraphContext(taskSection);
+      if (graphContext.validEdges.length === 0) return;
+
+      const cycle = findTaskGraphCycle(graphContext.adjacency);
+      if (!cycle || cycle.length < 2) return;
+
+      const cycleSteps = Array.from(new Set(cycle))
+        .map((stepNumber) => graphContext.stepMap.get(stepNumber))
+        .filter(Boolean);
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'task_graph_cycle_rule',
+        detectorId: 'L18-01',
+        severity: 'high',
+        description: `Task graph section "${heading?.title || documentIndex.name}" in ${documentIndex.name} is not acyclic and therefore fails deterministic DAG validation.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: cycleSteps.map((step) => `${step.number}. ${step.text}`).join('\n'),
+        whyTriggered: `Explicit task dependencies create a cycle (${cycle.join(' -> ')}), so the documented task graph cannot be executed as a deterministic DAG.`,
+        evidenceSpans: cycleSteps.map((step, index) => createEvidenceSpan({
+          file: documentIndex.name,
+          section: heading?.title || '',
+          sectionSlug: heading?.slug || '',
+          lineStart: step.lineNumber,
+          role: index === 0 ? 'primary' : 'supporting',
+          source: 'task_graph_cycle_rule',
+          excerpt: `${step.number}. ${step.text}`
+        })),
+        deterministicFix: 'Remove or invert the cyclic dependency edges so the documented task graph becomes acyclic.',
+        recommendedFix: 'Rewrite the step prerequisites so every task has a deterministic predecessor chain without looping back to an earlier step.'
+      }));
+    });
+  });
+}
+
+function runTaskGraphDependencyOrderRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectTaskGraphSections(documentIndex).forEach((taskSection) => {
+      const { heading, lineStart, lineEnd } = taskSection;
+      const graphContext = buildTaskGraphContext(taskSection);
+      if (graphContext.invalidForwardDependencies.length === 0) return;
+
+      const evidenceSteps = Array.from(
+        new Set(
+          graphContext.invalidForwardDependencies.flatMap(({ dependencyNumber, stepNumber }) => [dependencyNumber, stepNumber])
+        )
+      )
+        .map((stepNumber) => graphContext.stepMap.get(stepNumber))
+        .filter(Boolean)
+        .sort((left, right) => left.number - right.number);
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'task_graph_dependency_order_rule',
+        detectorId: 'L18-04',
+        severity: 'medium',
+        description: `Task graph section "${heading?.title || documentIndex.name}" in ${documentIndex.name} declares dependencies that violate the documented execution order.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: graphContext.invalidForwardDependencies
+          .map(({ stepNumber, dependencyNumber }) => `Step ${stepNumber} depends on later step ${dependencyNumber}.`)
+          .join('\n'),
+        whyTriggered: 'One or more tasks depend on a numerically later step, which makes the stated step ordering non-deterministic.',
+        evidenceSpans: evidenceSteps.map((step, index) => createEvidenceSpan({
+          file: documentIndex.name,
+          section: heading?.title || '',
+          sectionSlug: heading?.slug || '',
+          lineStart: step.lineNumber,
+          role: index === 0 ? 'primary' : 'supporting',
+          source: 'task_graph_dependency_order_rule',
+          excerpt: `${step.number}. ${step.text}`
+        })),
+        deterministicFix: 'Renumber the tasks or rewrite the prerequisites so each task depends only on earlier prerequisite steps.',
+        recommendedFix: 'Make the numbered task order match the declared dependency order.'
+      }));
+    });
+  });
+}
+
+function runTaskGraphUnreachableNodeRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectTaskGraphSections(documentIndex).forEach((taskSection) => {
+      const { heading, lineStart, lineEnd } = taskSection;
+      const graphContext = buildTaskGraphContext(taskSection);
+      if (graphContext.validEdges.length === 0 || graphContext.numberedSteps.length < 3) return;
+
+      const firstStepNumber = Math.min(...graphContext.numberedSteps.map((step) => step.number));
+      const connectedToPrimary = new Set([firstStepNumber]);
+      const queue = [firstStepNumber];
+
+      while (queue.length > 0) {
+        const current = queue.shift();
+        const neighbors = [
+          ...(graphContext.adjacency.get(current) || []),
+          ...(graphContext.reverseAdjacency.get(current) || [])
+        ];
+
+        neighbors.forEach((neighbor) => {
+          if (connectedToPrimary.has(neighbor)) return;
+          connectedToPrimary.add(neighbor);
+          queue.push(neighbor);
+        });
+      }
+
+      const disconnectedSteps = graphContext.numberedSteps.filter((step) => (
+        step.number !== firstStepNumber
+        && !connectedToPrimary.has(step.number)
+      ));
+      if (disconnectedSteps.length === 0) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'task_graph_unreachable_node_rule',
+        detectorId: 'L20-01',
+        severity: 'medium',
+        description: `Task graph section "${heading?.title || documentIndex.name}" in ${documentIndex.name} contains disconnected task nodes outside the primary execution path.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: disconnectedSteps.map((step) => `${step.number}. ${step.text}`).join('\n'),
+        whyTriggered: `Task steps ${disconnectedSteps.map((step) => step.number).join(', ')} are disconnected from the primary task path rooted at step ${firstStepNumber}, making them unreachable from the declared execution graph.`,
+        evidenceSpans: disconnectedSteps.map((step, index) => createEvidenceSpan({
+          file: documentIndex.name,
+          section: heading?.title || '',
+          sectionSlug: heading?.slug || '',
+          lineStart: step.lineNumber,
+          role: index === 0 ? 'primary' : 'supporting',
+          source: 'task_graph_unreachable_node_rule',
+          excerpt: `${step.number}. ${step.text}`
+        })),
+        deterministicFix: 'Connect every task node to the primary execution path or split disconnected tasks into a separate explicitly independent graph.',
+        recommendedFix: 'Add the missing dependencies or rename the isolated steps as a separate workflow if they are intentionally independent.'
+      }));
+    });
+  });
+}
+
+function runTaskGraphPriorityPropagationRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectTaskGraphSections(documentIndex).forEach((taskSection) => {
+      const { heading, lineStart, lineEnd } = taskSection;
+      const graphContext = buildTaskGraphContext(taskSection);
+      if (graphContext.validEdges.length === 0) return;
+
+      const priorityViolations = graphContext.validEdges.filter(({ dependencyNumber, stepNumber }) => {
+        const dependencyStep = graphContext.stepMap.get(dependencyNumber);
+        const dependentStep = graphContext.stepMap.get(stepNumber);
+        return Number.isFinite(dependencyStep?.priority)
+          && Number.isFinite(dependentStep?.priority)
+          && dependentStep.priority < dependencyStep.priority;
+      });
+      if (priorityViolations.length === 0) return;
+
+      const evidenceSteps = Array.from(
+        new Set(priorityViolations.flatMap(({ dependencyNumber, stepNumber }) => [dependencyNumber, stepNumber]))
+      )
+        .map((stepNumber) => graphContext.stepMap.get(stepNumber))
+        .filter(Boolean)
+        .sort((left, right) => left.number - right.number);
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'task_graph_priority_propagation_rule',
+        detectorId: 'L10-07',
+        severity: 'medium',
+        description: `Task graph section "${heading?.title || documentIndex.name}" in ${documentIndex.name} contains priority inversions across dependent tasks.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: priorityViolations
+          .map(({ dependencyNumber, stepNumber }) => {
+            const dependencyStep = graphContext.stepMap.get(dependencyNumber);
+            const dependentStep = graphContext.stepMap.get(stepNumber);
+            return `Step ${stepNumber} (priority ${dependentStep.priority}) depends on step ${dependencyNumber} (priority ${dependencyStep.priority}).`;
+          })
+          .join('\n'),
+        whyTriggered: 'A higher-priority task depends on a lower-priority prerequisite, which creates deterministic priority drift inside the task graph.',
+        evidenceSpans: evidenceSteps.map((step, index) => createEvidenceSpan({
+          file: documentIndex.name,
+          section: heading?.title || '',
+          sectionSlug: heading?.slug || '',
+          lineStart: step.lineNumber,
+          role: index === 0 ? 'primary' : 'supporting',
+          source: 'task_graph_priority_propagation_rule',
+          excerpt: `${step.number}. ${step.text}`
+        })),
+        deterministicFix: 'Raise the priority of prerequisite tasks or lower the dependent task priority so the dependency chain propagates priority consistently.',
+        recommendedFix: 'Keep prerequisite tasks at least as urgent as the tasks that depend on them.'
+      }));
+    });
+  });
+}
+
+function runDependencyOwnershipRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectTaskGraphSections(documentIndex).forEach((taskSection) => {
+      const { heading, lineStart, lineEnd, sectionText } = taskSection;
+      const graphContext = buildTaskGraphContext(taskSection);
+      if (graphContext.validEdges.length === 0) return;
+      if (OWNER_BOUNDARY_PATTERN.test(sectionText) || extractActorRoles(sectionText).length > 0) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'dependency_ownership_rule',
+        detectorId: 'L18-13',
+        severity: 'medium',
+        description: `Task/dependency section "${heading?.title || documentIndex.name}" in ${documentIndex.name} defines dependency edges without an ownership boundary.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 500),
+        whyTriggered: 'The section defines dependencies between tasks but never states who owns, approves, or is responsible for the dependent work chain.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'dependency_ownership_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Assign an owner or authority boundary for the dependent task graph.',
+        recommendedFix: 'Document who owns the dependency chain and who is responsible when upstream prerequisites block downstream tasks.'
+      }));
+    });
+  });
+}
+
+function runDependencyLifecycleRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectTaskGraphSections(documentIndex).forEach((taskSection) => {
+      const { heading, lineStart, lineEnd, sectionText } = taskSection;
+      const graphContext = buildTaskGraphContext(taskSection);
+      if (graphContext.validEdges.length === 0) return;
+      if (DEPENDENCY_LIFECYCLE_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'dependency_lifecycle_rule',
+        detectorId: 'L18-11',
+        severity: 'medium',
+        description: `Task/dependency section "${heading?.title || documentIndex.name}" in ${documentIndex.name} omits dependency lifecycle semantics.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 500),
+        whyTriggered: 'The section defines task dependencies but never states how those dependencies are introduced, updated, versioned, removed, or retired over time.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'dependency_lifecycle_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Document setup, change, and retirement semantics for the declared dependencies.',
+        recommendedFix: 'Explain how dependent tasks are provisioned, updated, versioned, and removed instead of listing only the dependency edges.'
+      }));
+    });
+  });
+}
+
 function runMissingRollbackRule(projectGraph, issues) {
   projectGraph.projectIndex.documents.forEach((documentIndex) => {
     collectWorkflowSections(documentIndex).forEach(({ heading, lines, numberedSteps }) => {
@@ -892,35 +1658,313 @@ function runWorkflowExitCriteriaRule(projectGraph, issues) {
   });
 }
 
+function runGovernanceCheckpointRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectWorkflowSections(documentIndex).forEach(({ heading, lines, numberedSteps }) => {
+      if (numberedSteps.length < 2) return;
+
+      const sectionText = lines.map(({ text }) => text).join('\n');
+      if (!ACTION_PATTERN.test(sectionText) || GOVERNANCE_CHECKPOINT_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'governance_checkpoint_rule',
+        detectorId: 'L29-18',
+        severity: 'critical',
+        description: `Workflow section "${heading.title}" in ${documentIndex.name} performs execution steps without a documented governance checkpoint.`,
+        files: [documentIndex.name],
+        section: heading.title,
+        sectionSlug: heading.slug,
+        lineNumber: heading.lineStart,
+        lineEnd: heading.lineEnd,
+        evidence: sectionText.trim().slice(0, 500),
+        whyTriggered: 'The workflow includes state-changing or execution-driving steps but never documents approval, review, verification, sign-off, or policy/gate checkpoints.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading.title,
+            sectionSlug: heading.slug,
+            lineStart: heading.lineStart,
+            lineEnd: heading.lineEnd,
+            source: 'governance_checkpoint_rule',
+            excerpt: buildLineExcerpt(documentIndex, heading.lineStart, Math.min(heading.lineEnd, heading.lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Add an explicit governance checkpoint that states who reviews, approves, or verifies the workflow before mutation or release proceeds.',
+        recommendedFix: 'Document the policy gate, approval authority, and the exact step where the checkpoint is enforced.'
+      }));
+    });
+  });
+}
+
+function runGovernanceBypassRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectWorkflowSections(documentIndex).forEach(({ heading, lines, numberedSteps }) => {
+      if (numberedSteps.length < 2) return;
+
+      const sectionText = lines.map(({ text }) => text).join('\n');
+      if (!ACTION_PATTERN.test(sectionText) || !GOVERNANCE_BYPASS_PATTERN.test(sectionText)) return;
+      if (OVERRIDE_GUARD_PATTERN.test(sectionText) || AUDIT_TRAIL_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'governance_bypass_rule',
+        detectorId: 'L29-15',
+        severity: 'critical',
+        description: `Workflow section "${heading.title}" in ${documentIndex.name} describes a governance bypass path without bounded controls.`,
+        files: [documentIndex.name],
+        section: heading.title,
+        sectionSlug: heading.slug,
+        lineNumber: heading.lineStart,
+        lineEnd: heading.lineEnd,
+        evidence: sectionText.trim().slice(0, 500),
+        whyTriggered: 'The workflow allows bypass, override, approval-free, or direct-write behavior without documenting bounded override conditions, logging, or rollback controls.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading.title,
+            sectionSlug: heading.slug,
+            lineStart: heading.lineStart,
+            lineEnd: heading.lineEnd,
+            source: 'governance_bypass_rule',
+            excerpt: buildLineExcerpt(documentIndex, heading.lineStart, Math.min(heading.lineEnd, heading.lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Bound the bypass path with explicit override conditions, audit logging, and rollback requirements or remove the bypass behavior.',
+        recommendedFix: 'Document who can invoke the bypass, under what conditions, how it is recorded, and how the system is restored afterward.'
+      }));
+    });
+  });
+}
+
+function runAuditTrailRequirementRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectWorkflowSections(documentIndex).forEach(({ heading, lines, numberedSteps }) => {
+      if (numberedSteps.length < 2) return;
+
+      const sectionText = lines.map(({ text }) => text).join('\n');
+      if (!ACTION_PATTERN.test(sectionText) || AUDIT_TRAIL_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'audit_trail_requirement_rule',
+        detectorId: 'L44-10',
+        severity: 'critical',
+        description: `Workflow section "${heading.title}" in ${documentIndex.name} mutates state without an audit trail requirement.`,
+        files: [documentIndex.name],
+        section: heading.title,
+        sectionSlug: heading.slug,
+        lineNumber: heading.lineStart,
+        lineEnd: heading.lineEnd,
+        evidence: sectionText.trim().slice(0, 500),
+        whyTriggered: 'The workflow performs mutating or release-oriented actions but does not require receipts, audit logs, journals, or a comparable durable trace.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading.title,
+            sectionSlug: heading.slug,
+            lineStart: heading.lineStart,
+            lineEnd: heading.lineEnd,
+            source: 'audit_trail_requirement_rule',
+            excerpt: buildLineExcerpt(documentIndex, heading.lineStart, Math.min(heading.lineEnd, heading.lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Require a durable audit trail or receipt for every mutating step in this workflow.',
+        recommendedFix: 'Specify the exact log, receipt, or journal artifact that records the workflow actions and who can inspect it.'
+      }));
+    });
+  });
+}
+
+function runExecutionOwnerBoundaryRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectWorkflowSections(documentIndex).forEach(({ heading, lines, numberedSteps }) => {
+      if (numberedSteps.length < 2) return;
+
+      const sectionText = lines.map(({ text }) => text).join('\n');
+      const actorRoles = extractActorRoles(sectionText);
+      if (!ACTION_PATTERN.test(sectionText) || actorRoles.length < 2 || OWNER_BOUNDARY_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'execution_owner_boundary_rule',
+        detectorId: 'L44-13',
+        severity: 'high',
+        description: `Workflow section "${heading.title}" in ${documentIndex.name} involves multiple actors without a clear execution owner boundary.`,
+        files: [documentIndex.name],
+        section: heading.title,
+        sectionSlug: heading.slug,
+        lineNumber: heading.lineStart,
+        lineEnd: heading.lineEnd,
+        evidence: sectionText.trim().slice(0, 500),
+        whyTriggered: `The workflow mentions multiple actors (${actorRoles.join(', ')}) but never states who owns or authorizes the mutating execution step.`,
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading.title,
+            sectionSlug: heading.slug,
+            lineStart: heading.lineStart,
+            lineEnd: heading.lineEnd,
+            source: 'execution_owner_boundary_rule',
+            excerpt: buildLineExcerpt(documentIndex, heading.lineStart, Math.min(heading.lineEnd, heading.lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Assign a single authoritative execution owner or gatekeeping boundary for the workflow step that changes state.',
+        recommendedFix: 'Document which actor is allowed to execute the step and who, if anyone, may only request or review it.'
+      }));
+    });
+  });
+}
+
+function runControlPlaneOverrideConditionRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      if (!GOVERNANCE_BYPASS_PATTERN.test(sectionText)) return;
+      if (!(ACTION_PATTERN.test(sectionText) || /override|governance|authority|control/i.test(heading?.title || ''))) return;
+      if (OVERRIDE_GUARD_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'control_plane_override_condition_rule',
+        detectorId: 'L44-12',
+        severity: 'high',
+        description: `Section "${heading?.title || documentIndex.name}" in ${documentIndex.name} mentions override behavior without explicit control-plane conditions.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 500),
+        whyTriggered: 'The section mentions override or bypass behavior but does not specify the allowed conditions, bounded lifetime, justification, or compensating control.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'control_plane_override_condition_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Define the exact override conditions, authority boundary, and compensating controls for any control-plane override path.',
+        recommendedFix: 'State who can override, under what conditions, for how long, and what evidence or rollback is required.'
+      }));
+    });
+  });
+}
+
+function runRetryBackoffPolicyRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const headingTitle = heading?.title || '';
+      if (!API_RETRY_PATTERN.test(sectionText)) return;
+      if (!(ACTION_PATTERN.test(sectionText) || WORKFLOW_HEADING_PATTERN.test(headingTitle) || /\b(retry|recovery|failure|execution|pipeline|flow)\b/i.test(headingTitle))) return;
+      if (BACKOFF_POLICY_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'retry_backoff_policy_rule',
+        detectorId: 'L43-05',
+        severity: 'medium',
+        description: `Section "${headingTitle || documentIndex.name}" in ${documentIndex.name} allows retries without a deterministic backoff policy.`,
+        files: [documentIndex.name],
+        section: headingTitle,
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 500),
+        whyTriggered: 'The section documents retry behavior but does not define delays, backoff, jitter, or retry-budget limits.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: headingTitle,
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'retry_backoff_policy_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Define the retry limit, backoff strategy, and any jitter or cooldown parameters for the retried action.',
+        recommendedFix: 'Document the exact retry budget and timing sequence instead of mentioning retries abstractly.'
+      }));
+    });
+  });
+}
+
+function runParallelResourceOrderRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      if (!PARALLEL_EXECUTION_PATTERN.test(sectionText)) return;
+      if (!(WORKFLOW_HEADING_PATTERN.test(heading?.title || '') || TASK_GRAPH_HEADING_PATTERN.test(heading?.title || '') || ACTION_PATTERN.test(sectionText))) return;
+      if (RESOURCE_ORDERING_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'parallel_resource_order_rule',
+        detectorId: 'L43-08',
+        severity: 'high',
+        description: `Section "${heading?.title || documentIndex.name}" in ${documentIndex.name} allows parallel execution without a deterministic resource-ordering rule.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 500),
+        whyTriggered: 'The section allows concurrent or parallel execution but never defines serialization, queueing, exclusivity, or a comparable resource-ordering contract.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'parallel_resource_order_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Define how parallel work is serialized, queued, or otherwise ordered at the shared-resource boundary.',
+        recommendedFix: 'Document queueing, lock order, or exclusivity rules so concurrent execution cannot race on shared resources.'
+      }));
+    });
+  });
+}
+
+function runDeterministicReplayRequirementsRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectWorkflowSections(documentIndex).forEach(({ heading, lines, numberedSteps }) => {
+      if (numberedSteps.length < 2) return;
+
+      const sectionText = lines.map(({ text }) => text).join('\n');
+      if (!ACTION_PATTERN.test(sectionText) || REPLAY_REQUIREMENT_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'deterministic_replay_requirements_rule',
+        detectorId: 'L43-13',
+        severity: 'high',
+        description: `Workflow section "${heading.title}" in ${documentIndex.name} lacks deterministic replay prerequisites for its execution path.`,
+        files: [documentIndex.name],
+        section: heading.title,
+        sectionSlug: heading.slug,
+        lineNumber: heading.lineStart,
+        lineEnd: heading.lineEnd,
+        evidence: sectionText.trim().slice(0, 500),
+        whyTriggered: 'The workflow changes state or executes release-oriented steps but does not define replay inputs, receipts, or reproducible re-run prerequisites.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading.title,
+            sectionSlug: heading.slug,
+            lineStart: heading.lineStart,
+            lineEnd: heading.lineEnd,
+            source: 'deterministic_replay_requirements_rule',
+            excerpt: buildLineExcerpt(documentIndex, heading.lineStart, Math.min(heading.lineEnd, heading.lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Document the receipts, replay inputs, or rerun prerequisites needed to reproduce this workflow deterministically.',
+        recommendedFix: 'Specify the replay artifact set, stable inputs, or execution journal required for a reproducible rerun.'
+      }));
+    });
+  });
+}
+
 function runMissingTerminalStateRule(projectGraph, issues) {
   projectGraph.projectIndex.documents.forEach((documentIndex) => {
-    const transitionGroups = new Map();
-
-    documentIndex.lines.forEach((line, index) => {
-      if (!/(->|\u2192)/.test(line)) return;
-
-      const tokens = Array.from(line.matchAll(/\b([A-Z][A-Z0-9_]{1,31})\b/g))
-        .map((match) => match[1])
-        .filter((token) => token.length >= 3);
-      if (tokens.length < 2) return;
-
-      const section = getSectionForLine(documentIndex, index + 1);
-      const groupKey = section?.slug || '__document__';
-      if (!transitionGroups.has(groupKey)) {
-        transitionGroups.set(groupKey, {
-          section,
-          transitions: []
-        });
-      }
-
-      transitionGroups.get(groupKey).transitions.push({
-        lineNumber: index + 1,
-        line: line.trim(),
-        tokens
-      });
-    });
-
-    transitionGroups.forEach(({ section, transitions }) => {
+    collectStateTransitionGroups(documentIndex).forEach(({ section, transitions, lineStart, lineEnd }) => {
       if (!Array.isArray(transitions) || transitions.length === 0) return;
 
       const uniqueTokens = Array.from(new Set(
@@ -929,8 +1973,6 @@ function runMissingTerminalStateRule(projectGraph, issues) {
       if (uniqueTokens.length < 2) return;
       if (uniqueTokens.some((token) => TERMINAL_STATE_TOKEN_PATTERN.test(token))) return;
 
-      const first = transitions[0];
-      const last = transitions[transitions.length - 1];
       pushIssue(issues, createRuleIssue({
         ruleId: 'missing_terminal_state_rule',
         detectorId: 'L16-04',
@@ -939,8 +1981,8 @@ function runMissingTerminalStateRule(projectGraph, issues) {
         files: [documentIndex.name],
         section: section?.title || '',
         sectionSlug: section?.slug || '',
-        lineNumber: first.lineNumber,
-        lineEnd: last.lineNumber,
+        lineNumber: lineStart,
+        lineEnd,
         evidence: transitions.map((transition) => `${documentIndex.name}:${transition.lineNumber} ${transition.line}`).join('\n'),
         whyTriggered: 'The state-transition notation introduces multiple states, but none of the state symbols represent a terminal success, failure, abort, or completed exit state.',
         evidenceSpans: transitions.slice(0, 5).map((transition, index) => createEvidenceSpan({
@@ -954,6 +1996,324 @@ function runMissingTerminalStateRule(projectGraph, issues) {
         })),
         deterministicFix: 'Add explicit terminal states and show how the documented transitions reach them.',
         recommendedFix: 'Document terminal success, failure, or abort states for this state machine and connect the existing transitions to those endpoints.'
+      }));
+    });
+  });
+}
+
+function runCommitHashBindingRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectWorkflowSections(documentIndex).forEach(({ heading, lines, numberedSteps }) => {
+      if (numberedSteps.length < 2) return;
+
+      const sectionText = lines.map(({ text }) => text).join('\n');
+      if (!ACTION_PATTERN.test(sectionText) || COMMIT_HASH_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'commit_hash_binding_rule',
+        detectorId: 'L45-03',
+        severity: 'high',
+        description: `Workflow section "${heading.title}" in ${documentIndex.name} changes state without commit-hash or revision binding.`,
+        files: [documentIndex.name],
+        section: heading.title,
+        sectionSlug: heading.slug,
+        lineNumber: heading.lineStart,
+        lineEnd: heading.lineEnd,
+        evidence: sectionText.trim().slice(0, 500),
+        whyTriggered: 'The workflow performs state-changing or release-oriented actions but never binds the decision or mutation to a commit hash, revision id, change id, or equivalent immutable artifact reference.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading.title,
+            sectionSlug: heading.slug,
+            lineStart: heading.lineStart,
+            lineEnd: heading.lineEnd,
+            source: 'commit_hash_binding_rule',
+            excerpt: buildLineExcerpt(documentIndex, heading.lineStart, Math.min(heading.lineEnd, heading.lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Bind the workflow mutation or decision to an immutable commit, revision, or artifact identifier.',
+        recommendedFix: 'Document the exact commit hash, revision id, or artifact digest that governs the state-changing step.'
+      }));
+    });
+  });
+}
+
+function runStateTransitionPreconditionRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectStateTransitionGroups(documentIndex).forEach(({ section, transitions, lineStart, lineEnd, sectionText }) => {
+      if (!Array.isArray(transitions) || transitions.length === 0 || PRECONDITION_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'state_transition_precondition_rule',
+        detectorId: 'L45-15',
+        severity: 'high',
+        description: `State transitions in ${documentIndex.name}${section?.title ? ` section "${section.title}"` : ''} do not define transition preconditions.`,
+        files: [documentIndex.name],
+        section: section?.title || '',
+        sectionSlug: section?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: transitions.map((transition) => `${documentIndex.name}:${transition.lineNumber} ${transition.line}`).join('\n'),
+        whyTriggered: 'The state machine documents transitions, but it never states the guards, preconditions, or required prior conditions that permit those transitions.',
+        evidenceSpans: transitions.slice(0, 5).map((transition, index) => createEvidenceSpan({
+          file: documentIndex.name,
+          section: section?.title || '',
+          sectionSlug: section?.slug || '',
+          lineStart: transition.lineNumber,
+          role: index === 0 ? 'primary' : 'supporting',
+          source: 'state_transition_precondition_rule',
+          excerpt: transition.line
+        })),
+        deterministicFix: 'Add explicit guards or preconditions for each documented state transition.',
+        recommendedFix: 'Specify the exact state, event, or condition that must already hold before each transition may occur.'
+      }));
+    });
+  });
+}
+
+function runStateTransitionPostconditionRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectStateTransitionGroups(documentIndex).forEach(({ section, transitions, lineStart, lineEnd, sectionText }) => {
+      if (!Array.isArray(transitions) || transitions.length === 0 || POSTCONDITION_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'state_transition_postcondition_rule',
+        detectorId: 'L45-16',
+        severity: 'high',
+        description: `State transitions in ${documentIndex.name}${section?.title ? ` section "${section.title}"` : ''} do not define transition postconditions.`,
+        files: [documentIndex.name],
+        section: section?.title || '',
+        sectionSlug: section?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: transitions.map((transition) => `${documentIndex.name}:${transition.lineNumber} ${transition.line}`).join('\n'),
+        whyTriggered: 'The state machine documents transitions, but it never states the resulting persisted state, emitted effect, or post-transition guarantee.',
+        evidenceSpans: transitions.slice(0, 5).map((transition, index) => createEvidenceSpan({
+          file: documentIndex.name,
+          section: section?.title || '',
+          sectionSlug: section?.slug || '',
+          lineStart: transition.lineNumber,
+          role: index === 0 ? 'primary' : 'supporting',
+          source: 'state_transition_postcondition_rule',
+          excerpt: transition.line
+        })),
+        deterministicFix: 'Define the resulting state or postcondition for each documented transition.',
+        recommendedFix: 'Document the exact post-transition state, effect, or committed outcome that follows each transition.'
+      }));
+    });
+  });
+}
+
+function runUiStateMappingContractRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      if (!UI_COMPONENT_PATTERN.test(sectionText) || UI_STATE_PATTERN.test(sectionText) || /(->|\u2192)/.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'ui_state_mapping_contract_rule',
+        detectorId: 'L42-03',
+        severity: 'high',
+        description: `Section "${heading?.title || documentIndex.name}" in ${documentIndex.name} describes UI surfaces without mapping them to system state.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 500),
+        whyTriggered: 'The section names UI components such as buttons, forms, dialogs, or screens but does not describe the loading, success, error, pending, or state-projection contract behind them.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'ui_state_mapping_contract_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Map each documented UI surface to the backend or workflow state it represents, including failure and loading states where relevant.',
+        recommendedFix: 'Add explicit status, state, or projection rules for the documented UI elements instead of describing them as presentation-only controls.'
+      }));
+    });
+  });
+}
+
+function runIntentAmbiguityRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const headingTitle = heading?.title || '';
+      if (!OBJECTIVE_HEADING_PATTERN.test(headingTitle) && !/\b(objective|goal|intent|purpose|outcome)\b/i.test(sectionText)) return;
+      if (!(VAGUE_REQUIREMENT_PATTERN.test(sectionText) || OBJECTIVE_VAGUE_PATTERN.test(sectionText))) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'intent_ambiguity_rule',
+        detectorId: 'L10-10',
+        severity: 'medium',
+        description: `Intent section "${headingTitle || documentIndex.name}" in ${documentIndex.name} uses ambiguous outcome language that weakens user-intent interpretation.`,
+        files: [documentIndex.name],
+        section: headingTitle,
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 500),
+        whyTriggered: 'The objective or intent section relies on subjective wording such as "improve", "simple", or similarly vague terms without bounded success criteria.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: headingTitle,
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'intent_ambiguity_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Rewrite the objective into measurable user-intent outcomes with explicit scope or success conditions.',
+        recommendedFix: 'Replace subjective experience language with bounded user-intent outcomes or acceptance criteria.'
+      }));
+    });
+  });
+}
+
+function runChangeScopeBoundaryRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const headingTitle = heading?.title || '';
+      const relevantSection = CHANGE_SCOPE_HEADING_PATTERN.test(headingTitle)
+        || (CHANGE_ACTION_PATTERN.test(sectionText) && /\b(this (?:change|update|migration|rollout|refactor)|dashboard|workflow|ui|approval|state|system)\b/i.test(sectionText));
+      if (!relevantSection || SCOPE_BOUNDARY_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'change_scope_boundary_rule',
+        detectorId: 'L10-01',
+        severity: 'medium',
+        description: `Change-oriented section "${headingTitle || documentIndex.name}" in ${documentIndex.name} lacks an explicit modification boundary.`,
+        files: [documentIndex.name],
+        section: headingTitle,
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 500),
+        whyTriggered: 'The section describes updates or modifications but never states what is in scope, out of scope, unchanged, or otherwise bounded.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: headingTitle,
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'change_scope_boundary_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Add explicit in-scope, out-of-scope, or unchanged boundaries for the documented modification.',
+        recommendedFix: 'Document exactly which surfaces, states, or workflows are affected and which ones are intentionally not changed.'
+      }));
+    });
+  });
+}
+
+function runUserIntentConsistencyRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    const sections = collectDocumentSections(documentIndex);
+    const objectiveSections = sections.filter(({ heading, sectionText }) => (
+      OBJECTIVE_HEADING_PATTERN.test(heading?.title || '')
+      || /\b(objective|goal|intent|purpose|outcome)\b/i.test(sectionText)
+    ));
+    if (objectiveSections.length === 0) return;
+
+    objectiveSections.forEach((objectiveSection) => {
+      const objectiveMode = classifyInteractionMode(objectiveSection.sectionText);
+      const objectiveCommitsAutomatic = objectiveMode.automatic || objectiveMode.noApproval || objectiveMode.selfServe;
+      const objectiveCommitsManual = objectiveMode.manual || objectiveMode.approvalRequired;
+      if (!objectiveCommitsAutomatic && !objectiveCommitsManual) return;
+
+      const conflictingSection = sections.find((section) => {
+        if (section === objectiveSection) return false;
+        const sectionMode = classifyInteractionMode(section.sectionText);
+        if (!(sectionMode.automatic || sectionMode.manual || sectionMode.approvalRequired || sectionMode.noApproval)) return false;
+
+        return (
+          (objectiveCommitsAutomatic && (sectionMode.manual || sectionMode.approvalRequired))
+          || (objectiveCommitsManual && (sectionMode.automatic || sectionMode.noApproval))
+        );
+      });
+      if (!conflictingSection) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'user_intent_consistency_rule',
+        detectorId: 'L10-02',
+        severity: 'high',
+        description: `Intent section "${objectiveSection.heading?.title || documentIndex.name}" in ${documentIndex.name} conflicts with the documented interaction flow.`,
+        files: [documentIndex.name],
+        section: objectiveSection.heading?.title || '',
+        sectionSlug: objectiveSection.heading?.slug || '',
+        lineNumber: objectiveSection.lineStart,
+        lineEnd: conflictingSection.lineEnd,
+        evidence: `${objectiveSection.sectionText.trim().slice(0, 250)}\n---\n${conflictingSection.sectionText.trim().slice(0, 250)}`,
+        whyTriggered: 'The documented objective commits to one interaction mode, but another section describes the opposite user-control or approval pattern.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: objectiveSection.heading?.title || '',
+            sectionSlug: objectiveSection.heading?.slug || '',
+            lineStart: objectiveSection.lineStart,
+            lineEnd: objectiveSection.lineEnd,
+            role: 'primary',
+            source: 'user_intent_consistency_rule',
+            excerpt: buildLineExcerpt(documentIndex, objectiveSection.lineStart, Math.min(objectiveSection.lineEnd, objectiveSection.lineStart + 6))
+          }),
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: conflictingSection.heading?.title || '',
+            sectionSlug: conflictingSection.heading?.slug || '',
+            lineStart: conflictingSection.lineStart,
+            lineEnd: conflictingSection.lineEnd,
+            role: 'supporting',
+            source: 'user_intent_consistency_rule',
+            excerpt: buildLineExcerpt(documentIndex, conflictingSection.lineStart, Math.min(conflictingSection.lineEnd, conflictingSection.lineStart + 6))
+          })
+        ],
+        deterministicFix: 'Make the interaction flow match the stated user intent or rewrite the intent section to reflect the required approval/manual path.',
+        recommendedFix: 'Keep the goal statement and interaction flow aligned on whether the experience is self-serve, approval-free, manual, or review-gated.'
+      }));
+    });
+  });
+}
+
+function runInteractionConflictRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const mode = classifyInteractionMode(sectionText);
+      if (!(mode.automatic || mode.noApproval) || !(mode.manual || mode.approvalRequired)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'interaction_conflict_rule',
+        detectorId: 'L10-03',
+        severity: 'high',
+        description: `Interaction section "${heading?.title || documentIndex.name}" in ${documentIndex.name} mixes automatic and manual user-control requirements.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 500),
+        whyTriggered: 'The same section says the interaction is automatic or requires no user action while also requiring manual approval, clicks, review, or confirmation.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'interaction_conflict_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Choose one interaction contract for the section: fully automatic, or explicitly user-driven with named manual steps.',
+        recommendedFix: 'Remove the contradictory interaction statements or split them into separate modes with explicit conditions.'
       }));
     });
   });
@@ -1555,12 +2915,34 @@ export function runDeterministicRuleEngine({ files = [], projectGraph, diagnosti
   runDuplicateHeadingRule(projectGraph, issues);
   runBrokenCrossReferenceRule(projectGraph, issues);
   runRfc2119Rule(projectGraph, issues);
+  runAmbiguousRequirementWordingRule(projectGraph, issues);
   runDuplicatedRequirementRule(projectGraph, issues);
   runRequirementConflictResolutionRule(projectGraph, issues);
   runMissingTerminalStateRule(projectGraph, issues);
   runMissingRollbackRule(projectGraph, issues);
   runWorkflowOrderingRule(projectGraph, issues);
   runWorkflowExitCriteriaRule(projectGraph, issues);
+  runGovernanceCheckpointRule(projectGraph, issues);
+  runGovernanceBypassRule(projectGraph, issues);
+  runAuditTrailRequirementRule(projectGraph, issues);
+  runControlPlaneOverrideConditionRule(projectGraph, issues);
+  runExecutionOwnerBoundaryRule(projectGraph, issues);
+  runRetryBackoffPolicyRule(projectGraph, issues);
+  runParallelResourceOrderRule(projectGraph, issues);
+  runDeterministicReplayRequirementsRule(projectGraph, issues);
+  runCommitHashBindingRule(projectGraph, issues);
+  runStateTransitionPreconditionRule(projectGraph, issues);
+  runStateTransitionPostconditionRule(projectGraph, issues);
+  runTaskGraphCycleRule(projectGraph, issues);
+  runTaskGraphDependencyOrderRule(projectGraph, issues);
+  runTaskGraphUnreachableNodeRule(projectGraph, issues);
+  runTaskGraphPriorityPropagationRule(projectGraph, issues);
+  runDependencyOwnershipRule(projectGraph, issues);
+  runDependencyLifecycleRule(projectGraph, issues);
+  runIntentAmbiguityRule(projectGraph, issues);
+  runChangeScopeBoundaryRule(projectGraph, issues);
+  runUserIntentConsistencyRule(projectGraph, issues);
+  runInteractionConflictRule(projectGraph, issues);
   runUndefinedIdentifierRule(projectGraph, issues);
   runGlossaryBindingRule(projectGraph, issues);
   runApiReturnSchemaRule(projectGraph, issues);
@@ -1573,6 +2955,7 @@ export function runDeterministicRuleEngine({ files = [], projectGraph, diagnosti
   runSymbolConsistencyRule(projectGraph, issues);
   runFormalTerminologyRegistryRule(projectGraph, issues);
   runIoContractDeterminismRule(projectGraph, issues);
+  runUiStateMappingContractRule(projectGraph, issues);
   const detectorExecutionReceipts = buildDetectorExecutionReceipts(issues);
 
   if (diagnostics) {

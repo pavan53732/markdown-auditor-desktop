@@ -190,4 +190,60 @@ describe('Trust Signals', () => {
     expect(hybridApiIssue.proof_status).toBe('hybrid_supported');
     expect(hybridApiIssue.severity).toBe('high');
   });
+
+  it('caps model-only governance and execution-contract findings in formal control layers', () => {
+    const governanceIssue = enrichIssueWithTrustSignals({
+      detector_id: 'L29-18',
+      severity: 'critical',
+      category: 'governance',
+      description: 'Unanchored governance checkpoint concern',
+      detection_source: 'model'
+    });
+
+    const executionIssue = enrichIssueWithTrustSignals({
+      detector_id: 'L43-13',
+      severity: 'high',
+      category: 'deterministic_execution',
+      description: 'Unanchored deterministic replay concern',
+      detection_source: 'model'
+    });
+
+    const worldStateIssue = enrichIssueWithTrustSignals({
+      detector_id: 'L45-03',
+      severity: 'critical',
+      category: 'world_state_governance',
+      description: 'Unanchored commit binding concern',
+      detection_source: 'model'
+    });
+
+    expect(governanceIssue.proof_status).toBe('model_only');
+    expect(governanceIssue.severity).toBe('medium');
+    expect(executionIssue.proof_status).toBe('model_only');
+    expect(executionIssue.severity).toBe('medium');
+    expect(worldStateIssue.proof_status).toBe('model_only');
+    expect(worldStateIssue.severity).toBe('medium');
+  });
+
+  it('caps model-only dependency and execution-path findings in deterministic graph layers', () => {
+    const dependencyIssue = enrichIssueWithTrustSignals({
+      detector_id: 'L18-01',
+      severity: 'critical',
+      category: 'dependency_graph',
+      description: 'Unanchored dependency cycle concern',
+      detection_source: 'model'
+    });
+
+    const executionPathIssue = enrichIssueWithTrustSignals({
+      detector_id: 'L20-01',
+      severity: 'high',
+      category: 'execution_path',
+      description: 'Unanchored unreachable path concern',
+      detection_source: 'model'
+    });
+
+    expect(dependencyIssue.proof_status).toBe('model_only');
+    expect(dependencyIssue.severity).toBe('medium');
+    expect(executionPathIssue.proof_status).toBe('model_only');
+    expect(executionPathIssue.severity).toBe('medium');
+  });
 });

@@ -28,13 +28,14 @@ npm run build
 # Run Electron against built files
 npm run electron:dev
 
-# Create portable Windows package
+# Create portable + installer Windows packages
 npm run dist
 ```
 
 Current packaged output:
 
 - `dist-electron-v4\MarkdownAuditor-portable.exe`
+- `dist-electron-v4\MarkdownAuditor-setup-1.13.0.exe`
 
 ## Project Docs
 
@@ -59,10 +60,10 @@ Current packaged output:
 - deterministic normalization
 - four escalation rules
 - cross-layer validation
-- incremental cached reuse
+- fresh upload analysis with legacy cache cleanup controls
 - session diffing
 - root-cause grouping
-- 29 deterministic benchmark fixtures within a 184-test local suite across 17 files
+- 29 deterministic benchmark fixtures within a 230-test local suite across 23 files
 - enhanced taxonomy coverage helper with per-layer density, richness, subcategory, and bundle coverage analysis
 - strict issue schema enrichment including `failure_type`, `constraint_reference`, `contract_step`, `invariant_broken`, `authority_boundary`, `closed_world_status`, `analysis_agents`, and `deterministic_fix`
 - evidence-first issue fields including `document_anchors`, `detection_source`, `cross_file_links`, and `evidence_spans`
@@ -104,7 +105,7 @@ If you add or change any AI-returned field, update all affected layers:
 2. `src/lib/jsonRepair.js`
 3. `src/App.jsx`
 4. `src/components/IssueCard.jsx`
-5. export logic in `src/App.jsx`
+5. export/session/history workflow logic in `src/lib/exportFormats.js`, `src/lib/workbenchController.js`, and any related runtime callers
 6. docs that describe the schema
 
 ### When Changing Identity, Diffing, or Normalization
@@ -112,7 +113,7 @@ If you add or change any AI-returned field, update all affected layers:
 Be especially careful with:
 
 - single-batch vs multi-batch behavior
-- cached vs uncached behavior
+- fresh uploads vs legacy cache-management behavior
 - issue identity reuse across deduplication and diffing
 - chunked vs non-chunked files
 
@@ -193,7 +194,7 @@ Run through the relevant subset before closing a change:
 16. Issue cards show new traceability/remediation fields when present
 17. JSON / Markdown / CSV exports still open and contain expected fields
 18. Session save/load still works
-19. Cached reuse does not break multi-file analysis
+19. Fresh upload analysis does not accidentally reuse stale cached findings
 20. Known detector/category/subcategory combinations validate correctly
 21. Older sessions without newer taxonomy fields still load safely
 
@@ -211,9 +212,9 @@ Stop-Process -Name "electron" -Force -ErrorAction SilentlyContinue
 
 ### Packaging Notes
 
-- current build target is Windows portable
+- current build targets are Windows portable and NSIS installer
 - current output directory is `dist-electron-v4`
-- executable is not code-signed
+- packaged executables are not code-signed
 
 ### Additional Troubleshooting
 
@@ -324,8 +325,8 @@ This project is optimized for local maintenance and personal use.
 
 ### 3. Local Packaging
 - To create a fresh portable Windows executable, run `npm run dist`.
-- The current packaged output will be located in `dist-electron-v4\MarkdownAuditor-portable.exe`.
+- The current packaged outputs will be located in `dist-electron-v4\MarkdownAuditor-portable.exe` and `dist-electron-v4\MarkdownAuditor-setup-1.13.0.exe`.
 - It is recommended to perform a quick smoke test of the generated executable.
 
 ### 4. Security Note
-- The portable executable is **unsigned**. Windows SmartScreen may show a warning when running the `.exe` for the first time. Select "More info" -> "Run anyway" to proceed.
+- The packaged executables are **unsigned**. Windows SmartScreen may show a warning when running either `.exe` for the first time. Select "More info" -> "Run anyway" to proceed.

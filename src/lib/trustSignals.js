@@ -37,7 +37,16 @@ const SEVERITY_PRIORITY = {
   low: 0
 };
 
-const MODEL_ONLY_SEVERITY_CAP_LAYERS = new Set(['api_contract', 'specification_formalism']);
+const MODEL_ONLY_SEVERITY_CAP_LAYERS = new Set([
+  'api_contract',
+  'specification_formalism',
+  'dependency_graph',
+  'execution_path',
+  'governance',
+  'deterministic_execution',
+  'control_plane_authority',
+  'world_state_governance'
+]);
 
 export function buildTrustTier(score) {
   const numericScore = Number(score) || 0;

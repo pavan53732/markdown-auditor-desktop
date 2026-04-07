@@ -6,7 +6,7 @@ Windows desktop application for auditing Markdown documentation with AI across 5
 
 Markdown Intelligence Auditor is an Electron + React desktop app that accepts one or more `.md` / `.markdown` files, sends them to an OpenAI-compatible provider, and returns a structured report of documentation issues with severity, traceability, remediation guidance, and export support.
 
-The current build includes chunk-aware batching, deterministic multi-pass post-processing, deterministic Markdown indexing for line-and-section anchors, a deterministic cross-file Markdown project graph with first-class reference grouping for related-location enrichment, typed proof-chain enrichment with deterministic span-to-span edges, a staged deterministic rule engine, truthful receipt-backed runtime coverage accounting, fresh per-upload analysis, session diffing, root-cause grouping, a structured 701-detector catalog, and portable Windows packaging.
+The current build includes chunk-aware batching, deterministic multi-pass post-processing, deterministic Markdown indexing for line-and-section anchors, a deterministic cross-file Markdown project graph with first-class reference grouping for related-location enrichment, typed proof-chain enrichment with deterministic span-to-span edges, a staged deterministic rule engine, truthful receipt-backed runtime coverage accounting, fresh per-upload analysis, session diffing, root-cause grouping, a structured 701-detector catalog, and Windows packaging for both portable and installer flows.
 
 ## Current Capabilities
 
@@ -16,16 +16,16 @@ The current build includes chunk-aware batching, deterministic multi-pass post-p
 - 701 code-defined micro-detectors across all 53 layers, including the deep-spec core plus 8 universal governance and reproducibility extensions
 - Full structured detector metadata for all detectors, including trigger patterns, evidence requirements, false-positive guards, and `related_layers` cross-references for 255 detectors across the specification-intensive layers
 - Taxonomy benchmark fixtures supporting deterministic evaluation of taxonomy validation, normalization, and detector mapping correctness
-- 29 deterministic benchmark fixtures inside a 213-test local suite across 20 test files, including deep-spec and universal-audit scenarios for authority bypass, workflow skips, artifact reproducibility, toolchain isolation, recovery loop collapse, operational UX leakage, deterministic anchor enrichment, local rule-engine enforcement, cross-file graph linking, typed proof-chain generation, proof-chain fallback generation, multi-anchor cross-file resolution, unified layer numbering, explicit agent-ownership reconciliation, receipt-backed detector coverage, adaptive timeout handling, first-class analysis-mesh validation, deterministic trust-signal enrichment, proof-status/trust-basis validation, trust-tier/source-priority ordering, proof-aware severity gating, extracted report-format generation coverage, and extracted audit-pipeline coverage/escalation/merge coverage
+- 29 deterministic benchmark fixtures inside a 230-test local suite across 23 test files, including deep-spec and universal-audit scenarios for authority bypass, workflow skips, artifact reproducibility, toolchain isolation, recovery loop collapse, operational UX leakage, deterministic anchor enrichment, local rule-engine enforcement, cross-file graph linking, typed proof-chain generation, proof-chain fallback generation, multi-anchor cross-file resolution, unified layer numbering, explicit agent-ownership reconciliation, receipt-backed detector coverage, adaptive timeout handling, first-class analysis-mesh validation, deterministic trust-signal enrichment, proof-status/trust-basis validation, trust-tier/source-priority ordering, proof-aware severity gating, extracted report-format generation coverage, extracted audit-pipeline coverage/escalation/merge coverage, extracted agent-mesh runtime coverage, extracted session-service normalization coverage, extracted workbench-controller coverage, deterministic task-graph validation, deterministic interaction-intelligence validation, and deeper governance/execution/dependency deterministic-rule coverage
 - Programmatic system prompt generation from structured taxonomy and metadata
 - Agent-scoped prompt compaction for the 8-agent mesh: each pass receives a compact full-taxonomy detector index plus richer detector metadata for its focus layers
 - Taxonomy-driven runtime normalization: backfilling metadata and enforcing severity bounds
 - Deterministic Markdown indexing: heading parsing, section-range mapping, evidence-to-line anchor enrichment, heading-inference fallback, and multi-anchor cross-file resolution across loaded Markdown files
 - Deterministic cross-file project graph: terms, requirements, states, APIs, actors, workflows, and references are modeled across loaded Markdown files, with first-class reference groups and related-location enrichment for cross-file findings
 - Typed proof-chain enrichment: findings now preserve deterministic span-to-span edges such as `supports`, `contradicts`, `defines`, `depends_on`, `references`, and `violates`
-- Deterministic local rule engine with 23 receipt-backed rules for broken heading hierarchy, orphan sections, duplicate headings, broken cross-references, RFC2119 misuse, duplicated requirements, conflicting requirement strength, missing terminal states, missing rollback paths, workflow ordering gaps, workflow exit criteria, undefined identifiers, unresolved glossary bindings, API return/error/idempotency/rate-limit/auth contract gaps, terminology registry gaps, malformed terminology registries, symbol inconsistency, state-space definition gaps, and input/output contract determinism, with per-detector checked/clean/hit execution receipts
+- Deterministic local rule engine with 46 receipt-backed rules for broken heading hierarchy, orphan sections, duplicate headings, broken cross-references, RFC2119 misuse, ambiguous requirement wording, duplicated requirements, conflicting requirement strength, missing terminal states, missing rollback paths, workflow ordering gaps, workflow exit criteria, governance checkpoint gaps, governance bypass patterns, audit-trail omissions, execution-owner boundary gaps, control-plane override guard gaps, retry/backoff policy gaps, deterministic replay requirement gaps, commit-hash binding gaps, state-transition precondition/postcondition gaps, task-graph DAG/cycle detection, dependency-order validation, dependency ownership/lifecycle gaps, disconnected-node detection, priority propagation checks, parallel resource ordering gaps, intent ambiguity detection, change-scope boundary checks, user-intent consistency checks, interaction conflict detection, unresolved UI-to-system-state mappings, undefined identifiers, unresolved glossary bindings, API return/error/idempotency/rate-limit/auth contract gaps, terminology registry gaps, malformed terminology registries, symbol inconsistency, state-space definition gaps, and input/output contract determinism, with per-detector checked/clean/hit execution receipts
 - Truthful runtime detector coverage: result summaries and diagnostics now distinguish taxonomy-defined detectors from locally checked detectors, model finding-backed detectors, overall runtime-touched detectors, and untouched detectors instead of force-reporting full-catalog coverage
-- Deterministic trust scoring, proof status, trust basis, trust tiers, and evidence grading per issue, derived from rule backing, anchors, evidence spans, proof chains, cross-file links, and assumption leakage; trust tiers are heuristic runtime weights rather than formal proof, while proof status distinguishes deterministic proof, receipt-backed support, hybrid support, and model-only inference. In `api_contract` and `specification_formalism`, pure `model_only` findings are severity-capped so unsupported contract claims cannot overstate risk.
+- Deterministic trust scoring, proof status, trust basis, trust tiers, and evidence grading per issue, derived from rule backing, anchors, evidence spans, proof chains, cross-file links, and assumption leakage; trust tiers are heuristic runtime weights rather than formal proof, while proof status distinguishes deterministic proof, receipt-backed support, hybrid support, and model-only inference. In `api_contract`, `specification_formalism`, `dependency_graph`, `execution_path`, `governance`, `deterministic_execution`, `control_plane_authority`, and `world_state_governance`, pure `model_only` findings are severity-capped so unsupported contract claims cannot overstate risk.
 - Advanced semantic validation enforcing category -> subcategory -> detector consistency
 - Local regression suite verifying taxonomy integrity and normalization logic
 - Runtime taxonomy diagnostics surfaced in UI, Markdown reports, and JSON exports for pipeline observability
@@ -45,7 +45,6 @@ The current build includes chunk-aware batching, deterministic multi-pass post-p
 - Branded in-app surfaces, including the top bar, loading state, and self-contained Markdown report header
 - Four deterministic escalation rules applied during runtime normalization
 - Severity reporting: `critical`, `high`, `medium`, `low`
-- Incremental analysis using SHA-256 file hashing and local cached results
 - Session diffing with `new`, `resolved`, and `changed` issue states
 - **Local Audit History Workbench**: Search, filter by source/model, sort, label, and compare past audits in a local archive
 - Root-cause grouping in addition to the flat issue list
@@ -59,11 +58,13 @@ The current build includes chunk-aware batching, deterministic multi-pass post-p
 - Export to JSON, Markdown, and CSV
 - Session save/load support
 - Provider presets and advanced controls for timeout, retries, and token budget
-- Portable Windows `.exe` packaging
+- Windows `.exe` packaging for both portable and installer flows
 
 ## Quick Start
 
-1. Double-click the current packaged output at `dist-electron-v4\MarkdownAuditor-portable.exe`
+1. Choose one packaged output:
+   - `dist-electron-v4\MarkdownAuditor-portable.exe` for no-install portable use
+   - `dist-electron-v4\MarkdownAuditor-setup-1.13.0.exe` for installer flow with shortcuts and uninstall support
 2. Open Settings from the gear icon
 3. Configure a provider:
    - `baseURL`
@@ -167,7 +168,7 @@ Each runtime agent now also owns an explicit slice of the taxonomy via a determi
 - Deterministic local rule engine
 - Cross-file project graph analysis
 - Eight sequential agent passes per batch with deterministic prompt construction
-- Per-agent runtime validation and merge summarization using the analysis mesh contract instead of treating all agent passes as the same generic loop
+- Per-agent runtime validation and merge summarization using extracted runtime helpers instead of treating all agent passes as the same generic loop
 - Scoped prompt construction for agent passes: compact global detector index plus full focus-layer detector metadata
 - Issue deduplication with stable identity keys
 - Agent-result merge with `analysis_agent` / `analysis_agents` provenance
@@ -185,6 +186,7 @@ Each runtime agent now also owns an explicit slice of the taxonomy via a determi
 - Typed proof-chain enrichment adds deterministic span-to-span edges so related evidence is preserved as explicit proof links instead of only related locations
 - Unknown detector IDs are rejected during validation instead of being treated as soft warnings
 - Trust-tier semantics are surfaced as heuristic runtime weighting, and the deterministic local-rule layer is presented explicitly as a partial trust spine rather than full-catalog formal verification
+- Uploads are analyzed fresh on every run; the legacy file-backed cache remains available only for cleanup and backward-compatibility management
 
 ### Deterministic Escalation Rules
 
@@ -429,6 +431,7 @@ npm run dist
 Current packaged output:
 
 - `dist-electron-v4\MarkdownAuditor-portable.exe`
+- `dist-electron-v4\MarkdownAuditor-setup-1.13.0.exe`
 
 ## Technology Stack
 
@@ -453,13 +456,14 @@ Current packaged output:
 - **Current Version**: 1.13.0
 - **Verification Status**: Local verification performed via `npm run verify`
 - **Logic Status**: Verified all tests pass via `npm test`
-- **Packaging**: Local Windows packaging supported via `npm run dist`
-- **Signature**: This portable executable is currently **unsigned**.
+- **Packaging**: Local Windows packaging supported via `npm run dist`, `npm run dist:portable`, and `npm run dist:installer`
+- **Installer Flow**: The NSIS installer creates Start Menu/Desktop shortcuts, supports uninstall, and allows installation-directory selection
+- **Signature**: The portable executable and installer are currently **unsigned**.
 
 ## Notes
 
 - The app provides AI-generated remediation guidance, but it does not apply fixes automatically.
 - Local OpenAI-compatible endpoints such as Ollama are supported.
 - Known detector IDs are checked for taxonomy consistency, and unknown detector IDs are now rejected during AI-result validation instead of being allowed through as soft warnings.
-- The packaged executable is currently unsigned, so Windows may show trust warnings on some systems.
+- The packaged executable and installer are currently unsigned, so Windows may show trust warnings on some systems.
 - A dedicated license file is not currently present in the repo; add one before public distribution if needed.

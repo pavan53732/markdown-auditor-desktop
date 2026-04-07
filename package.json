@@ -13,7 +13,9 @@
     "verify": "npm test && npm run build",
     "electron:dev": "vite build && electron .",
     "electron:build": "vite build && electron-builder",
-    "dist": "vite build && electron-builder --win portable"
+    "dist": "vite build && electron-builder --win portable nsis",
+    "dist:portable": "vite build && electron-builder --win portable",
+    "dist:installer": "vite build && electron-builder --win nsis"
   },
   "build": {
     "appId": "com.local.markdownauditor",
@@ -32,6 +34,12 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "signAndEditExecutable": false,
@@ -39,6 +47,17 @@
     },
     "portable": {
       "artifactName": "MarkdownAuditor-portable.exe"
+    },
+    "nsis": {
+      "artifactName": "MarkdownAuditor-setup-${version}.exe",
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Markdown Intelligence Auditor",
+      "deleteAppDataOnUninstall": false
     },
     "files": [
       "dist/**/*",

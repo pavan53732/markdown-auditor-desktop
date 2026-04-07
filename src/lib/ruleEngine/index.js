@@ -79,6 +79,37 @@ const STATE_CONTEXT_PATTERN = /\b(state|session|context|snapshot|cursor|offset|c
 const DECISION_PATTERN = /\b(decide|decision|approve|reject|allow|deny|permit|block|authorize|escalate)\b/i;
 const EXPLICIT_DECISION_OWNER_PATTERN = /\b(decided by|decision by|approved by|authorized by|owned by|owner|operator|admin|controller|gatekeeper|authority)\b/i;
 const CONFLICTING_TRIGGER_PAIR_PATTERN = /\b(automatic(?:ally)?|system(?:-|\s)?triggered|on schedule|on startup)\b[\s\S]{0,240}\b(manual(?:ly)?|user(?:-|\s)?triggered|operator(?:-|\s)?triggered|on request)\b|\b(manual(?:ly)?|user(?:-|\s)?triggered|operator(?:-|\s)?triggered|on request)\b[\s\S]{0,240}\b(automatic(?:ally)?|system(?:-|\s)?triggered|on schedule|on startup)\b/i;
+const MEMORY_SECTION_PATTERN = /\b(memory|world model|psg|snapshot|state|session|cache|replica|checkpoint|read|write|commit)\b/i;
+const STATE_MUTATION_PATTERN = /\b(write|writes|written|mutate|mutates|mutation|update|updates|persist|persists|commit|commits|apply|applies|delete|deletes)\b/i;
+const STATE_READ_PATTERN = /\b(read|reads|query|queries|load|loads|fetch|fetches|lookup|observe|observes|scan|scans)\b/i;
+const SNAPSHOT_ISOLATION_GUARD_PATTERN = /\b(snapshot isolation|isolated snapshot|consistent snapshot|repeatable read|read-your-writes|snapshot version|read consistency|versioned snapshot)\b/i;
+const ATOMIC_WRITE_GUARD_PATTERN = /\b(atomic|atomically|all[- ]?or[- ]?nothing|transaction(?:al|ally)?|single commit|commit atomically|two-phase|compare-and-set|cas)\b/i;
+const MEMORY_CONFLICT_PATTERN = /\b(parallel|concurrent|simultaneous|multi[- ]writer|multiple writers?|shared state|replica|replicas|merge|conflict)\b/i;
+const MEMORY_CONFLICT_GUARD_PATTERN = /\b(conflict resolution|merge strategy|single writer|last write wins|optimistic concurrency|version check|lock|mutex|compare-and-set|cas|arbiter|resolver)\b/i;
+const READ_WRITE_ORDER_GUARD_PATTERN = /\b(read[- ]?your[- ]?writes|happens[- ]?before|read order|write order|ordered reads?|ordered writes?|monotonic|sequence(?:d| number)?|version order|commit order)\b/i;
+const TOOL_SECTION_PATTERN = /\b(tool|tools|command|commands|script|scripts|cli|shell|terminal|executor|runner|automation|invoke|invocation)\b/i;
+const TOOL_EXECUTION_PATTERN = /\b(run|invoke|execute|executed|execution|call|launch|trigger)\b/i;
+const SANDBOX_GUARD_PATTERN = /\b(sandbox|isolation|isolated|allowlist|whitelist|read-only|restricted|permission boundary|workspace boundary|container|jailed|scoped)\b/i;
+const TOOL_SIDE_EFFECT_GUARD_PATTERN = /\b(side[- ]?effect|dry run|preview|simulate|validation|validate|verification|verify|post-check|postcondition|diff|confirm change|confirm mutation)\b/i;
+const DIRECT_WRITE_TARGET_PATTERN = /\b(database|db|filesystem|file system|disk|registry|production|host|outside workspace|system path|shared state|global state)\b/i;
+const SAFE_TOOL_WRITE_GUARD_PATTERN = /\b(api|service|gateway|queue|sandbox|workspace|review|approval|allowlist|validated)\b/i;
+const TOOL_RESULT_GUARD_PATTERN = /\b(result validation|output validation|verify output|validate output|check exit code|success criteria|expected output|checksum|artifact digest|post-run verification|assert(?:ion)?|golden output)\b/i;
+const TOOL_RESULT_MENTION_PATTERN = /\b(output|outputs|result|results|artifact|artifacts|report|reports|exit code|status)\b/i;
+const CONTEXT_SECTION_PATTERN = /\b(context|retriev|history|prompt|messages|token budget|context window|evidence pack|source pack|memory injection)\b/i;
+const FULL_CONTEXT_PATTERN = /\b(all context|everything|entire history|full history|entire log|full log|all messages|all prior|full conversation|entire conversation|all sections|whole document)\b/i;
+const CONTEXT_CONTROL_PATTERN = /\b(token budget|context budget|top[- ]?k|limit|bounded|truncate|truncation|compression|compress|summarize|cap|dedupe|deduplicate|rank|rerank|window size|window limit)\b/i;
+const RETRIEVAL_PATTERN = /\b(retrieve|retrieval|search|lookup|fetch context|inject context|evidence pack|reference set|source set)\b/i;
+const RETRIEVAL_VALIDATION_GUARD_PATTERN = /\b(validate|validated|retrieval validation|source authority|citation|grounded|verify source|trusted source|authority)\b/i;
+const RETRIEVAL_RELEVANCE_GUARD_PATTERN = /\b(relevance|rank|ranking|rerank|score|scoring|top[- ]?k|priority order|most relevant|highest relevance)\b/i;
+const DEDUPE_GUARD_PATTERN = /\b(dedupe|deduplicate|duplicate context detection|collapse duplicates|unique only)\b/i;
+const REASONING_SECTION_PATTERN = /\b(reasoning|rationale|analysis|why|decision|decisions|conclusion|conclusions|inference|proof|evidence)\b/i;
+const CONCLUSION_PATTERN = /\b(therefore|thus|hence|we conclude|conclusion|this means|safe to|should proceed|approve|reject|critical|high risk|must block|must reject)\b/i;
+const EVIDENCE_GUARD_PATTERN = /\b(evidence|proof|source|citation|reference|quote|quoted|measured|observed|trace|log|artifact|based on|shown by|supported by|see\b)\b/i;
+const REASONING_TRACE_GUARD_PATTERN = /\b(because|therefore|thus|hence|given|if|then|so that|as a result|which means|step \d+|first|second|third)\b/i;
+const UNCERTAIN_INPUT_PATTERN = /\b(may|might|could|likely|possibly|approximate(?:ly)?|estimated|appears to|seems)\b/i;
+const UNCERTAINTY_GUARD_PATTERN = /\b(uncertain|unknown|confidence|confidence level|risk|caveat|assumption|pending verification|tentative|subject to|not guaranteed|needs confirmation)\b/i;
+const ABSOLUTE_ASSERTION_PATTERN = /\b(always|never|guarantee(?:d|s)?|certain(?:ly)?|definite(?:ly)?|must|will)\b/i;
+const ESCALATION_SEVERITY_PATTERN = /\b(critical|blocker|must block|must reject|unsafe|severe|escalate to critical|escalate to high)\b/i;
 
 export const DETERMINISTIC_RULE_DEFINITIONS = [
   {
@@ -744,6 +775,134 @@ export const DETERMINISTIC_RULE_DEFINITIONS = [
     subcategory: 'control plane separation violation',
     stage: 'governance_rules',
     owningAgent: 'architecture_authority_agent'
+  },
+  {
+    id: 'snapshot_isolation_rule',
+    detectorId: 'L35-03',
+    layer: 'memory_world_model',
+    subcategory: 'PSG snapshot isolation',
+    stage: 'memory_world_model_rules',
+    owningAgent: 'memory_world_state_agent'
+  },
+  {
+    id: 'memory_conflict_resolution_rule',
+    detectorId: 'L35-05',
+    layer: 'memory_world_model',
+    subcategory: 'memory conflict resolution',
+    stage: 'memory_world_model_rules',
+    owningAgent: 'memory_world_state_agent'
+  },
+  {
+    id: 'psg_write_atomicity_rule',
+    detectorId: 'L35-08',
+    layer: 'memory_world_model',
+    subcategory: 'PSG write atomicity',
+    stage: 'memory_world_model_rules',
+    owningAgent: 'memory_world_state_agent'
+  },
+  {
+    id: 'read_write_consistency_rule',
+    detectorId: 'L35-11',
+    layer: 'memory_world_model',
+    subcategory: 'PSG read consistency',
+    stage: 'memory_world_model_rules',
+    owningAgent: 'memory_world_state_agent'
+  },
+  {
+    id: 'tool_sandbox_isolation_rule',
+    detectorId: 'L37-14',
+    layer: 'tool_execution_safety',
+    subcategory: 'sandbox isolation boundaries',
+    stage: 'tool_execution_safety_rules',
+    owningAgent: 'tool_deployment_agent'
+  },
+  {
+    id: 'tool_side_effect_validation_rule',
+    detectorId: 'L37-08',
+    layer: 'tool_execution_safety',
+    subcategory: 'side-effect validation',
+    stage: 'tool_execution_safety_rules',
+    owningAgent: 'tool_deployment_agent'
+  },
+  {
+    id: 'tool_forbidden_write_rule',
+    detectorId: 'L37-11',
+    layer: 'tool_execution_safety',
+    subcategory: 'forbidden direct write paths',
+    stage: 'tool_execution_safety_rules',
+    owningAgent: 'tool_deployment_agent'
+  },
+  {
+    id: 'tool_result_validation_rule',
+    detectorId: 'L37-13',
+    layer: 'tool_execution_safety',
+    subcategory: 'tool_result_validation',
+    stage: 'tool_execution_safety_rules',
+    owningAgent: 'tool_deployment_agent'
+  },
+  {
+    id: 'context_duplicate_assembly_rule',
+    detectorId: 'L40-05',
+    layer: 'context_orchestration',
+    subcategory: 'deterministic context assembly',
+    stage: 'context_orchestration_rules',
+    owningAgent: 'memory_world_state_agent'
+  },
+  {
+    id: 'context_overflow_rule',
+    detectorId: 'L40-09',
+    layer: 'context_orchestration',
+    subcategory: 'context truncation',
+    stage: 'context_orchestration_rules',
+    owningAgent: 'memory_world_state_agent'
+  },
+  {
+    id: 'retrieval_validation_rule',
+    detectorId: 'L40-06',
+    layer: 'context_orchestration',
+    subcategory: 'retrieval validation',
+    stage: 'context_orchestration_rules',
+    owningAgent: 'memory_world_state_agent'
+  },
+  {
+    id: 'retrieval_relevance_rule',
+    detectorId: 'L40-13',
+    layer: 'context_orchestration',
+    subcategory: 'retrieval validation',
+    stage: 'context_orchestration_rules',
+    owningAgent: 'memory_world_state_agent'
+  },
+  {
+    id: 'reasoning_evidence_binding_rule',
+    detectorId: 'L41-01',
+    layer: 'reasoning_integrity',
+    subcategory: 'evidence binding',
+    stage: 'reasoning_integrity_rules',
+    owningAgent: 'reasoning_evidence_agent'
+  },
+  {
+    id: 'reasoning_trace_completeness_rule',
+    detectorId: 'L41-07',
+    layer: 'reasoning_integrity',
+    subcategory: 'reasoning trace completeness',
+    stage: 'reasoning_integrity_rules',
+    owningAgent: 'reasoning_evidence_agent'
+  },
+  {
+    id: 'uncertainty_propagation_rule',
+    detectorId: 'L41-14',
+    layer: 'reasoning_integrity',
+    subcategory: 'uncertainty propagation failure cases',
+    stage: 'reasoning_integrity_rules',
+    owningAgent: 'reasoning_evidence_agent'
+  },
+  {
+    id: 'evidence_free_escalation_rule',
+    detectorId: 'L41-16',
+    layer: 'reasoning_integrity',
+    subcategory: 'evidence-free escalation',
+    stage: 'reasoning_integrity_rules',
+    owningAgent: 'reasoning_evidence_agent'
   }
 ];
 
@@ -1377,6 +1536,29 @@ function collectDependencySections(documentIndex) {
       && DEPENDENCY_HEADING_PATTERN.test(sectionText)
     )
   ));
+}
+
+function collectSectionsMatchingPattern(documentIndex, pattern) {
+  return collectDocumentSections(documentIndex).filter(({ heading, sectionText }) => (
+    pattern.test(heading?.title || '')
+    || pattern.test(sectionText)
+  ));
+}
+
+function collectDuplicateNormalizedLines(lines = [], minimumLength = 18) {
+  const groups = new Map();
+
+  (Array.isArray(lines) ? lines : []).forEach(({ lineNumber, text }) => {
+    const normalized = normalizeComparableText(text);
+    if (!normalized || normalized.length < minimumLength) return;
+    if (!groups.has(normalized)) groups.set(normalized, []);
+    groups.get(normalized).push({
+      lineNumber,
+      text: String(text || '').trim()
+    });
+  });
+
+  return Array.from(groups.values()).filter((group) => group.length > 1);
 }
 
 function extractActorRoles(text = '') {
@@ -4227,6 +4409,605 @@ function runDecisionAuthorityAmbiguityRule(projectGraph, issues) {
   });
 }
 
+function runSnapshotIsolationRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectSectionsMatchingPattern(documentIndex, MEMORY_SECTION_PATTERN).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const sectionScope = `${heading?.title || ''}\n${sectionText}`;
+      const mutationAndReadSurface = STATE_MUTATION_PATTERN.test(sectionScope)
+        && (STATE_READ_PATTERN.test(sectionScope) || /\b(snapshot|cache|replica|session|psg)\b/i.test(sectionScope));
+      if (!mutationAndReadSurface) return;
+      if (SNAPSHOT_ISOLATION_GUARD_PATTERN.test(sectionScope)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'snapshot_isolation_rule',
+        detectorId: 'L35-03',
+        severity: 'high',
+        description: `Section "${heading?.title || documentIndex.name}" in ${documentIndex.name} mutates or reads shared state without an explicit snapshot-isolation contract.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section mixes state mutation and read behavior for memory, PSG, snapshots, cache, or session state but never defines isolated snapshot or read-consistency semantics.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'snapshot_isolation_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'State the snapshot-isolation or read-consistency rule that governs reads against mutating shared state.',
+        recommendedFix: 'Document whether readers observe isolated snapshots, read-your-writes behavior, or another explicit consistency contract.'
+      }));
+    });
+  });
+}
+
+function runMemoryConflictResolutionRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectSectionsMatchingPattern(documentIndex, MEMORY_SECTION_PATTERN).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const sectionScope = `${heading?.title || ''}\n${sectionText}`;
+      const sharedMutationContext = (MEMORY_CONFLICT_PATTERN.test(sectionScope) || extractActorRoles(sectionScope).length > 1)
+        && (STATE_MUTATION_PATTERN.test(sectionScope) || STATE_READ_PATTERN.test(sectionScope));
+      if (!sharedMutationContext) return;
+      if (MEMORY_CONFLICT_GUARD_PATTERN.test(sectionScope)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'memory_conflict_resolution_rule',
+        detectorId: 'L35-05',
+        severity: 'high',
+        description: `Section "${heading?.title || documentIndex.name}" in ${documentIndex.name} describes shared or concurrent memory access without conflict-resolution rules.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section allows concurrent, replicated, or multi-actor interaction with memory/world state but never defines how write or merge conflicts are resolved.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'memory_conflict_resolution_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Add a deterministic conflict-resolution strategy such as single-writer, version checks, compare-and-set, or a named merge policy.',
+        recommendedFix: 'Document exactly how concurrent or replicated state updates are arbitrated before they become durable.'
+      }));
+    });
+  });
+}
+
+function runPsgWriteAtomicityRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectSectionsMatchingPattern(documentIndex, MEMORY_SECTION_PATTERN).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const sectionScope = `${heading?.title || ''}\n${sectionText}`;
+      if (!STATE_MUTATION_PATTERN.test(sectionScope)) return;
+      if (!/\b(psg|state|snapshot|commit|memory|session|cache)\b/i.test(sectionScope)) return;
+      if (ATOMIC_WRITE_GUARD_PATTERN.test(sectionScope)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'psg_write_atomicity_rule',
+        detectorId: 'L35-08',
+        severity: 'high',
+        description: `Section "${heading?.title || documentIndex.name}" in ${documentIndex.name} mutates shared state without an atomic-write guarantee.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section describes writes, commits, or persistent state changes but never says they are atomic, transactional, or all-or-nothing.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'psg_write_atomicity_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Define the shared-state write as atomic, transactional, or all-or-nothing before describing the mutation path.',
+        recommendedFix: 'Document the precise atomicity boundary for PSG or memory writes, including whether partial writes are impossible.'
+      }));
+    });
+  });
+}
+
+function runReadWriteConsistencyRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectSectionsMatchingPattern(documentIndex, MEMORY_SECTION_PATTERN).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const sectionScope = `${heading?.title || ''}\n${sectionText}`;
+      if (!(STATE_READ_PATTERN.test(sectionScope) && STATE_MUTATION_PATTERN.test(sectionScope))) return;
+      if (READ_WRITE_ORDER_GUARD_PATTERN.test(sectionScope) || SNAPSHOT_ISOLATION_GUARD_PATTERN.test(sectionScope)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'read_write_consistency_rule',
+        detectorId: 'L35-11',
+        severity: 'high',
+        description: `Section "${heading?.title || documentIndex.name}" in ${documentIndex.name} mixes reads and writes without an ordering or read-consistency rule.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section performs reads and writes against shared state but never defines read ordering, commit ordering, or read-your-writes semantics.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'read_write_consistency_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Specify the read/write ordering rule, version ordering, or read-your-writes guarantee that keeps the state model consistent.',
+        recommendedFix: 'Document how readers observe writes and in what order committed state becomes visible.'
+      }));
+    });
+  });
+}
+
+function runToolSandboxIsolationRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectSectionsMatchingPattern(documentIndex, TOOL_SECTION_PATTERN).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const sectionScope = `${heading?.title || ''}\n${sectionText}`;
+      if (!(TOOL_EXECUTION_PATTERN.test(sectionScope) || ACTION_PATTERN.test(sectionScope))) return;
+      if (SANDBOX_GUARD_PATTERN.test(sectionScope)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'tool_sandbox_isolation_rule',
+        detectorId: 'L37-14',
+        severity: 'critical',
+        description: `Section "${heading?.title || documentIndex.name}" in ${documentIndex.name} invokes tools without a sandbox or execution-boundary contract.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section allows tool, command, script, or automation execution without stating isolation, permission, or workspace-boundary controls.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'tool_sandbox_isolation_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Add a sandbox, allowlist, or workspace-boundary rule for the tool execution path.',
+        recommendedFix: 'Document the exact isolation boundary, permission scope, and writable surface for each tool invocation.'
+      }));
+    });
+  });
+}
+
+function runToolSideEffectValidationRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectSectionsMatchingPattern(documentIndex, TOOL_SECTION_PATTERN).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const sectionScope = `${heading?.title || ''}\n${sectionText}`;
+      if (!(TOOL_EXECUTION_PATTERN.test(sectionScope) || ACTION_PATTERN.test(sectionScope))) return;
+      if (TOOL_SIDE_EFFECT_GUARD_PATTERN.test(sectionScope)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'tool_side_effect_validation_rule',
+        detectorId: 'L37-08',
+        severity: 'high',
+        description: `Section "${heading?.title || documentIndex.name}" in ${documentIndex.name} allows tool side effects without a validation step.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section executes tools that can change state, but it never defines dry-run, preview, diff, verification, or side-effect validation semantics.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'tool_side_effect_validation_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Insert a dry-run, diff, preview, or explicit validation step before or after tool side effects are accepted.',
+        recommendedFix: 'Document how tool-triggered mutations are verified before they are considered valid.'
+      }));
+    });
+  });
+}
+
+function runToolForbiddenWriteRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectSectionsMatchingPattern(documentIndex, TOOL_SECTION_PATTERN).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const sectionScope = `${heading?.title || ''}\n${sectionText}`;
+      if (!(STATE_MUTATION_PATTERN.test(sectionScope) && DIRECT_WRITE_TARGET_PATTERN.test(sectionScope))) return;
+      if (SAFE_TOOL_WRITE_GUARD_PATTERN.test(sectionScope)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'tool_forbidden_write_rule',
+        detectorId: 'L37-11',
+        severity: 'critical',
+        description: `Section "${heading?.title || documentIndex.name}" in ${documentIndex.name} permits direct tool writes to sensitive targets without a bounded mediation path.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section allows tool-driven writes to databases, host filesystems, production surfaces, or global state without routing them through an explicit safe boundary.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'tool_forbidden_write_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Route sensitive writes through a named service, gateway, queue, or approval boundary instead of allowing direct tool writes.',
+        recommendedFix: 'Document the mediated write path and forbid direct tool access to shared or production state.'
+      }));
+    });
+  });
+}
+
+function runToolResultValidationRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectSectionsMatchingPattern(documentIndex, TOOL_SECTION_PATTERN).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const sectionScope = `${heading?.title || ''}\n${sectionText}`;
+      if (!(TOOL_RESULT_MENTION_PATTERN.test(sectionScope) || TOOL_EXECUTION_PATTERN.test(sectionScope))) return;
+      if (TOOL_RESULT_GUARD_PATTERN.test(sectionScope)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'tool_result_validation_rule',
+        detectorId: 'L37-13',
+        severity: 'high',
+        description: `Section "${heading?.title || documentIndex.name}" in ${documentIndex.name} describes tool outputs without a result-validation contract.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section mentions tool outputs, artifacts, or execution results but never defines how those outputs are validated, checked, or verified.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'tool_result_validation_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Add explicit result-validation semantics such as exit-code checks, checksum verification, or expected-output assertions.',
+        recommendedFix: 'Document the success criteria and post-run verification that makes tool output trustworthy.'
+      }));
+    });
+  });
+}
+
+function runContextDuplicateAssemblyRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectSectionsMatchingPattern(documentIndex, CONTEXT_SECTION_PATTERN).forEach(({ heading, lines, sectionText, lineStart, lineEnd }) => {
+      const duplicateGroups = collectDuplicateNormalizedLines(lines);
+      if (duplicateGroups.length === 0) return;
+      if (DEDUPE_GUARD_PATTERN.test(sectionText) || CONTEXT_CONTROL_PATTERN.test(sectionText)) return;
+
+      const repeatedPreview = duplicateGroups
+        .slice(0, 3)
+        .map((group) => `"${group[0].text}"`)
+        .join(', ');
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'context_duplicate_assembly_rule',
+        detectorId: 'L40-05',
+        severity: 'medium',
+        description: `Section "${heading?.title || documentIndex.name}" in ${documentIndex.name} repeats context fragments without deterministic deduplication or assembly rules.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: `The context section repeats the same normalized content multiple times (${repeatedPreview || 'duplicate fragments detected'}) without documenting deduplication, compression, or deterministic context assembly behavior.`,
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'context_duplicate_assembly_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Define a deduplication or deterministic context-assembly policy before injecting repeated context fragments.',
+        recommendedFix: 'Document how duplicate context is collapsed, ranked, or discarded before it reaches the model.'
+      }));
+    });
+  });
+}
+
+function runContextOverflowRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectSectionsMatchingPattern(documentIndex, CONTEXT_SECTION_PATTERN).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      if (!FULL_CONTEXT_PATTERN.test(sectionText)) return;
+      if (CONTEXT_CONTROL_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'context_overflow_rule',
+        detectorId: 'L40-09',
+        severity: 'high',
+        description: `Section "${heading?.title || documentIndex.name}" in ${documentIndex.name} requires full-context inclusion without an overflow or truncation strategy.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section instructs the system to include all history, all messages, or full logs but never defines token budgets, truncation, compression, or ranking controls.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'context_overflow_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Add a deterministic overflow policy that bounds, truncates, compresses, or ranks context before assembly.',
+        recommendedFix: 'Document the token budget and the exact truncation or compression strategy for oversized context sets.'
+      }));
+    });
+  });
+}
+
+function runRetrievalValidationRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectSectionsMatchingPattern(documentIndex, CONTEXT_SECTION_PATTERN).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      if (!RETRIEVAL_PATTERN.test(sectionText)) return;
+      if (RETRIEVAL_VALIDATION_GUARD_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'retrieval_validation_rule',
+        detectorId: 'L40-06',
+        severity: 'medium',
+        description: `Section "${heading?.title || documentIndex.name}" in ${documentIndex.name} retrieves context without retrieval-validation rules.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section performs retrieval or context injection but never states how retrieved items are validated, grounded, or source-authorized before use.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'retrieval_validation_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Define how retrieval candidates are validated, source-ranked, or grounded before they enter assembled context.',
+        recommendedFix: 'Document the retrieval validation checks and the authority rules used to accept or reject retrieved context.'
+      }));
+    });
+  });
+}
+
+function runRetrievalRelevanceRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectSectionsMatchingPattern(documentIndex, CONTEXT_SECTION_PATTERN).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      if (!RETRIEVAL_PATTERN.test(sectionText)) return;
+      if (RETRIEVAL_RELEVANCE_GUARD_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'retrieval_relevance_rule',
+        detectorId: 'L40-13',
+        severity: 'low',
+        description: `Section "${heading?.title || documentIndex.name}" in ${documentIndex.name} retrieves context without a relevance-ranking rule.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section describes retrieval or context assembly but never defines how candidates are scored, ranked, or narrowed to the most relevant set.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'retrieval_relevance_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Add a relevance-ranking or top-k selection rule for retrieved context.',
+        recommendedFix: 'Document the ranking, scoring, or top-k policy that determines which retrieved items survive into the final context set.'
+      }));
+    });
+  });
+}
+
+function runReasoningEvidenceBindingRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectSectionsMatchingPattern(documentIndex, REASONING_SECTION_PATTERN).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const sectionScope = `${heading?.title || ''}\n${sectionText}`;
+      if (!(CONCLUSION_PATTERN.test(sectionScope) || DECISION_PATTERN.test(sectionScope))) return;
+      if (EVIDENCE_GUARD_PATTERN.test(sectionScope)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'reasoning_evidence_binding_rule',
+        detectorId: 'L41-01',
+        severity: 'high',
+        description: `Section "${heading?.title || documentIndex.name}" in ${documentIndex.name} makes reasoning or decision claims without bound evidence.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section reaches a conclusion, decision, or approval state but does not cite evidence, traces, sources, or supporting artifacts that bind the reasoning.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'reasoning_evidence_binding_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Attach explicit evidence, source references, traces, or supporting artifacts to the reasoning claim.',
+        recommendedFix: 'Document what evidence the decision relies on before asserting the conclusion.'
+      }));
+    });
+  });
+}
+
+function runReasoningTraceCompletenessRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectSectionsMatchingPattern(documentIndex, REASONING_SECTION_PATTERN).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const sectionScope = `${heading?.title || ''}\n${sectionText}`;
+      if (!(CONCLUSION_PATTERN.test(sectionScope) || DECISION_PATTERN.test(sectionScope))) return;
+      if (REASONING_TRACE_GUARD_PATTERN.test(sectionScope)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'reasoning_trace_completeness_rule',
+        detectorId: 'L41-07',
+        severity: 'medium',
+        description: `Section "${heading?.title || documentIndex.name}" in ${documentIndex.name} presents a conclusion without an explicit reasoning trace.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section asserts a reasoning outcome but does not show the intermediate logic, causal chain, or numbered rationale steps that make the trace reviewable.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'reasoning_trace_completeness_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Document the intermediate reasoning steps or causal chain that lead to the conclusion.',
+        recommendedFix: 'Add explicit because/therefore logic or numbered reasoning steps before presenting the decision outcome.'
+      }));
+    });
+  });
+}
+
+function runUncertaintyPropagationRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectSectionsMatchingPattern(documentIndex, REASONING_SECTION_PATTERN).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const sectionScope = `${heading?.title || ''}\n${sectionText}`;
+      if (!UNCERTAIN_INPUT_PATTERN.test(sectionScope) || !ABSOLUTE_ASSERTION_PATTERN.test(sectionScope)) return;
+      if (UNCERTAINTY_GUARD_PATTERN.test(sectionScope)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'uncertainty_propagation_rule',
+        detectorId: 'L41-14',
+        severity: 'high',
+        description: `Section "${heading?.title || documentIndex.name}" in ${documentIndex.name} mixes uncertainty with absolute conclusions without propagating the uncertainty.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section uses uncertain or estimated inputs but still makes guaranteed or absolute assertions without carrying uncertainty, caveats, or confidence semantics forward.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'uncertainty_propagation_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Carry uncertainty, caveats, or confidence levels through to the final conclusion instead of collapsing them into absolute claims.',
+        recommendedFix: 'Add explicit uncertainty propagation language or confidence bounds before presenting the final decision.'
+      }));
+    });
+  });
+}
+
+function runEvidenceFreeEscalationRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectSectionsMatchingPattern(documentIndex, REASONING_SECTION_PATTERN).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const sectionScope = `${heading?.title || ''}\n${sectionText}`;
+      if (!ESCALATION_SEVERITY_PATTERN.test(sectionScope)) return;
+      if (EVIDENCE_GUARD_PATTERN.test(sectionScope)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'evidence_free_escalation_rule',
+        detectorId: 'L41-16',
+        severity: 'high',
+        description: `Section "${heading?.title || documentIndex.name}" in ${documentIndex.name} escalates severity or blocks action without supporting evidence.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section labels something critical, blocking, unsafe, or high severity without referencing evidence, sources, traces, or proof that justify the escalation.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'evidence_free_escalation_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Bind escalation language to explicit evidence before classifying the issue as critical, blocking, or unsafe.',
+        recommendedFix: 'Document the specific evidence or trace that justifies the escalation decision.'
+      }));
+    });
+  });
+}
+
 function runUndefinedIdentifierRule(projectGraph, issues) {
   const definedTerms = new Set(projectGraph.glossaryOccurrences.map((occurrence) => normalizeComparableText(occurrence.label)));
   const headingTerms = new Set(projectGraph.headingOccurrences.map((occurrence) => normalizeComparableText(occurrence.label)));
@@ -4888,6 +5669,22 @@ export function runDeterministicRuleEngine({ files = [], projectGraph, diagnosti
   runConcurrencyModelAmbiguityRule(projectGraph, issues);
   runInputDeterminismGapRule(projectGraph, issues);
   runDecisionAuthorityAmbiguityRule(projectGraph, issues);
+  runSnapshotIsolationRule(projectGraph, issues);
+  runMemoryConflictResolutionRule(projectGraph, issues);
+  runPsgWriteAtomicityRule(projectGraph, issues);
+  runReadWriteConsistencyRule(projectGraph, issues);
+  runToolSandboxIsolationRule(projectGraph, issues);
+  runToolSideEffectValidationRule(projectGraph, issues);
+  runToolForbiddenWriteRule(projectGraph, issues);
+  runToolResultValidationRule(projectGraph, issues);
+  runContextDuplicateAssemblyRule(projectGraph, issues);
+  runContextOverflowRule(projectGraph, issues);
+  runRetrievalValidationRule(projectGraph, issues);
+  runRetrievalRelevanceRule(projectGraph, issues);
+  runReasoningEvidenceBindingRule(projectGraph, issues);
+  runReasoningTraceCompletenessRule(projectGraph, issues);
+  runUncertaintyPropagationRule(projectGraph, issues);
+  runEvidenceFreeEscalationRule(projectGraph, issues);
   runUndefinedIdentifierRule(projectGraph, issues);
   runGlossaryBindingRule(projectGraph, issues);
   runApiReturnSchemaRule(projectGraph, issues);

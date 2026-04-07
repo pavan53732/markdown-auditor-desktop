@@ -63,14 +63,14 @@ Generated packaged output:
 - detector-aware validation for known detector IDs
 - chunk-aware batching
 - deterministic Markdown indexing, evidence-span enrichment, and cross-file project graph analysis
-- deterministic local rule engine before agent synthesis with 83 receipt-backed rules
+- deterministic local rule engine before agent synthesis with 99 receipt-backed rules
 - deterministic normalization
 - four escalation rules
 - cross-layer validation
 - fresh upload analysis with legacy cache cleanup controls
 - session diffing
 - root-cause grouping
-- 29 deterministic benchmark fixtures within a 240-test local suite across 24 files
+- 29 deterministic benchmark fixtures within a 244-test local suite across 24 files
 - enhanced taxonomy coverage helper with per-layer density, richness, subcategory, and bundle coverage analysis
 - strict issue schema enrichment including `failure_type`, `constraint_reference`, `contract_step`, `invariant_broken`, `authority_boundary`, `closed_world_status`, `analysis_agents`, and `deterministic_fix`
 - evidence-first issue fields including `document_anchors`, `detection_source`, `cross_file_links`, and `evidence_spans`
@@ -315,7 +315,7 @@ Tests are located in `src/lib/__tests__` and cover:
 - **Prompt Generation**: Verifies the dynamic builder logic.
 - **Cache Service**: Verifies the file-backed persistence layer, atomic writes, and corruption handling.
 - **Diagnostics**: Verifies runtime observability metrics.
-- **Benchmark Suites**: `taxonomyBenchmark.test.js`, `deepSpecBenchmarks.test.js`, and `extendedUniversalBenchmarks.test.js` cover 29 benchmark fixtures, while the full local suite currently contains 240 tests across 24 files.
+- **Benchmark Suites**: `taxonomyBenchmark.test.js`, `deepSpecBenchmarks.test.js`, and `extendedUniversalBenchmarks.test.js` cover 29 benchmark fixtures, while the full local suite currently contains 244 tests across 24 files.
 - **Taxonomy Coverage Helper**: `taxonomyCoverageHelper.js` provides per-layer density analysis, richness metrics, subcategory coverage tracking, and bundle coverage analysis for comprehensive taxonomy observability.
 
 ALWAYS run tests before submitting changes to the taxonomy or prompt generation logic.

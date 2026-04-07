@@ -553,4 +553,122 @@ describe('Deterministic Rule Engine', () => {
     expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L43-02' && receipt.status === 'hit')).toBe(true);
     expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L43-04' && receipt.status === 'hit')).toBe(true);
   });
+
+  it('emits deterministic memory-world-model issues for snapshot isolation, atomicity, conflict resolution, and read/write consistency', () => {
+    const files = [
+      {
+        name: 'memory.md',
+        content: [
+          '# Memory Model',
+          '## PSG Snapshot',
+          'The runtime writes shared PSG state and reads from replica snapshots during release execution.',
+          'Operator and Agents update shared state in parallel while readers fetch session state.'
+        ].join('\n')
+      }
+    ];
+
+    const projectGraph = buildMarkdownProjectGraph(files);
+    const result = runDeterministicRuleEngine({ files, projectGraph });
+    const detectorIds = result.issues.map((issue) => issue.detector_id);
+
+    expect(detectorIds).toEqual(expect.arrayContaining([
+      'L35-03',
+      'L35-05',
+      'L35-08',
+      'L35-11'
+    ]));
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L35-03' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L35-05' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L35-08' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L35-11' && receipt.status === 'hit')).toBe(true);
+  });
+
+  it('emits deterministic tool-execution-safety issues for sandboxing, side-effect validation, forbidden writes, and tool result validation', () => {
+    const files = [
+      {
+        name: 'tools.md',
+        content: [
+          '# Tool Execution',
+          '## Deployment Script',
+          'The automation executes deployment scripts and writes directly to the production database and host filesystem.',
+          'Tool results and reports are emitted after the run.'
+        ].join('\n')
+      }
+    ];
+
+    const projectGraph = buildMarkdownProjectGraph(files);
+    const result = runDeterministicRuleEngine({ files, projectGraph });
+    const detectorIds = result.issues.map((issue) => issue.detector_id);
+
+    expect(detectorIds).toEqual(expect.arrayContaining([
+      'L37-14',
+      'L37-08',
+      'L37-11',
+      'L37-13'
+    ]));
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L37-14' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L37-08' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L37-11' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L37-13' && receipt.status === 'hit')).toBe(true);
+  });
+
+  it('emits deterministic context-orchestration issues for duplicate context, overflow, retrieval validation, and relevance ranking', () => {
+    const files = [
+      {
+        name: 'context.md',
+        content: [
+          '# Context Assembly',
+          '## Context Window',
+          'Include the entire history, all messages, and the full log for every request.',
+          'Context item: release approval state',
+          'Context item: release approval state',
+          'The system retrieves context from search and source packs before injection.'
+        ].join('\n')
+      }
+    ];
+
+    const projectGraph = buildMarkdownProjectGraph(files);
+    const result = runDeterministicRuleEngine({ files, projectGraph });
+    const detectorIds = result.issues.map((issue) => issue.detector_id);
+
+    expect(detectorIds).toEqual(expect.arrayContaining([
+      'L40-05',
+      'L40-09',
+      'L40-06',
+      'L40-13'
+    ]));
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L40-05' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L40-09' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L40-06' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L40-13' && receipt.status === 'hit')).toBe(true);
+  });
+
+  it('emits deterministic reasoning-integrity issues for evidence binding, trace completeness, uncertainty propagation, and evidence-free escalation', () => {
+    const files = [
+      {
+        name: 'reasoning.md',
+        content: [
+          '# Reasoning',
+          '## Decision Analysis',
+          'This seems likely to be critical and we must block the rollout.',
+          'Approve the release.'
+        ].join('\n')
+      }
+    ];
+
+    const projectGraph = buildMarkdownProjectGraph(files);
+    const result = runDeterministicRuleEngine({ files, projectGraph });
+    const detectorIds = result.issues.map((issue) => issue.detector_id);
+
+    expect(detectorIds).toEqual(expect.arrayContaining([
+      'L41-01',
+      'L41-07',
+      'L41-14',
+      'L41-16'
+    ]));
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L41-01' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L41-07' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L41-14' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L41-16' && receipt.status === 'hit')).toBe(true);
+  });
 });

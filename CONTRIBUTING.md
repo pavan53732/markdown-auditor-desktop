@@ -63,17 +63,18 @@ Generated packaged output:
 - detector-aware validation for known detector IDs
 - chunk-aware batching
 - deterministic Markdown indexing, evidence-span enrichment, and cross-file project graph analysis
-- deterministic local rule engine before agent synthesis
+- deterministic local rule engine before agent synthesis with 83 receipt-backed rules
 - deterministic normalization
 - four escalation rules
 - cross-layer validation
 - fresh upload analysis with legacy cache cleanup controls
 - session diffing
 - root-cause grouping
-- 29 deterministic benchmark fixtures within a 230-test local suite across 23 files
+- 29 deterministic benchmark fixtures within a 240-test local suite across 24 files
 - enhanced taxonomy coverage helper with per-layer density, richness, subcategory, and bundle coverage analysis
 - strict issue schema enrichment including `failure_type`, `constraint_reference`, `contract_step`, `invariant_broken`, `authority_boundary`, `closed_world_status`, `analysis_agents`, and `deterministic_fix`
 - evidence-first issue fields including `document_anchors`, `detection_source`, `cross_file_links`, and `evidence_spans`
+- layer-level runtime detector coverage reporting in the summary dashboard and Markdown exports
 
 ### UI
 
@@ -174,7 +175,7 @@ Use this only when an issue family is genuinely new. If the gap can be captured 
 
 ### Adding or Changing Export Formats
 
-1. Update export logic in `src/App.jsx`
+1. Update export logic in `src/lib/exportFormats.js` and any runtime callers such as `src/lib/workbenchController.js`
 2. Ensure any new issue fields are serialized safely
 3. Verify saved output opens cleanly
 4. Update `README.md` if user-visible export behavior changed
@@ -234,8 +235,8 @@ If packaging fails because assets or paths changed:
 
 If a schema change appears in the UI but not in exports:
 
-- inspect Markdown export in `src/App.jsx`
-- inspect CSV export in `src/App.jsx`
+- inspect report generation in `src/lib/exportFormats.js`
+- inspect export/session workflow wiring in `src/lib/workbenchController.js`
 - inspect issue rendering in `src/components/IssueCard.jsx`
 
 ## Issue Field Reference
@@ -314,7 +315,7 @@ Tests are located in `src/lib/__tests__` and cover:
 - **Prompt Generation**: Verifies the dynamic builder logic.
 - **Cache Service**: Verifies the file-backed persistence layer, atomic writes, and corruption handling.
 - **Diagnostics**: Verifies runtime observability metrics.
-- **Benchmark Suites**: `taxonomyBenchmark.test.js`, `deepSpecBenchmarks.test.js`, and `extendedUniversalBenchmarks.test.js` cover 29 benchmark fixtures, while the full local suite currently contains 184 tests across 17 files.
+- **Benchmark Suites**: `taxonomyBenchmark.test.js`, `deepSpecBenchmarks.test.js`, and `extendedUniversalBenchmarks.test.js` cover 29 benchmark fixtures, while the full local suite currently contains 240 tests across 24 files.
 - **Taxonomy Coverage Helper**: `taxonomyCoverageHelper.js` provides per-layer density analysis, richness metrics, subcategory coverage tracking, and bundle coverage analysis for comprehensive taxonomy observability.
 
 ALWAYS run tests before submitting changes to the taxonomy or prompt generation logic.

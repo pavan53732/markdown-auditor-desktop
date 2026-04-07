@@ -55,7 +55,24 @@ describe('Diagnostics Persistence Helpers', () => {
           detectors_runtime_touched: 12,
           detectors_model_finding_backed: 4,
           detectors_locally_checked: 6,
-          detectors_untouched: 689
+          detectors_untouched: 689,
+          layer_coverage: [
+            {
+              layer_id: 'api_contract',
+              layer_label: 'API Contract',
+              layer_number: 17,
+              detectors_defined: 12,
+              deterministic_catalog_detectors: 5,
+              model_driven_catalog_detectors: 7,
+              detectors_finding_backed: 2,
+              detectors_model_finding_backed: 1,
+              detectors_locally_checked: 3,
+              detectors_runtime_touched: 4,
+              detectors_untouched: 8,
+              deterministic_catalog_coverage_percent: 60,
+              model_driven_catalog_coverage_percent: 14.3
+            }
+          ]
         },
         issues: [
           {
@@ -92,6 +109,8 @@ describe('Diagnostics Persistence Helpers', () => {
     expect(markdown).toContain('**Trust Tier:** very_strong');
     expect(markdown).toContain('**Evidence Grade:** A');
     expect(markdown).toContain('**Trust Basis:** document_anchor, evidence_span, proof_chain');
+    expect(markdown).toContain('Layer Coverage Snapshot');
+    expect(markdown).toContain('API Contract');
   });
 
   it('buildCsvReport should serialize trust and evidence columns', () => {

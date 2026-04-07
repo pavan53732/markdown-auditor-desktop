@@ -6,6 +6,8 @@ import {
 } from './markdownIndex.js';
 import { enrichIssueWithProofChains } from './evidenceGraph.js';
 import { buildMarkdownProjectGraph, enrichIssueWithProjectGraph } from './projectGraph.js';
+import { DETERMINISTIC_RULE_DEFINITIONS } from './ruleEngine/index.js';
+import { buildRuntimeDetectorCoverage } from './detectorCoverage.js';
 import { enrichIssueWithTrustSignals, summarizeIssueTrustSignals } from './trustSignals.js';
 import { ORDERED_LAYER_IDS, getLayerIdByNumber } from './layers.js';
 
@@ -1250,6 +1252,7 @@ export function createInitialDiagnostics() {
     model_driven_catalog_detector_count: 0,
     deterministic_catalog_coverage_percent: 0,
     model_driven_catalog_coverage_percent: 0,
+    runtime_layer_coverage: [],
     analysis_mesh_focus_layer_hit_count: 0,
     analysis_mesh_focus_subcategory_hit_count: 0,
     analysis_mesh_owned_layer_hit_count: 0,
@@ -1310,6 +1313,9 @@ export function mergeDiagnostics(savedDiagnostics = {}) {
   return {
     ...base,
     ...savedDiagnostics,
+    runtime_layer_coverage: Array.isArray(savedDiagnostics.runtime_layer_coverage)
+      ? savedDiagnostics.runtime_layer_coverage.filter((row) => row && typeof row === 'object')
+      : [],
     deterministic_rule_detector_receipts: Array.isArray(savedDiagnostics.deterministic_rule_detector_receipts)
       ? savedDiagnostics.deterministic_rule_detector_receipts.filter((receipt) => receipt && typeof receipt === 'object')
       : [],
@@ -1545,53 +1551,29 @@ export const getIssueIdentity = (issue) => {
   return `${detectorId}::${primaryFile}::${section}::fp:${hashDescription(fingerprintSource)}`;
 };
 
-function collectRuntimeCoverageDetectorIdsFromIssues(issues = [], predicate = null) {
-  const detectorIds = new Set();
-
-  (Array.isArray(issues) ? issues : []).forEach((issue) => {
-    if (typeof predicate === 'function' && !predicate(issue)) return;
-    const detectorId = typeof issue?.detector_id === 'string' ? issue.detector_id.trim() : '';
-    if (detectorId) {
-      detectorIds.add(detectorId);
-    }
-  });
-
-  return Array.from(detectorIds);
-}
-
-function collectRuntimeCoverageDetectorIdsFromReceipts(receipts = []) {
-  const detectorIds = new Set();
-
-  (Array.isArray(receipts) ? receipts : []).forEach((receipt) => {
-    const detectorId = typeof receipt?.detector_id === 'string' ? receipt.detector_id.trim() : '';
-    if (detectorId) {
-      detectorIds.add(detectorId);
-    }
-  });
-
-  return Array.from(detectorIds);
-}
-
 function buildRuntimeCoverageSnapshot(issues = [], detectorExecutionReceipts = []) {
-  const findingBackedDetectorIds = collectRuntimeCoverageDetectorIdsFromIssues(issues);
-  const modelFindingBackedDetectorIds = collectRuntimeCoverageDetectorIdsFromIssues(
+  const coverage = buildRuntimeDetectorCoverage({
     issues,
-    (issue) => String(issue?.detection_source || '').trim().toLowerCase() !== 'rule'
-  );
-  const localCheckedDetectorIds = collectRuntimeCoverageDetectorIdsFromReceipts(detectorExecutionReceipts);
-  const runtimeTouchedDetectorIds = Array.from(
-    new Set([...findingBackedDetectorIds, ...localCheckedDetectorIds])
-  );
+    deterministicReceipts: detectorExecutionReceipts,
+    detectorMetadata: DETECTOR_METADATA,
+    totalDetectorCount: TOTAL_DETECTOR_COUNT,
+    deterministicRuleDefinitions: DETERMINISTIC_RULE_DEFINITIONS
+  });
 
   return {
-    detectors_defined: TOTAL_DETECTOR_COUNT,
-    detectors_finding_backed: findingBackedDetectorIds.length,
-    detectors_model_finding_backed: modelFindingBackedDetectorIds.length,
-    detectors_locally_checked: localCheckedDetectorIds.length,
-    detectors_runtime_touched: runtimeTouchedDetectorIds.length,
-    detectors_untouched: Math.max(0, TOTAL_DETECTOR_COUNT - runtimeTouchedDetectorIds.length),
-    detectors_evaluated: runtimeTouchedDetectorIds.length,
-    detectors_skipped: Math.max(0, TOTAL_DETECTOR_COUNT - runtimeTouchedDetectorIds.length),
+    detectors_defined: coverage.detectorsDefined,
+    detectors_finding_backed: coverage.findingBackedDetectorCount,
+    detectors_model_finding_backed: coverage.modelFindingBackedDetectorCount,
+    detectors_locally_checked: coverage.localCheckedDetectorCount,
+    detectors_runtime_touched: coverage.runtimeTouchedDetectorCount,
+    detectors_untouched: coverage.untouchedDetectorCount,
+    detectors_evaluated: coverage.runtimeTouchedDetectorCount,
+    detectors_skipped: coverage.untouchedDetectorCount,
+    deterministic_catalog_detector_count: coverage.deterministicCatalogDetectorCount,
+    model_driven_catalog_detector_count: coverage.modelDrivenCatalogDetectorCount,
+    deterministic_catalog_coverage_percent: coverage.deterministicCatalogCoveragePercent,
+    model_driven_catalog_coverage_percent: coverage.modelDrivenCatalogCoveragePercent,
+    layer_coverage: coverage.layerCoverage,
     detector_coverage_mode: 'receipt_backed_and_finding_backed'
   };
 }
@@ -1719,6 +1701,7 @@ export function normalizeLoadedSession(session) {
   diagnostics.model_driven_catalog_detector_count = normalized.results.summary?.model_driven_catalog_detector_count || 0;
   diagnostics.deterministic_catalog_coverage_percent = normalized.results.summary?.deterministic_catalog_coverage_percent || 0;
   diagnostics.model_driven_catalog_coverage_percent = normalized.results.summary?.model_driven_catalog_coverage_percent || 0;
+  diagnostics.runtime_layer_coverage = runtimeCoverage.layer_coverage;
   diagnostics.analysis_mesh_focus_layer_hit_count = normalized.results.analysis_mesh?.focus_layer_hits || 0;
   diagnostics.analysis_mesh_focus_subcategory_hit_count = normalized.results.analysis_mesh?.focus_subcategory_hits || 0;
   diagnostics.analysis_mesh_owned_layer_hit_count = normalized.results.analysis_mesh?.owned_layer_hits || 0;
@@ -1744,6 +1727,7 @@ export function normalizeLoadedSession(session) {
     model_driven_catalog_detector_count: diagnostics.model_driven_catalog_detector_count,
     deterministic_catalog_coverage_percent: diagnostics.deterministic_catalog_coverage_percent,
     model_driven_catalog_coverage_percent: diagnostics.model_driven_catalog_coverage_percent,
+    layer_coverage: runtimeCoverage.layer_coverage,
     average_trust_score: trustSummary.averageTrustScore,
     high_trust_issue_count: trustSummary.highTrustIssueCount,
     strong_evidence_issue_count: trustSummary.strongEvidenceIssueCount,

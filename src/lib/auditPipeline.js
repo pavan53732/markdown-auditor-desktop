@@ -1,104 +1,22 @@
 import { normalizeEvidenceSpans } from './markdownIndex';
 import { normalizeProofChains } from './evidenceGraph';
-import { TOTAL_DETECTOR_COUNT, getIssueIdentity } from './detectorMetadata';
+import { DETECTOR_METADATA, TOTAL_DETECTOR_COUNT, getIssueIdentity } from './detectorMetadata';
 import { DETERMINISTIC_RULE_DEFINITIONS } from './ruleEngine/index';
+import {
+  buildRuntimeDetectorCoverage as buildRuntimeDetectorCoverageWithMetadata,
+  applyRuntimeDetectorCoverageSummary
+} from './detectorCoverage';
 
-const DETERMINISTIC_CATALOG_DETECTOR_COUNT = Array.from(
-  new Set(
-    (Array.isArray(DETERMINISTIC_RULE_DEFINITIONS) ? DETERMINISTIC_RULE_DEFINITIONS : [])
-      .map((rule) => (typeof rule?.detectorId === 'string' ? rule.detectorId.trim() : ''))
-      .filter(Boolean)
-  )
-).length;
-const MODEL_DRIVEN_CATALOG_DETECTOR_COUNT = Math.max(
-  0,
-  TOTAL_DETECTOR_COUNT - DETERMINISTIC_CATALOG_DETECTOR_COUNT
-);
-
-function toCoveragePercent(covered, total) {
-  if (!Number.isFinite(Number(total)) || Number(total) <= 0) return 0;
-  return Number((((Number(covered) || 0) / Number(total)) * 100).toFixed(1));
-}
-
-function collectUniqueDetectorIds(issues = [], predicate = null) {
-  const detectorIds = new Set();
-
-  (Array.isArray(issues) ? issues : []).forEach((issue) => {
-    if (typeof predicate === 'function' && !predicate(issue)) return;
-
-    const detectorId = typeof issue?.detector_id === 'string' ? issue.detector_id.trim() : '';
-    if (detectorId) {
-      detectorIds.add(detectorId);
-    }
-  });
-
-  return Array.from(detectorIds).sort((a, b) => a.localeCompare(b));
-}
-
-function collectReceiptDetectorIds(receipts = []) {
-  const detectorIds = new Set();
-
-  (Array.isArray(receipts) ? receipts : []).forEach((receipt) => {
-    const detectorId = typeof receipt?.detector_id === 'string' ? receipt.detector_id.trim() : '';
-    if (detectorId) {
-      detectorIds.add(detectorId);
-    }
-  });
-
-  return Array.from(detectorIds).sort((a, b) => a.localeCompare(b));
-}
+export { applyRuntimeDetectorCoverageSummary };
 
 export function buildRuntimeDetectorCoverage({ issues = [], deterministicReceipts = [] } = {}) {
-  const findingBackedDetectorIds = collectUniqueDetectorIds(issues);
-  const modelFindingBackedDetectorIds = collectUniqueDetectorIds(
+  return buildRuntimeDetectorCoverageWithMetadata({
     issues,
-    (issue) => String(issue?.detection_source || '').trim().toLowerCase() !== 'rule'
-  );
-  const localCheckedDetectorIds = collectReceiptDetectorIds(deterministicReceipts);
-  const runtimeTouchedDetectorIds = Array.from(
-    new Set([...findingBackedDetectorIds, ...localCheckedDetectorIds])
-  ).sort((a, b) => a.localeCompare(b));
-
-  return {
-    detectorsDefined: TOTAL_DETECTOR_COUNT,
-    findingBackedDetectorIds,
-    findingBackedDetectorCount: findingBackedDetectorIds.length,
-    modelFindingBackedDetectorIds,
-    modelFindingBackedDetectorCount: modelFindingBackedDetectorIds.length,
-    localCheckedDetectorIds,
-    localCheckedDetectorCount: localCheckedDetectorIds.length,
-    runtimeTouchedDetectorIds,
-    runtimeTouchedDetectorCount: runtimeTouchedDetectorIds.length,
-    untouchedDetectorCount: Math.max(0, TOTAL_DETECTOR_COUNT - runtimeTouchedDetectorIds.length),
-    deterministicCatalogDetectorCount: DETERMINISTIC_CATALOG_DETECTOR_COUNT,
-    modelDrivenCatalogDetectorCount: MODEL_DRIVEN_CATALOG_DETECTOR_COUNT,
-    deterministicCatalogCoveragePercent: toCoveragePercent(
-      localCheckedDetectorIds.length,
-      DETERMINISTIC_CATALOG_DETECTOR_COUNT
-    ),
-    modelDrivenCatalogCoveragePercent: toCoveragePercent(
-      modelFindingBackedDetectorIds.length,
-      MODEL_DRIVEN_CATALOG_DETECTOR_COUNT
-    )
-  };
-}
-
-export function applyRuntimeDetectorCoverageSummary(summary, coverage) {
-  if (!summary || !coverage) return;
-
-  summary.detectors_defined = coverage.detectorsDefined;
-  summary.detectors_finding_backed = coverage.findingBackedDetectorCount;
-  summary.detectors_model_finding_backed = coverage.modelFindingBackedDetectorCount;
-  summary.detectors_locally_checked = coverage.localCheckedDetectorCount;
-  summary.detectors_runtime_touched = coverage.runtimeTouchedDetectorCount;
-  summary.detectors_untouched = coverage.untouchedDetectorCount;
-  summary.deterministic_catalog_detector_count = coverage.deterministicCatalogDetectorCount;
-  summary.model_driven_catalog_detector_count = coverage.modelDrivenCatalogDetectorCount;
-  summary.deterministic_catalog_coverage_percent = coverage.deterministicCatalogCoveragePercent;
-  summary.model_driven_catalog_coverage_percent = coverage.modelDrivenCatalogCoveragePercent;
-  summary.detectors_evaluated = coverage.runtimeTouchedDetectorCount;
-  summary.detectors_skipped = coverage.untouchedDetectorCount;
-  summary.detector_coverage_mode = 'receipt_backed_and_finding_backed';
+    deterministicReceipts,
+    detectorMetadata: DETECTOR_METADATA,
+    totalDetectorCount: TOTAL_DETECTOR_COUNT,
+    deterministicRuleDefinitions: DETERMINISTIC_RULE_DEFINITIONS
+  });
 }
 
 export function applyPostMergeEscalation(issues = []) {

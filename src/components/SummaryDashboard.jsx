@@ -1,5 +1,6 @@
 import React from 'react';
 import { DETERMINISTIC_RULE_COUNT } from '../lib/ruleEngine/index';
+import LayerCoverageDashboard from './LayerCoverageDashboard';
 
 const SEVERITY_CARDS = [
   { key: 'total', label: 'Total Issues', color: '#F9FAFB' },
@@ -215,6 +216,7 @@ export default function SummaryDashboard({
   if (!summary) return null;
 
   const runtimeCards = buildRuntimeCards(summary, taxonomyDiagnostics, analysisStats, analysisMesh);
+  const layerCoverage = summary?.layer_coverage || taxonomyDiagnostics?.runtime_layer_coverage || [];
 
   return (
     <div className="space-y-4 mb-6">
@@ -253,6 +255,8 @@ export default function SummaryDashboard({
           spine, but local rule coverage is still partial relative to the full detector catalog.
         </p>
       </div>
+
+      <LayerCoverageDashboard layerCoverage={layerCoverage} />
     </div>
   );
 }

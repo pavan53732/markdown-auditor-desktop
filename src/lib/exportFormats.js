@@ -65,6 +65,31 @@ export function buildMarkdownReport({
   md += `- **Deterministic Coverage Mode:** partial local-rule spine plus hybrid/model synthesis\n`;
   md += `\n`;
 
+  if (Array.isArray(results.summary.layer_coverage) && results.summary.layer_coverage.length > 0) {
+    const activeLayerCoverage = results.summary.layer_coverage
+      .filter((row) => (
+        (row.detectors_runtime_touched || 0) > 0
+        || (row.detectors_locally_checked || 0) > 0
+        || (row.detectors_model_finding_backed || 0) > 0
+      ))
+      .sort((left, right) => {
+        const touchedDelta = (right.detectors_runtime_touched || 0) - (left.detectors_runtime_touched || 0);
+        if (touchedDelta !== 0) return touchedDelta;
+        return (left.layer_number || 0) - (right.layer_number || 0);
+      })
+      .slice(0, 12);
+
+    if (activeLayerCoverage.length > 0) {
+      md += `## Layer Coverage Snapshot\n\n`;
+      md += `| Layer | Touched/Defined | Local Checked/Deterministic | Model Backed/Model-Driven | Deterministic % | Model % |\n`;
+      md += `| --- | --- | --- | --- | --- | --- |\n`;
+      activeLayerCoverage.forEach((row) => {
+        md += `| L${row.layer_number} ${row.layer_label} | ${row.detectors_runtime_touched}/${row.detectors_defined} | ${row.detectors_locally_checked}/${row.deterministic_catalog_detectors} | ${row.detectors_model_finding_backed}/${row.model_driven_catalog_detectors} | ${row.deterministic_catalog_coverage_percent}% | ${row.model_driven_catalog_coverage_percent}% |\n`;
+      });
+      md += `\n`;
+    }
+  }
+
   md += `## Issues\n\n`;
   (results.issues || []).forEach((issue, i) => {
     md += `### ${i + 1}. [${issue.severity?.toUpperCase()}] ${issue.description}\n\n`;

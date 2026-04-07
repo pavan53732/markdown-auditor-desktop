@@ -134,6 +134,7 @@ function applyMergedDiagnostics({
   diagnostics.model_driven_catalog_detector_count = runtimeCoverage.modelDrivenCatalogDetectorCount;
   diagnostics.deterministic_catalog_coverage_percent = runtimeCoverage.deterministicCatalogCoveragePercent;
   diagnostics.model_driven_catalog_coverage_percent = runtimeCoverage.modelDrivenCatalogCoveragePercent;
+  diagnostics.runtime_layer_coverage = runtimeCoverage.layerCoverage;
   diagnostics.agent_findings_merged_count = Math.max(
     0,
     finalBatchResults.reduce((sum, result) => sum + (result._rawIssueCount || result.issues?.length || 0), 0) - (merged.issues?.length || 0)

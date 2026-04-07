@@ -447,4 +447,110 @@ describe('Deterministic Rule Engine', () => {
     expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L43-03' && receipt.status === 'hit')).toBe(true);
     expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L43-12' && receipt.status === 'hit')).toBe(true);
   });
+
+  it('emits deterministic redundant-dependency and dependency-ownership detail issues from repeated dependency surfaces', () => {
+    const files = [
+      {
+        name: 'dependencies.md',
+        content: [
+          '# Release Dependencies',
+          '## Dependencies',
+          'platform-sdk v2.1.0',
+          'platform-sdk v2.1.0',
+          'Operator and Admin coordinate runtime-sdk v3.0.0',
+          'runtime-sdk v3.0.0'
+        ].join('\n')
+      }
+    ];
+
+    const projectGraph = buildMarkdownProjectGraph(files);
+    const result = runDeterministicRuleEngine({ files, projectGraph });
+    const detectorIds = result.issues.map((issue) => issue.detector_id);
+
+    expect(detectorIds).toEqual(expect.arrayContaining([
+      'L18-07',
+      'L18-09'
+    ]));
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L18-07' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L18-09' && receipt.status === 'hit')).toBe(true);
+  });
+
+  it('emits deterministic execution-path and governance expansion issues for ambiguous release control flow', () => {
+    const files = [
+      {
+        name: 'governance-flow.md',
+        content: [
+          '# Release Runtime',
+          '## Release Workflow',
+          'This workflow is automatically triggered on startup and manually triggered on request.',
+          '1. If policy allows, deploy release',
+          '2. When policy is absent, queue review',
+          'The path mutates session state and may execute in any order.',
+          '',
+          '## Governance Policy',
+          'Operator and Admin release updates and override policy during emergencies.',
+          'Agent writes release state directly.',
+          '## Control Plane Decisions',
+          'The system decides whether to allow release.'
+        ].join('\n')
+      }
+    ];
+
+    const projectGraph = buildMarkdownProjectGraph(files);
+    const result = runDeterministicRuleEngine({ files, projectGraph });
+    const detectorIds = result.issues.map((issue) => issue.detector_id);
+
+    expect(detectorIds).toEqual(expect.arrayContaining([
+      'L20-03',
+      'L20-04',
+      'L20-05',
+      'L20-10',
+      'L20-18',
+      'L20-19',
+      'L29-02',
+      'L29-03',
+      'L29-06',
+      'L29-07',
+      'L29-08',
+      'L29-21',
+      'L44-14'
+    ]));
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L20-03' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L29-21' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L44-14' && receipt.status === 'hit')).toBe(true);
+  });
+
+  it('emits deterministic transition, concurrency, and input-determinism issues from under-specified execution semantics', () => {
+    const files = [
+      {
+        name: 'execution-model.md',
+        content: [
+          '# Runtime Model',
+          '## Release Workflow',
+          '1. Execute deployment',
+          '2. Publish report',
+          '',
+          '## Concurrency Model',
+          'Workers run in parallel across the release path.',
+          '',
+          '## State Machine',
+          'PENDING -> APPROVED',
+          'PENDING -> REJECTED'
+        ].join('\n')
+      }
+    ];
+
+    const projectGraph = buildMarkdownProjectGraph(files);
+    const result = runDeterministicRuleEngine({ files, projectGraph });
+    const detectorIds = result.issues.map((issue) => issue.detector_id);
+
+    expect(detectorIds).toEqual(expect.arrayContaining([
+      'L43-01',
+      'L43-02',
+      'L43-04'
+    ]));
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L43-01' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L43-02' && receipt.status === 'hit')).toBe(true);
+    expect(result.summary.detector_execution_receipts.some((receipt) => receipt.detector_id === 'L43-04' && receipt.status === 'hit')).toBe(true);
+  });
 });

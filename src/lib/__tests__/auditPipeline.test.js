@@ -39,6 +39,12 @@ describe('Audit Pipeline Helpers', () => {
     );
     expect(coverage.deterministicCatalogCoveragePercent).toBeGreaterThanOrEqual(0);
     expect(coverage.modelDrivenCatalogCoveragePercent).toBeGreaterThanOrEqual(0);
+    expect(Array.isArray(coverage.layerCoverage)).toBe(true);
+    expect(coverage.layerCoverage.length).toBeGreaterThan(0);
+    const activeLayer = coverage.layerCoverage.find((row) => row.detectors_runtime_touched > 0);
+    expect(activeLayer).toBeTruthy();
+    expect(activeLayer).toHaveProperty('layer_id');
+    expect(activeLayer).toHaveProperty('deterministic_catalog_coverage_percent');
 
     const summary = {};
     applyRuntimeDetectorCoverageSummary(summary, coverage);
@@ -53,6 +59,7 @@ describe('Audit Pipeline Helpers', () => {
     expect(summary.model_driven_catalog_detector_count).toBe(coverage.modelDrivenCatalogDetectorCount);
     expect(summary.deterministic_catalog_coverage_percent).toBe(coverage.deterministicCatalogCoveragePercent);
     expect(summary.model_driven_catalog_coverage_percent).toBe(coverage.modelDrivenCatalogCoveragePercent);
+    expect(summary.layer_coverage).toEqual(coverage.layerCoverage);
     expect(summary.detector_coverage_mode).toBe('receipt_backed_and_finding_backed');
   });
 

@@ -72,6 +72,13 @@ const DEADLOCK_RISK_PATTERN = /\b(lock|mutex|lease|semaphore|waits? for|blocked 
 const DEADLOCK_MITIGATION_PATTERN = /\b(timeout|backoff|ordered|resource order|try[- ]?lock|lease expiry|deadlock|livelock|circuit breaker)\b/i;
 const OUTPUT_SURFACE_PATTERN = /\b(output|outputs|result|results|report|reports|events|records|items)\b/i;
 const OUTPUT_ORDERING_PATTERN = /\b(sorted|stable order|canonical(?:ized)?|deterministic output|ordered output|same output|consistent ordering)\b/i;
+const FAIL_SAFE_PATTERN = /\b(fail[- ]?safe|failsafe|abort|rollback|revert|stop the run|halt execution|kill switch|circuit breaker|safe mode)\b/i;
+const BRANCH_FALLBACK_PATTERN = /\b(else|otherwise|fallback|default|if not|when not|on failure|fail(?:ed)? path|error path)\b/i;
+const STATE_PRESERVATION_PATTERN = /\b(persist|preserve|restore|resume|checkpoint|snapshot|retain(?:ed)? state|carry forward|reconstruct state)\b/i;
+const STATE_CONTEXT_PATTERN = /\b(state|session|context|snapshot|cursor|offset|checkpoint|world state|memory)\b/i;
+const DECISION_PATTERN = /\b(decide|decision|approve|reject|allow|deny|permit|block|authorize|escalate)\b/i;
+const EXPLICIT_DECISION_OWNER_PATTERN = /\b(decided by|decision by|approved by|authorized by|owned by|owner|operator|admin|controller|gatekeeper|authority)\b/i;
+const CONFLICTING_TRIGGER_PAIR_PATTERN = /\b(automatic(?:ally)?|system(?:-|\s)?triggered|on schedule|on startup)\b[\s\S]{0,240}\b(manual(?:ly)?|user(?:-|\s)?triggered|operator(?:-|\s)?triggered|on request)\b|\b(manual(?:ly)?|user(?:-|\s)?triggered|operator(?:-|\s)?triggered|on request)\b[\s\S]{0,240}\b(automatic(?:ally)?|system(?:-|\s)?triggered|on schedule|on startup)\b/i;
 
 export const DETERMINISTIC_RULE_DEFINITIONS = [
   {
@@ -569,6 +576,174 @@ export const DETERMINISTIC_RULE_DEFINITIONS = [
     subcategory: 'goal drift',
     stage: 'interaction_rules',
     owningAgent: 'ui_operational_agent'
+  },
+  {
+    id: 'redundant_dependency_rule',
+    detectorId: 'L18-07',
+    layer: 'dependency_graph',
+    subcategory: 'undeclared dependencies',
+    stage: 'task_graph_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'dependency_ownership_ambiguity_detail_rule',
+    detectorId: 'L18-09',
+    layer: 'dependency_graph',
+    subcategory: 'ownership ambiguity',
+    stage: 'task_graph_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'conflicting_trigger_rule',
+    detectorId: 'L20-03',
+    layer: 'execution_path',
+    subcategory: 'branch omissions',
+    stage: 'workflow_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'incomplete_execution_branch_rule',
+    detectorId: 'L20-04',
+    layer: 'execution_path',
+    subcategory: 'branch omissions',
+    stage: 'workflow_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'dead_end_workflow_rule',
+    detectorId: 'L20-05',
+    layer: 'execution_path',
+    subcategory: 'dead ends',
+    stage: 'workflow_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'conditional_ambiguity_rule',
+    detectorId: 'L20-07',
+    layer: 'execution_path',
+    subcategory: 'unreachable paths',
+    stage: 'workflow_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'execution_path_gap_rule',
+    detectorId: 'L20-10',
+    layer: 'execution_path',
+    subcategory: 'execution-path gaps',
+    stage: 'workflow_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'path_dependency_cycle_rule',
+    detectorId: 'L20-14',
+    layer: 'execution_path',
+    subcategory: 'path dependency cycles',
+    stage: 'workflow_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'path_state_preservation_rule',
+    detectorId: 'L20-18',
+    layer: 'execution_path',
+    subcategory: 'path state preservation',
+    stage: 'workflow_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'conditional_execution_indeterminism_rule',
+    detectorId: 'L20-19',
+    layer: 'execution_path',
+    subcategory: 'conditional execution determinism',
+    stage: 'workflow_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'execution_branching_logic_rule',
+    detectorId: 'L20-20',
+    layer: 'execution_path',
+    subcategory: 'execution branching logic',
+    stage: 'workflow_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'missing_approval_gate_rule',
+    detectorId: 'L29-02',
+    layer: 'governance',
+    subcategory: 'approval gates',
+    stage: 'governance_rules',
+    owningAgent: 'architecture_authority_agent'
+  },
+  {
+    id: 'untraceable_change_rule',
+    detectorId: 'L29-03',
+    layer: 'governance',
+    subcategory: 'auditability',
+    stage: 'governance_rules',
+    owningAgent: 'architecture_authority_agent'
+  },
+  {
+    id: 'governance_unclear_ownership_rule',
+    detectorId: 'L29-06',
+    layer: 'governance',
+    subcategory: 'policy traceability',
+    stage: 'governance_rules',
+    owningAgent: 'architecture_authority_agent'
+  },
+  {
+    id: 'missing_fail_safe_rule',
+    detectorId: 'L29-07',
+    layer: 'governance',
+    subcategory: 'fail-safe condition ambiguity',
+    stage: 'governance_rules',
+    owningAgent: 'architecture_authority_agent'
+  },
+  {
+    id: 'override_ambiguity_rule',
+    detectorId: 'L29-08',
+    layer: 'governance',
+    subcategory: 'override ambiguity',
+    stage: 'governance_rules',
+    owningAgent: 'architecture_authority_agent'
+  },
+  {
+    id: 'unauthorized_agent_write_rule',
+    detectorId: 'L29-21',
+    layer: 'governance',
+    subcategory: 'unauthorized agent writes',
+    stage: 'governance_rules',
+    owningAgent: 'architecture_authority_agent'
+  },
+  {
+    id: 'transition_non_determinism_rule',
+    detectorId: 'L43-01',
+    layer: 'deterministic_execution',
+    subcategory: 'transition determinism',
+    stage: 'execution_invariant_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'concurrency_model_ambiguity_rule',
+    detectorId: 'L43-02',
+    layer: 'deterministic_execution',
+    subcategory: 'concurrency model definition',
+    stage: 'execution_invariant_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'input_determinism_gap_rule',
+    detectorId: 'L43-04',
+    layer: 'deterministic_execution',
+    subcategory: 'scheduling determinism',
+    stage: 'execution_invariant_rules',
+    owningAgent: 'execution_simulation_agent'
+  },
+  {
+    id: 'decision_authority_ambiguity_rule',
+    detectorId: 'L44-14',
+    layer: 'control_plane_authority',
+    subcategory: 'control plane separation violation',
+    stage: 'governance_rules',
+    owningAgent: 'architecture_authority_agent'
   }
 ];
 
@@ -1295,6 +1470,40 @@ function buildDependencyVersionReferences(sectionText = '') {
     });
 
   return references;
+}
+
+function buildDependencyVersionOccurrences(lines = []) {
+  const references = new Map();
+
+  (Array.isArray(lines) ? lines : []).forEach(({ lineNumber, text }) => {
+    const trimmedLine = String(text || '').trim();
+    if (!trimmedLine) return;
+
+    for (const match of trimmedLine.matchAll(VERSIONED_DEPENDENCY_REFERENCE_PATTERN)) {
+      const dependencyName = String(match[1] || '').trim().toLowerCase();
+      const versionToken = String(match[2] || '').trim().toLowerCase();
+      if (!dependencyName || !versionToken) continue;
+
+      if (!references.has(dependencyName)) {
+        references.set(dependencyName, new Map());
+      }
+      const versions = references.get(dependencyName);
+      if (!versions.has(versionToken)) {
+        versions.set(versionToken, []);
+      }
+      versions.get(versionToken).push({
+        lineNumber,
+        text: trimmedLine
+      });
+    }
+  });
+
+  return references;
+}
+
+function countConditionalMarkers(text = '') {
+  const matches = String(text || '').match(/\b(if|when|unless|otherwise|else|fallback|default)\b/gi) || [];
+  return matches.length;
 }
 
 function findTaskGraphCycle(adjacency) {
@@ -3185,6 +3394,839 @@ function runInteractionConflictRule(projectGraph, issues) {
   });
 }
 
+function runRedundantDependencyRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDependencySections(documentIndex).forEach(({ heading, lines, lineStart, lineEnd, sectionText }) => {
+      const versionOccurrences = buildDependencyVersionOccurrences(lines);
+      const redundantDependencies = Array.from(versionOccurrences.entries())
+        .map(([dependencyName, versions]) => {
+          const duplicateEntries = Array.from(versions.entries())
+            .filter(([, occurrences]) => occurrences.length > 1)
+            .flatMap(([, occurrences]) => occurrences);
+          return { dependencyName, duplicateEntries };
+        })
+        .filter((entry) => entry.duplicateEntries.length > 0);
+      if (redundantDependencies.length === 0) return;
+
+      const evidenceEntries = redundantDependencies
+        .flatMap((entry) => entry.duplicateEntries.map((occurrence) => ({
+          ...occurrence,
+          dependencyName: entry.dependencyName
+        })))
+        .sort((left, right) => left.lineNumber - right.lineNumber)
+        .slice(0, 6);
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'redundant_dependency_rule',
+        detectorId: 'L18-07',
+        severity: 'low',
+        description: `Dependency section "${heading?.title || documentIndex.name}" in ${documentIndex.name} repeats the same dependency declarations without adding deterministic meaning.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: evidenceEntries.map((entry) => `${entry.dependencyName}: ${entry.text}`).join('\n') || sectionText.trim().slice(0, 500),
+        whyTriggered: 'The same dependency surface is declared multiple times in one section, which introduces redundant maintenance points without clarifying ownership, versioning, or ordering semantics.',
+        evidenceSpans: evidenceEntries.map((entry, index) => createEvidenceSpan({
+          file: documentIndex.name,
+          section: heading?.title || '',
+          sectionSlug: heading?.slug || '',
+          lineStart: entry.lineNumber,
+          role: index === 0 ? 'primary' : 'supporting',
+          source: 'redundant_dependency_rule',
+          excerpt: entry.text
+        })),
+        deterministicFix: 'Collapse repeated dependency declarations into one canonical statement per dependency surface.',
+        recommendedFix: 'Keep a single dependency line for each dependency/version pair and move any extra notes into bounded metadata.'
+      }));
+    });
+  });
+}
+
+function runDependencyOwnershipAmbiguityDetailRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDependencySections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const actorRoles = extractActorRoles(sectionText);
+      if (actorRoles.length < 2) return;
+      if (OWNER_BOUNDARY_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'dependency_ownership_ambiguity_detail_rule',
+        detectorId: 'L18-09',
+        severity: 'medium',
+        description: `Dependency section "${heading?.title || documentIndex.name}" in ${documentIndex.name} names multiple actors without a bounded ownership rule for the dependency chain.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 500),
+        whyTriggered: `The section references multiple actors (${actorRoles.join(', ')}) while describing dependency behavior, but it never states which actor owns or governs those dependencies.`,
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'dependency_ownership_ambiguity_detail_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Assign a canonical owner or authority boundary for each dependency surface.',
+        recommendedFix: 'Document who owns dependency updates, approvals, and remediation when prerequisites change or fail.'
+      }));
+    });
+  });
+}
+
+function runConflictingTriggerRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectWorkflowSections(documentIndex).forEach(({ heading, lines, numberedSteps }) => {
+      if (numberedSteps.length < 2) return;
+
+      const sectionText = lines.map(({ text }) => text).join('\n');
+      if (!CONFLICTING_TRIGGER_PAIR_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'conflicting_trigger_rule',
+        detectorId: 'L20-03',
+        severity: 'high',
+        description: `Workflow section "${heading.title}" in ${documentIndex.name} mixes automatic and manual trigger conditions for the same execution path.`,
+        files: [documentIndex.name],
+        section: heading.title,
+        sectionSlug: heading.slug,
+        lineNumber: heading.lineStart,
+        lineEnd: heading.lineEnd,
+        evidence: sectionText.trim().slice(0, 500),
+        whyTriggered: 'The same workflow is described as both automatically triggered and manually or operator triggered, which leaves the execution entrypoint ambiguous.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading.title,
+            sectionSlug: heading.slug,
+            lineStart: heading.lineStart,
+            lineEnd: heading.lineEnd,
+            source: 'conflicting_trigger_rule',
+            excerpt: buildLineExcerpt(documentIndex, heading.lineStart, Math.min(heading.lineEnd, heading.lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Choose one trigger contract for the workflow or split automatic and manual modes into separate explicitly bounded paths.',
+        recommendedFix: 'State whether this flow starts automatically, manually, or under a named condition instead of mixing trigger modes.'
+      }));
+    });
+  });
+}
+
+function runIncompleteExecutionBranchRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectWorkflowSections(documentIndex).forEach(({ heading, lines, numberedSteps }) => {
+      if (numberedSteps.length < 2) return;
+
+      const sectionText = lines.map(({ text }) => text).join('\n');
+      if (countConditionalMarkers(sectionText) === 0) return;
+      if (BRANCH_FALLBACK_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'incomplete_execution_branch_rule',
+        detectorId: 'L20-04',
+        severity: 'high',
+        description: `Workflow section "${heading.title}" in ${documentIndex.name} introduces conditional branching without documenting the alternate branch behavior.`,
+        files: [documentIndex.name],
+        section: heading.title,
+        sectionSlug: heading.slug,
+        lineNumber: heading.lineStart,
+        lineEnd: heading.lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The workflow uses if/when/unless-style branching language but never documents an else, fallback, failure path, or alternate route.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading.title,
+            sectionSlug: heading.slug,
+            lineStart: heading.lineStart,
+            lineEnd: heading.lineEnd,
+            source: 'incomplete_execution_branch_rule',
+            excerpt: buildLineExcerpt(documentIndex, heading.lineStart, Math.min(heading.lineEnd, heading.lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Document every branch outcome, including the fallback or failure path for conditional execution.',
+        recommendedFix: 'Add explicit else/failure/default behavior wherever the workflow branches conditionally.'
+      }));
+    });
+  });
+}
+
+function runDeadEndWorkflowRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectWorkflowSections(documentIndex).forEach(({ heading, numberedSteps }) => {
+      if (numberedSteps.length < 2) return;
+
+      const lastStep = numberedSteps[numberedSteps.length - 1];
+      if (!lastStep) return;
+      if (TERMINAL_PATTERN.test(lastStep.text)) return;
+      if (!/\b(wait|waiting|pending|hold|review|queue|queued|retry|loop|branch)\b/i.test(lastStep.text)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'dead_end_workflow_rule',
+        detectorId: 'L20-05',
+        severity: 'medium',
+        description: `Workflow section "${heading.title}" in ${documentIndex.name} appears to end in a waiting or branching state without a deterministic exit.`,
+        files: [documentIndex.name],
+        section: heading.title,
+        sectionSlug: heading.slug,
+        lineNumber: lastStep.lineNumber,
+        evidence: `${lastStep.number}. ${lastStep.text}`,
+        whyTriggered: 'The final workflow step leaves the process in a pending/branching posture and does not define how execution reaches a terminal outcome.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading.title,
+            sectionSlug: heading.slug,
+            lineStart: lastStep.lineNumber,
+            source: 'dead_end_workflow_rule',
+            excerpt: `${lastStep.number}. ${lastStep.text}`
+          })
+        ],
+        deterministicFix: 'Add the missing terminal step or explicit next-path condition after the waiting/branching step.',
+        recommendedFix: 'Make the final workflow step resolve to success, failure, rollback, or a named next workflow.'
+      }));
+    });
+  });
+}
+
+function runConditionalAmbiguityRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      if (countConditionalMarkers(sectionText) < 2) return;
+      if (TRANSITION_CONDITION_PATTERN.test(sectionText) || BRANCH_FALLBACK_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'conditional_ambiguity_rule',
+        detectorId: 'L20-07',
+        severity: 'medium',
+        description: `Section "${heading?.title || documentIndex.name}" in ${documentIndex.name} uses multiple conditional clauses without a bounded decision rule.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section uses several conditional markers, but it never names the deciding guard, fallback rule, or explicit condition-to-path mapping.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'conditional_ambiguity_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Rewrite the conditional logic into explicit mutually exclusive guards and named outcomes.',
+        recommendedFix: 'Map each conditional clause to a concrete path instead of relying on prose-level branching.'
+      }));
+    });
+  });
+}
+
+function runExecutionPathGapRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectWorkflowSections(documentIndex).forEach(({ heading, lines, numberedSteps }) => {
+      if (numberedSteps.length < 2) return;
+
+      const sectionText = lines.map(({ text }) => text).join('\n');
+      if (countConditionalMarkers(sectionText) === 0) return;
+      if (BRANCH_FALLBACK_PATTERN.test(sectionText) || TERMINAL_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'execution_path_gap_rule',
+        detectorId: 'L20-10',
+        severity: 'high',
+        description: `Workflow section "${heading.title}" in ${documentIndex.name} describes conditional execution without a closed execution-path contract.`,
+        files: [documentIndex.name],
+        section: heading.title,
+        sectionSlug: heading.slug,
+        lineNumber: heading.lineStart,
+        lineEnd: heading.lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The workflow branches conditionally but never closes the execution graph with alternate outcomes, fallback handling, or terminal behavior.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading.title,
+            sectionSlug: heading.slug,
+            lineStart: heading.lineStart,
+            lineEnd: heading.lineEnd,
+            source: 'execution_path_gap_rule',
+            excerpt: buildLineExcerpt(documentIndex, heading.lineStart, Math.min(heading.lineEnd, heading.lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Close the execution graph by documenting every branch outcome and the terminal or rollback behavior for each path.',
+        recommendedFix: 'Add explicit alternate-path handling so the workflow remains closed under all conditional outcomes.'
+      }));
+    });
+  });
+}
+
+function runPathDependencyCycleRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectTaskGraphSections(documentIndex).forEach((taskSection) => {
+      const { heading, lineStart, lineEnd } = taskSection;
+      const graphContext = buildTaskGraphContext(taskSection);
+      const cycle = findTaskGraphCycle(graphContext.adjacency);
+      if (!cycle || cycle.length < 2) return;
+
+      const cycleSteps = Array.from(new Set(cycle))
+        .map((stepNumber) => graphContext.stepMap.get(stepNumber))
+        .filter(Boolean);
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'path_dependency_cycle_rule',
+        detectorId: 'L20-14',
+        severity: 'high',
+        description: `Execution-path section "${heading?.title || documentIndex.name}" in ${documentIndex.name} contains a dependency cycle that prevents deterministic completion.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: cycleSteps.map((step) => `${step.number}. ${step.text}`).join('\n'),
+        whyTriggered: `The documented execution path loops back across dependencies (${cycle.join(' -> ')}), so the path graph cannot be traversed deterministically to completion.`,
+        evidenceSpans: cycleSteps.map((step, index) => createEvidenceSpan({
+          file: documentIndex.name,
+          section: heading?.title || '',
+          sectionSlug: heading?.slug || '',
+          lineStart: step.lineNumber,
+          role: index === 0 ? 'primary' : 'supporting',
+          source: 'path_dependency_cycle_rule',
+          excerpt: `${step.number}. ${step.text}`
+        })),
+        deterministicFix: 'Break the cyclic dependency or split the loop into separate explicitly staged execution paths.',
+        recommendedFix: 'Rewrite the path dependencies so the graph is acyclic and can always progress forward.'
+      }));
+    });
+  });
+}
+
+function runPathStatePreservationRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectWorkflowSections(documentIndex).forEach(({ heading, lines, numberedSteps }) => {
+      if (numberedSteps.length < 2) return;
+
+      const sectionText = lines.map(({ text }) => text).join('\n');
+      if (!STATE_CONTEXT_PATTERN.test(sectionText) || !ACTION_PATTERN.test(sectionText)) return;
+      if (STATE_PRESERVATION_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'path_state_preservation_rule',
+        detectorId: 'L20-18',
+        severity: 'high',
+        description: `Workflow section "${heading.title}" in ${documentIndex.name} changes or depends on state without documenting how that state is preserved across the path.`,
+        files: [documentIndex.name],
+        section: heading.title,
+        sectionSlug: heading.slug,
+        lineNumber: heading.lineStart,
+        lineEnd: heading.lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The workflow references session, state, snapshot, or context surfaces but never states how that state is preserved, restored, resumed, or replayed across the execution path.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading.title,
+            sectionSlug: heading.slug,
+            lineStart: heading.lineStart,
+            lineEnd: heading.lineEnd,
+            source: 'path_state_preservation_rule',
+            excerpt: buildLineExcerpt(documentIndex, heading.lineStart, Math.min(heading.lineEnd, heading.lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Document the checkpoint, snapshot, resume, or restore rule that preserves state across the workflow path.',
+        recommendedFix: 'Specify how path state is carried forward so retries and branches do not lose execution context.'
+      }));
+    });
+  });
+}
+
+function runConditionalExecutionIndeterminismRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectWorkflowSections(documentIndex).forEach(({ heading, lines, numberedSteps }) => {
+      if (numberedSteps.length < 2) return;
+
+      const sectionText = lines.map(({ text }) => text).join('\n');
+      if (countConditionalMarkers(sectionText) < 2) return;
+      if (!EXECUTION_NON_DETERMINISM_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'conditional_execution_indeterminism_rule',
+        detectorId: 'L20-19',
+        severity: 'high',
+        description: `Workflow section "${heading.title}" in ${documentIndex.name} combines branching logic with non-deterministic execution wording.`,
+        files: [documentIndex.name],
+        section: heading.title,
+        sectionSlug: heading.slug,
+        lineNumber: heading.lineStart,
+        lineEnd: heading.lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The workflow has multiple conditional branches and also allows best-effort or any-order execution, so the chosen branch and execution order are both under-specified.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading.title,
+            sectionSlug: heading.slug,
+            lineStart: heading.lineStart,
+            lineEnd: heading.lineEnd,
+            source: 'conditional_execution_indeterminism_rule',
+            excerpt: buildLineExcerpt(documentIndex, heading.lineStart, Math.min(heading.lineEnd, heading.lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Define deterministic branch selection and execution order invariants for the conditional workflow.',
+        recommendedFix: 'Name the guard that selects each branch and the ordering contract that executes the chosen path.'
+      }));
+    });
+  });
+}
+
+function runExecutionBranchingLogicRule(projectGraph, issues) {
+  const branchingPattern = /\b(branch|branching|fork|split|alternate path|alternative path|branch path)\b/i;
+
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectWorkflowSections(documentIndex).forEach(({ heading, lines, numberedSteps }) => {
+      if (numberedSteps.length < 2) return;
+
+      const sectionText = lines.map(({ text }) => text).join('\n');
+      if (!branchingPattern.test(sectionText)) return;
+      if (TRANSITION_CONDITION_PATTERN.test(sectionText) || BRANCH_FALLBACK_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'execution_branching_logic_rule',
+        detectorId: 'L20-20',
+        severity: 'medium',
+        description: `Workflow section "${heading.title}" in ${documentIndex.name} references branching logic without a deterministic branch-selection rule.`,
+        files: [documentIndex.name],
+        section: heading.title,
+        sectionSlug: heading.slug,
+        lineNumber: heading.lineStart,
+        lineEnd: heading.lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section talks about branching or alternate paths, but it does not define the explicit conditions or decision owner that selects each branch.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading.title,
+            sectionSlug: heading.slug,
+            lineStart: heading.lineStart,
+            lineEnd: heading.lineEnd,
+            source: 'execution_branching_logic_rule',
+            excerpt: buildLineExcerpt(documentIndex, heading.lineStart, Math.min(heading.lineEnd, heading.lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Define the branch selector, the branch conditions, and the fallback behavior for alternate paths.',
+        recommendedFix: 'Replace generic branching prose with named branch conditions and explicit route outcomes.'
+      }));
+    });
+  });
+}
+
+function runMissingApprovalGateRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const headingTitle = heading?.title || '';
+      const governanceLike = /governance|policy|approval|release|deployment|control/i.test(headingTitle) || /governance|policy|approval|release|deployment|control/i.test(sectionText);
+      if (!governanceLike || !ACTION_PATTERN.test(sectionText)) return;
+      if (/\b(approve|approval|review(?:ed)?|sign[- ]?off|authorized by|approval gate|human gate)\b/i.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'missing_approval_gate_rule',
+        detectorId: 'L29-02',
+        severity: 'high',
+        description: `Section "${headingTitle || documentIndex.name}" in ${documentIndex.name} changes governed state without an explicit approval gate.`,
+        files: [documentIndex.name],
+        section: headingTitle,
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section drives change or execution in a governance-sensitive area, but it never states where approval, review, or sign-off is required.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: headingTitle,
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'missing_approval_gate_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Add a named approval gate before the governed mutation or release step executes.',
+        recommendedFix: 'Document who approves the change and the exact step where the gate blocks or permits execution.'
+      }));
+    });
+  });
+}
+
+function runUntraceableChangeRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const headingTitle = heading?.title || '';
+      const changeLike = CHANGE_ACTION_PATTERN.test(sectionText) || /\b(change|deployment|release|rollout|migration|update|write|apply|mutate)\b/i.test(sectionText);
+      if (!changeLike) return;
+      if (AUDIT_TRAIL_PATTERN.test(sectionText) || COMMIT_HASH_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'untraceable_change_rule',
+        detectorId: 'L29-03',
+        severity: 'high',
+        description: `Section "${headingTitle || documentIndex.name}" in ${documentIndex.name} describes change behavior without a traceable change record.`,
+        files: [documentIndex.name],
+        section: headingTitle,
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section introduces updates or mutations but never ties them to an audit trail, change record, commit, revision, or receipt.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: headingTitle,
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'untraceable_change_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Bind every described change path to a durable change record, commit id, or audit receipt.',
+        recommendedFix: 'Document the immutable artifact or journal that records the change end to end.'
+      }));
+    });
+  });
+}
+
+function runGovernanceUnclearOwnershipRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const headingTitle = heading?.title || '';
+      const actorRoles = extractActorRoles(sectionText);
+      if (actorRoles.length < 2) return;
+      if (!/governance|policy|control|approval|authority/i.test(`${headingTitle}\n${sectionText}`)) return;
+      if (OWNER_BOUNDARY_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'governance_unclear_ownership_rule',
+        detectorId: 'L29-06',
+        severity: 'medium',
+        description: `Section "${headingTitle || documentIndex.name}" in ${documentIndex.name} describes governance responsibilities without a clear owner.`,
+        files: [documentIndex.name],
+        section: headingTitle,
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: `The section names multiple actors (${actorRoles.join(', ')}) in a governance-sensitive context without assigning a canonical accountable owner.`,
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: headingTitle,
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'governance_unclear_ownership_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Assign one accountable owner or approval authority for the governed behavior.',
+        recommendedFix: 'State which actor owns the decision, mutation, or checkpoint when several actors are involved.'
+      }));
+    });
+  });
+}
+
+function runMissingFailSafeRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const headingTitle = heading?.title || '';
+      const safetyRelevant = ACTION_PATTERN.test(sectionText)
+        && (
+          WORKFLOW_HEADING_PATTERN.test(headingTitle)
+          || GOVERNANCE_BYPASS_PATTERN.test(sectionText)
+          || CONTROL_PLANE_PATTERN.test(`${headingTitle}\n${sectionText}`)
+        );
+      if (!safetyRelevant) return;
+      if (FAIL_SAFE_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'missing_fail_safe_rule',
+        detectorId: 'L29-07',
+        severity: 'high',
+        description: `Section "${headingTitle || documentIndex.name}" in ${documentIndex.name} drives execution without a documented fail-safe or stop condition.`,
+        files: [documentIndex.name],
+        section: headingTitle,
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section describes mutating or override-capable behavior but never states a safe-stop, abort, kill-switch, rollback, or circuit-breaker condition.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: headingTitle,
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'missing_fail_safe_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Document the fail-safe, stop condition, or rollback boundary that halts unsafe execution.',
+        recommendedFix: 'Add the exact abort/kill-switch/recovery behavior that contains failures in this path.'
+      }));
+    });
+  });
+}
+
+function runOverrideAmbiguityRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const headingTitle = heading?.title || '';
+      if (!(GOVERNANCE_BYPASS_PATTERN.test(sectionText) || /\boverride\b/i.test(sectionText))) return;
+      if (OVERRIDE_GUARD_PATTERN.test(sectionText) || OWNER_BOUNDARY_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'override_ambiguity_rule',
+        detectorId: 'L29-08',
+        severity: 'high',
+        description: `Section "${headingTitle || documentIndex.name}" in ${documentIndex.name} mentions override behavior without bounded override rules.`,
+        files: [documentIndex.name],
+        section: headingTitle,
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section allows bypass or override behavior but does not define who can invoke it, under what conditions, or what compensating controls apply.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: headingTitle,
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'override_ambiguity_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Define the override authority, allowed conditions, expiry, and required controls for the override path.',
+        recommendedFix: 'Bound the override path with explicit conditions and named decision ownership.'
+      }));
+    });
+  });
+}
+
+function runUnauthorizedAgentWriteRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const agentWritePattern = /\b(agent|assistant|automation|system|controller)\b[\s\S]{0,240}\b(write|writes|apply|applies|commit|commits|deploy|deploys|delete|deletes|mutate|mutates|update|updates|release|releases)\b/i;
+      if (!agentWritePattern.test(sectionText)) return;
+      if (/\b(authorize|authorized|approval|approved|owner|operator|admin|gatekeeper|reviewed by)\b/i.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'unauthorized_agent_write_rule',
+        detectorId: 'L29-21',
+        severity: 'critical',
+        description: `Section "${heading?.title || documentIndex.name}" in ${documentIndex.name} allows agent or system writes without an explicit authorization boundary.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section allows an agent, assistant, or system controller to perform writes or releases but does not state who authorizes those actions.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'unauthorized_agent_write_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Add an explicit authorization boundary for agent-driven writes, releases, or state mutations.',
+        recommendedFix: 'Document who approves, gates, or owns the agent write path before the system mutates state.'
+      }));
+    });
+  });
+}
+
+function runTransitionNonDeterminismRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectStateTransitionGroups(documentIndex).forEach(({ section, transitions, lineStart, lineEnd, sectionText }) => {
+      if (!Array.isArray(transitions) || transitions.length < 2) return;
+      if (TRANSITION_CONDITION_PATTERN.test(sectionText)) return;
+
+      const outgoingTransitions = new Map();
+      transitions.forEach((transition) => {
+        const source = transition.tokens[0];
+        const target = transition.tokens[transition.tokens.length - 1];
+        if (!source || !target || source === target) return;
+        if (!outgoingTransitions.has(source)) outgoingTransitions.set(source, new Set());
+        outgoingTransitions.get(source).add(target);
+      });
+
+      const ambiguousSources = Array.from(outgoingTransitions.entries())
+        .filter(([, targets]) => targets.size > 1)
+        .map(([source]) => source);
+      if (ambiguousSources.length === 0) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'transition_non_determinism_rule',
+        detectorId: 'L43-01',
+        severity: 'high',
+        description: `State transitions in ${documentIndex.name}${section?.title ? ` section "${section.title}"` : ''} contain non-deterministic branching from shared source states.`,
+        files: [documentIndex.name],
+        section: section?.title || '',
+        sectionSlug: section?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: transitions.map((transition) => `${documentIndex.name}:${transition.lineNumber} ${transition.line}`).join('\n'),
+        whyTriggered: `The state machine branches from shared source states (${ambiguousSources.join(', ')}) without documenting the rule that chooses each outgoing transition.`,
+        evidenceSpans: transitions.slice(0, 6).map((transition, index) => createEvidenceSpan({
+          file: documentIndex.name,
+          section: section?.title || '',
+          sectionSlug: section?.slug || '',
+          lineStart: transition.lineNumber,
+          role: index === 0 ? 'primary' : 'supporting',
+          source: 'transition_non_determinism_rule',
+          excerpt: transition.line
+        })),
+        deterministicFix: 'Define a deterministic guard for every branch that leaves the same source state.',
+        recommendedFix: 'Make each source-state transition mutually exclusive and explicitly conditioned.'
+      }));
+    });
+  });
+}
+
+function runConcurrencyModelAmbiguityRule(projectGraph, issues) {
+  const concurrencyBoundaryPattern = /\b(queue|queued|lock|locked|mutex|semaphore|serialize|serialized|single writer|worker pool|thread pool|scheduler|deterministic scheduler)\b/i;
+
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      if (!PARALLEL_EXECUTION_PATTERN.test(sectionText)) return;
+      if (concurrencyBoundaryPattern.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'concurrency_model_ambiguity_rule',
+        detectorId: 'L43-02',
+        severity: 'high',
+        description: `Section "${heading?.title || documentIndex.name}" in ${documentIndex.name} permits concurrent execution without defining the concurrency model.`,
+        files: [documentIndex.name],
+        section: heading?.title || '',
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section allows parallel, concurrent, or simultaneous work but never states the queueing, locking, scheduling, or worker-pool model that makes concurrency deterministic.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading?.title || '',
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'concurrency_model_ambiguity_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Define the queueing, locking, or scheduling model that governs concurrent execution.',
+        recommendedFix: 'State whether work is serialized, queued, single-writer, or otherwise constrained under a named concurrency contract.'
+      }));
+    });
+  });
+}
+
+function runInputDeterminismGapRule(projectGraph, issues) {
+  const inputSurfacePattern = /\b(input|inputs|request|payload|event|parameter|parameters|argument|arguments|config|configuration|source data|artifact digest|commit hash|revision)\b/i;
+
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectWorkflowSections(documentIndex).forEach(({ heading, lines, numberedSteps }) => {
+      if (numberedSteps.length < 2) return;
+
+      const sectionText = lines.map(({ text }) => text).join('\n');
+      if (!ACTION_PATTERN.test(sectionText)) return;
+      if (inputSurfacePattern.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'input_determinism_gap_rule',
+        detectorId: 'L43-04',
+        severity: 'medium',
+        description: `Workflow section "${heading.title}" in ${documentIndex.name} executes actions without defining stable inputs or trigger artifacts.`,
+        files: [documentIndex.name],
+        section: heading.title,
+        sectionSlug: heading.slug,
+        lineNumber: heading.lineStart,
+        lineEnd: heading.lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The workflow drives execution, but it never states the request, event, config, payload, or immutable artifact that serves as the stable input surface.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: heading.title,
+            sectionSlug: heading.slug,
+            lineStart: heading.lineStart,
+            lineEnd: heading.lineEnd,
+            source: 'input_determinism_gap_rule',
+            excerpt: buildLineExcerpt(documentIndex, heading.lineStart, Math.min(heading.lineEnd, heading.lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Document the stable input, request, event, or artifact that deterministically seeds the workflow.',
+        recommendedFix: 'Name the exact input contract for the workflow before describing downstream execution steps.'
+      }));
+    });
+  });
+}
+
+function runDecisionAuthorityAmbiguityRule(projectGraph, issues) {
+  projectGraph.projectIndex.documents.forEach((documentIndex) => {
+    collectDocumentSections(documentIndex).forEach(({ heading, sectionText, lineStart, lineEnd }) => {
+      const headingTitle = heading?.title || '';
+      if (!DECISION_PATTERN.test(sectionText)) return;
+      if (!(CONTROL_PLANE_PATTERN.test(`${headingTitle}\n${sectionText}`) || /governance|approval|policy|authority/i.test(`${headingTitle}\n${sectionText}`))) return;
+      if (EXPLICIT_DECISION_OWNER_PATTERN.test(sectionText)) return;
+
+      pushIssue(issues, createRuleIssue({
+        ruleId: 'decision_authority_ambiguity_rule',
+        detectorId: 'L44-14',
+        severity: 'high',
+        description: `Section "${headingTitle || documentIndex.name}" in ${documentIndex.name} describes decisions or approvals without naming the decision authority.`,
+        files: [documentIndex.name],
+        section: headingTitle,
+        sectionSlug: heading?.slug || '',
+        lineNumber: lineStart,
+        lineEnd,
+        evidence: sectionText.trim().slice(0, 600),
+        whyTriggered: 'The section references decisions, approvals, or escalations, but it does not say who actually owns or authorizes those decisions.',
+        evidenceSpans: [
+          createEvidenceSpan({
+            file: documentIndex.name,
+            section: headingTitle,
+            sectionSlug: heading?.slug || '',
+            lineStart,
+            lineEnd,
+            source: 'decision_authority_ambiguity_rule',
+            excerpt: buildLineExcerpt(documentIndex, lineStart, Math.min(lineEnd, lineStart + 8))
+          })
+        ],
+        deterministicFix: 'Name the decision owner, approval authority, or control-plane actor that resolves the decision.',
+        recommendedFix: 'Document who decides, who may override, and what authority boundary applies to the decision.'
+      }));
+    });
+  });
+}
+
 function runUndefinedIdentifierRule(projectGraph, issues) {
   const definedTerms = new Set(projectGraph.glossaryOccurrences.map((occurrence) => normalizeComparableText(occurrence.label)));
   const headingTerms = new Set(projectGraph.headingOccurrences.map((occurrence) => normalizeComparableText(occurrence.label)));
@@ -3817,6 +4859,8 @@ export function runDeterministicRuleEngine({ files = [], projectGraph, diagnosti
   runTaskGraphOptionalRequiredConfusionRule(projectGraph, issues);
   runTaskGraphUnreachableNodeRule(projectGraph, issues);
   runTaskGraphPriorityPropagationRule(projectGraph, issues);
+  runRedundantDependencyRule(projectGraph, issues);
+  runDependencyOwnershipAmbiguityDetailRule(projectGraph, issues);
   runDependencyOwnershipRule(projectGraph, issues);
   runDependencyLifecycleRule(projectGraph, issues);
   runDependencyVersionAmbiguityRule(projectGraph, issues);
@@ -3825,6 +4869,25 @@ export function runDeterministicRuleEngine({ files = [], projectGraph, diagnosti
   runChangeScopeBoundaryRule(projectGraph, issues);
   runUserIntentConsistencyRule(projectGraph, issues);
   runInteractionConflictRule(projectGraph, issues);
+  runConflictingTriggerRule(projectGraph, issues);
+  runIncompleteExecutionBranchRule(projectGraph, issues);
+  runDeadEndWorkflowRule(projectGraph, issues);
+  runConditionalAmbiguityRule(projectGraph, issues);
+  runExecutionPathGapRule(projectGraph, issues);
+  runPathDependencyCycleRule(projectGraph, issues);
+  runPathStatePreservationRule(projectGraph, issues);
+  runConditionalExecutionIndeterminismRule(projectGraph, issues);
+  runExecutionBranchingLogicRule(projectGraph, issues);
+  runMissingApprovalGateRule(projectGraph, issues);
+  runUntraceableChangeRule(projectGraph, issues);
+  runGovernanceUnclearOwnershipRule(projectGraph, issues);
+  runMissingFailSafeRule(projectGraph, issues);
+  runOverrideAmbiguityRule(projectGraph, issues);
+  runUnauthorizedAgentWriteRule(projectGraph, issues);
+  runTransitionNonDeterminismRule(projectGraph, issues);
+  runConcurrencyModelAmbiguityRule(projectGraph, issues);
+  runInputDeterminismGapRule(projectGraph, issues);
+  runDecisionAuthorityAmbiguityRule(projectGraph, issues);
   runUndefinedIdentifierRule(projectGraph, issues);
   runGlossaryBindingRule(projectGraph, issues);
   runApiReturnSchemaRule(projectGraph, issues);
